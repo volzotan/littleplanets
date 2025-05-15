@@ -10,3 +10,7 @@ wheels/
 .venv
 
 .idea/**
+
+# Added by cargo
+
+/target
