@@ -34,7 +34,10 @@ def get_slope(
 
     return (X, Y, dX, dY, angles, magnitude)
 
-def _linestring_to_coordinate_pairs(linestring: LineString) -> list[list[tuple[float, float]]]:
+
+def _linestring_to_coordinate_pairs(
+    linestring: LineString,
+) -> list[list[tuple[float, float]]]:
     pairs = []
 
     for i in range(len(linestring.coords) - 1):
@@ -42,8 +45,8 @@ def _linestring_to_coordinate_pairs(linestring: LineString) -> list[list[tuple[f
 
     return pairs
 
-def draw_line_image(canvas: np.ndarray, lines: LineString) -> np.ndarray:
 
+def draw_line_image(canvas: np.ndarray, lines: LineString) -> np.ndarray:
     for linestring in lines:
         for pair in _linestring_to_coordinate_pairs(linestring):
             pt1 = [int(c) for c in pair[0]]
@@ -53,16 +56,15 @@ def draw_line_image(canvas: np.ndarray, lines: LineString) -> np.ndarray:
     return canvas
 
 
-
 img_depth = openexr_numpy.imread("assets/Depth0001.exr", "V")
 img_gray = cv2.imread("assets/Image0001.tif", cv2.IMREAD_GRAYSCALE)
 
 _, _, dX, dY, angles, magnitude = get_slope(img_depth, 1)
 
-angles += math.pi/2 # contour, not slope-following
+angles += math.pi / 2  # contour, not slope-following
 
 img_gray = ((img_gray.astype(float) - np.min(img_gray)) / np.ptp(img_gray) * 255).astype(np.uint8)
-mapping_distance = ~img_gray # draw white, not black
+mapping_distance = ~img_gray  # draw white, not black
 
 cv2.imwrite("narf.png", mapping_distance)
 
@@ -90,29 +92,23 @@ config = flowlines_py.FlowlinesConfig()
 config.line_distance = (0.5, 25)
 config.line_max_length = (50, 50)
 
-lines: list[list[tuple[float, float]]] = flowlines_py.hatch(
-    dimensions, config, *mappings
-)
+lines: list[list[tuple[float, float]]] = flowlines_py.hatch(dimensions, config, *mappings)
 linestrings = [LineString(l) for l in lines]
 linestrings = [
     shapely.simplify(
         shapely.affinity.scale(
             l,
-            xfact=output_dimensions[1]/dimensions[1],
-            yfact=output_dimensions[0]/dimensions[0],
-            origin=(0, 0)
+            xfact=output_dimensions[1] / dimensions[1],
+            yfact=output_dimensions[0] / dimensions[0],
+            origin=(0, 0),
         ),
         0.1,
     )
-for l in linestrings]
+    for l in linestrings
+]
 
 print(len(linestrings))
 
 canvas = cv2.resize((img_gray * 0.5).astype(np.uint8), output_dimensions)
 canvas = np.zeros(output_dimensions, dtype=np.uint8)
 cv2.imwrite("foo.png", draw_line_image(canvas, linestrings))
-
-
-
-
-

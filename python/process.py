@@ -34,7 +34,10 @@ def get_slope(
 
     return (X, Y, dX, dY, angles, magnitude)
 
-def _linestring_to_coordinate_pairs(linestring: LineString) -> list[list[tuple[float, float]]]:
+
+def _linestring_to_coordinate_pairs(
+    linestring: LineString,
+) -> list[list[tuple[float, float]]]:
     pairs = []
 
     for i in range(len(linestring.coords) - 1):
@@ -42,8 +45,8 @@ def _linestring_to_coordinate_pairs(linestring: LineString) -> list[list[tuple[f
 
     return pairs
 
-def draw_line_image(canvas: np.ndarray, lines: LineString) -> np.ndarray:
 
+def draw_line_image(canvas: np.ndarray, lines: LineString) -> np.ndarray:
     for linestring in lines:
         for pair in _linestring_to_coordinate_pairs(linestring):
             pt1 = [int(c) for c in pair[0]]
@@ -51,6 +54,7 @@ def draw_line_image(canvas: np.ndarray, lines: LineString) -> np.ndarray:
             cv2.line(canvas, pt1, pt2, (255, 255, 255), 2)
 
     return canvas
+
 
 #
 # img_depth = openexr_numpy.imread("assets/Depth0001.exr", "V")
@@ -108,9 +112,9 @@ def draw_line_image(canvas: np.ndarray, lines: LineString) -> np.ndarray:
 # cv2.imwrite("foo.png", draw_line_image(canvas, linestrings))
 
 
-
 def _get_angles(normals: np.ndarray) -> np.ndarray:
     return np.arctan2(img_normals[:, :, 1], img_normals[:, :, 0])  # angles relative to Z axis
+
 
 def _get_angles_relative_to_axis(normals: np.ndarray, axis: np.array) -> np.ndarray:
     return np.arccos(np.dot(normals, axis))
@@ -166,9 +170,7 @@ config = flowlines_py.FlowlinesConfig()
 config.line_distance = (15, 50)
 config.line_max_length = (1000, 1000)
 
-lines: list[list[tuple[float, float]]] = flowlines_py.hatch(
-    (dimensions[1], dimensions[0]), config, *mappings
-)
+lines: list[list[tuple[float, float]]] = flowlines_py.hatch((dimensions[1], dimensions[0]), config, *mappings)
 linestrings = [shapely.simplify(LineString(l), 1) for l in lines]
 
 print(len(linestrings))
