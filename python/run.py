@@ -16,6 +16,7 @@ import datetime
 
 from shapely.geometry import LineString
 
+
 @dataclass
 class Mesh:
     points: list[np.array]
@@ -24,6 +25,7 @@ class Mesh:
     centers: list[np.array] | None = None
     normals: list[np.array] | None = None
     field_vectors: list[np.array] | None = None
+    field_elevation_vectors: list[np.array] | None = None
 
     def __repr__(self):
         return f"Mesh [ points: {len(self.points)} / faces: {len(self.faces)} / colors: {len(self.colors)} ]"
@@ -269,8 +271,8 @@ def project(m: Mesh, raster: np.ndarray | None, scale: float = 0.1) -> Mesh:
     for i in range(len(m.points)):
         p = m.points[i]
 
-        d = math.sqrt(np.sum(np.power(p, 2)))
-        lat = math.acos(p[2] / d)
+        r = math.sqrt(np.sum(np.power(p, 2)))
+        lat = math.acos(p[2] / r)
         lon = math.atan2(p[1], p[0])
 
         r = 1.0
@@ -394,8 +396,10 @@ def _compute_normals(m: Mesh) -> tuple[np.ndarray, np.ndarray]:
 def _normalize_vector(v: np.array) -> np.array:
     return v / np.linalg.norm(v)
 
+
 def _normalize_vectors(v: np.ndarray) -> np.array:
     return v / np.linalg.norm(v, axis=1).reshape(-1, 1)
+
 
 def _line_plane_intersection(
     plane_normal: np.array, plane_point: np.array, line_point: np.array, line_direction: np.array, tol: float = 1e-6
@@ -438,6 +442,26 @@ def add_field_vectors(m: Mesh, axis: np.array) -> Mesh:
     m.centers = [np.array(e) for e in centers.tolist()]
     m.normals = [np.array(e) for e in normals.tolist()]
     m.field_vectors = [np.array(e) for e in directions.tolist()]
+
+    elevation_vectors = _normalize_vectors(centers)
+    field_elevation_vectors = []
+    for i in range(len(elevation_vectors)):
+        projected = elevation_vectors[i] - (np.dot(elevation_vectors[i], normals[i])) * normals[i]
+        magnitude = np.arccos(np.dot(elevation_vectors[i], normals[i]))
+
+        # since the magnitude of the elevation direction vector is so small
+        # a strong weight is required in order to have _any_ noticeable effect
+        # compared to the light axis direction unit vector
+        ELEVATION_VECTOR_WEIGHT = 0.95
+
+        combined = _normalize_vector(
+            directions[i] * (1 - magnitude) * (1 - ELEVATION_VECTOR_WEIGHT)
+            + projected * magnitude * ELEVATION_VECTOR_WEIGHT
+        )
+        field_elevation_vectors.append(combined)
+
+    m.field_elevation_vectors = field_elevation_vectors
+
     return m
 
 
@@ -527,6 +551,7 @@ def display(m: Mesh) -> None:
 
     plotter.show()
 
+
 def visualize(m: Mesh, lines: list[LineString]) -> pv.Plotter:
     plotter = pv.Plotter()
 
@@ -539,7 +564,7 @@ def visualize(m: Mesh, lines: list[LineString]) -> pv.Plotter:
     points_pv = np.stack(m.points)
     faces_pv = np.hstack([[3, *face] for face in m.faces])
     pvmesh = pv.PolyData(points_pv, faces_pv)
-    plotter.add_mesh(pvmesh, opacity=0.5, show_edges=True) #), opacity=0.5)
+    plotter.add_mesh(pvmesh, opacity=0.5, show_edges=True)  # ), opacity=0.5)
 
     # light axis
     light_axis = _normalize_vector(np.array([0, 1, 1]))
@@ -551,22 +576,32 @@ def visualize(m: Mesh, lines: list[LineString]) -> pv.Plotter:
         plotter.add_mesh(spline, color=[125, 125, 125])
 
     # normals
-    # for i in range(len(m.normals)):
-    #     arrow = pv.Arrow(
-    #         m.centers[i],
-    #         m.normals[i],
-    #         scale=0.25
-    #     )
-    #     plotter.add_mesh(arrow, color=[255, 0, 0])
+    for i in range(len(m.normals)):
+        arrow = pv.Arrow(m.centers[i], m.normals[i], scale=0.10)
+        plotter.add_mesh(arrow, color=[255, 0, 0])
 
     # field vectors
     for i in range(len(m.field_vectors)):
-        arrow = pv.Arrow(
-            m.centers[i],
-            m.field_vectors[i],
-            scale=0.10
+        arrow = pv.Arrow(m.centers[i], m.field_vectors[i], scale=0.10)
+        plotter.add_mesh(arrow, color=[255, 255, 0])
+
+    # elevation vectors
+    for i in range(len(m.centers)):
+        arrow = pv.Arrow(m.centers[i], _normalize_vector(m.centers[i]), scale=0.10)
+        plotter.add_mesh(arrow, color=[0, 255, 0])
+
+    for i in range(len(m.centers)):
+        elevation_vector = _normalize_vector(m.centers[i])
+        projected = elevation_vector - (np.dot(elevation_vector, m.normals[i])) * m.normals[i]
+        magnitude = np.arccos(np.dot(elevation_vector, m.normals[i]))
+        # spline = pv.Spline(np.array([m.centers[i], m.centers[i] + m.field_elevation_vectors[i]], dtype=np.float32), 10).tube(radius=0.005)
+        spline = pv.Spline(np.array([m.centers[i], m.centers[i] + projected * magnitude], dtype=np.float32), 10).tube(
+            radius=0.005
         )
-        plotter.add_mesh(arrow, color=[255, 0, 0])
+        plotter.add_mesh(spline, color=[0, 0, 255])
+
+        arrow = pv.Arrow(m.centers[i], m.field_elevation_vectors[i], scale=0.10)
+        plotter.add_mesh(arrow, color=[0, 0, 255])
 
     # centers
     # for i in range(len(m.centers)):
@@ -581,7 +616,6 @@ def write_obj(plotter: pv.Plotter, filename: Path) -> None:
     plotter.export_obj(filename)
 
 
-
 def build_neighbour_map(m: Mesh) -> dict[int, set[int]]:
     point_to_face = {}
     for f in range(len(m.faces)):
@@ -594,7 +628,6 @@ def build_neighbour_map(m: Mesh) -> dict[int, set[int]]:
             face_to_face[f] = face_to_face.get(f, set()).union(set(point_to_face[p]))
 
     return face_to_face
-
 
 
 if __name__ == "__main__":
@@ -690,34 +723,31 @@ if __name__ == "__main__":
     #
     # print("Completed in: {:.3f}s".format((datetime.datetime.now() - timer_start).total_seconds()))
 
+    SCALE = 1e-1
+    poly = subdivide(tetrahedron(), n=6)
 
-    poly = subdivide(tetrahedron(), n=9)
-
-
-    # neighbour_map = build_neighbour_map(poly)
-    # print(neighbour_map)
-    # exit()
-
-    # poly = subdivide(triangle(), n=0)
     dem_raster = normalize_elevation(load_raster(Path(asset_dir, "Lunar_DEM_resized.tif")))
-    poly = project(poly, dem_raster, scale=1e-1)
+    poly = project(poly, dem_raster, scale=SCALE)
     # poly = project(poly, None)
     poly = add_field_vectors(poly, _normalize_vector(np.array([0, 1, 1])))
+    # poly = add_field_vectors(poly, _normalize_vector(np.array([0, 1, 1])))
 
     color_raster = load_raster(Path(asset_dir, "lroc_color_poles.tif"))[0:3, :, :]
     add_color(poly, color_raster)
     write_ply(poly, "planet.ply")
 
     import flowlines3
+
     config = flowlines3.FlowlineHatcherConfig()
     # mapping_line_distance = np.mean(color_raster[0:3, :, :], axis=0)
     lines = flowlines3.FlowlineHatcher(
         poly,
-        np.zeros([1, 1], dtype=np.uint8), # mapping_line_distance,
+        1 + dem_raster[0, :, :] * SCALE,
+        np.zeros([1, 1], dtype=np.uint8),  # mapping_line_distance,
         np.zeros([1, 1], dtype=np.uint8),
         np.zeros([1, 1], dtype=np.uint8),
         config,
-        initial_seed_points=poly.centers
+        initial_seed_points=poly.centers,
     ).hatch()
 
     print(f"lines: {len(lines)}")
@@ -728,8 +758,10 @@ if __name__ == "__main__":
     for line in lines:
         points += [np.array(p) for p in line.coords]
     pointcloud = Mesh(points, [])
-    write_ply_pointcloud(pointcloud, "pointcloud.ply")
+    write_ply_pointcloud(pointcloud, Path("pointcloud.ply"))
 
     # plotter = visualize(poly, lines)
     # write_obj(plotter, Path("scene.obj"))
     # plotter.show()
+
+    # visualize(poly, []).show()

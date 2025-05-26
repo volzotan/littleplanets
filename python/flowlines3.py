@@ -1,4 +1,3 @@
-
 import math
 
 from collections import deque
@@ -20,7 +19,7 @@ Linepoint = list[float, float, float]
 
 @dataclass
 class FlowlineHatcherConfig:
-    LINE_DISTANCE: tuple[float, float] | list[float] = (1e-2, 1e-2)
+    LINE_DISTANCE: tuple[float, float] | list[float] = (8e-3, 8e-3)
     LINE_DISTANCE_END_FACTOR = 0.5
     LINE_STEP_DISTANCE: float = 5e-3
 
@@ -31,7 +30,7 @@ class FlowlineHatcherConfig:
     MIN_INCLINATION: float = 0.001  # 50.0
 
     # How many line segments should be skipped before the next seedpoint is extracted
-    SEEDPOINT_EXTRACTION_SKIP_LINE_SEGMENTS: int = 10
+    SEEDPOINT_EXTRACTION_SKIP_LINE_SEGMENTS: int = 20
 
 
 def _normalize_vector(v: np.array) -> np.array:
@@ -46,7 +45,6 @@ def ray_triangle_intersection(
     ray_direction: np.ndarray,
     epsilon: float = 1e-6,
 ) -> tuple[float, float, float] | None:
-
     edge_1 = vertex_1 - vertex_0
     edge_2 = vertex_2 - vertex_0
 
@@ -76,18 +74,13 @@ def ray_triangle_intersection(
     # barycentric to world coordinate system
     return u * vertex_0 + v * vertex_1 + (1 - u - v) * vertex_2
 
+
 def find_point_on_surface(m: Mesh, candidate_faces: list[int], p: np.array) -> tuple[np.array, int] | tuple[None, None]:
     origin = np.array([0, 0, 0])
 
     for ind in candidate_faces:
         f = m.faces[ind]
-        surface_point = ray_triangle_intersection(
-            m.points[f[0]],
-            m.points[f[1]],
-            m.points[f[2]],
-            origin,
-            p
-        )
+        surface_point = ray_triangle_intersection(m.points[f[0]], m.points[f[1]], m.points[f[2]], origin, p)
 
         if surface_point is not None:
             return p, ind
@@ -95,7 +88,7 @@ def find_point_on_surface(m: Mesh, candidate_faces: list[int], p: np.array) -> t
     return None, None
 
 
-def build_neighbour_map(m: Mesh) -> dict[int, set[int]]:
+def build_neighbour_maps(m: Mesh) -> dict[int, set[int]]:
     point_to_face = {}
     for f in range(len(m.faces)):
         for p in m.faces[f].tolist():
@@ -106,7 +99,14 @@ def build_neighbour_map(m: Mesh) -> dict[int, set[int]]:
         for p in m.faces[f].tolist():
             face_to_face[f] = face_to_face.get(f, set()).union(set(point_to_face[p]))
 
-    return face_to_face
+    face_to_face_second = {}
+    for f in range(len(m.faces)):
+        first_order_neighbours = face_to_face[f]
+        for fon in first_order_neighbours:
+            face_to_face_second[f] = face_to_face_second.get(f, set()).union(face_to_face[fon])
+
+    return face_to_face, face_to_face_second
+
 
 class FlowlineHatcher:
     """
@@ -118,15 +118,17 @@ class FlowlineHatcher:
     def __init__(
         self,
         mesh: Mesh,
-        mapping_distance,
-        mapping_max_length,
-        mapping_flat,
+        mapping_elevation: np.ndarray,
+        mapping_distance: np.ndarray,
+        mapping_max_length: np.ndarray,
+        mapping_flat: np.ndarray,
         config: FlowlineHatcherConfig,
         initial_seed_points: list[Linepoint] = [],
     ):
         self.m = mesh
         self.config = config
 
+        self.mapping_elevation = mapping_elevation
         self.mapping_distance = mapping_distance
         self.mapping_max_length = mapping_max_length
         self.mapping_flat = mapping_flat
@@ -154,26 +156,45 @@ class FlowlineHatcher:
             )
             self.tree_triangles.insert(i, center_point.tolist())
 
-        self.neighbour_map = build_neighbour_map(self.m)
+        self.neighbour_map_1, self.neighbour_map_2 = build_neighbour_maps(self.m)
+
+    def _cartesian_to_lat_lon(self, p: Linepoint) -> tuple[float, float]:
+        r = np.linalg.norm(np.array(p))
+        lat = np.arccos(p[2] / r)
+        lon = np.atan2(p[1], p[0])
+        return lat, lon
+
+    def _lat_lon_to_pixel(self, lat: float, lon: float, shape: list[int]) -> tuple[int, int]:
+        x = int(lon / math.tau * shape[1])
+        y = int(lat / math.pi * shape[0])
+        return x, y
+
+    def _map_elevation(self, p: Linepoint) -> np.array:
+        lat, lon = self._cartesian_to_lat_lon(p)
+        x, y = self._lat_lon_to_pixel(lat, lon, self.mapping_elevation.shape)
+
+        elevation = self.mapping_elevation[y, x]
+
+        return np.array(
+            [
+                elevation * math.sin(lat) * math.cos(lon),
+                elevation * math.sin(lat) * math.sin(lon),
+                elevation * math.cos(lat),
+            ]
+        )
 
     def _map_flat(self, p: Linepoint) -> bool:
         return False  # TODO
 
     def _map_line_distance(self, p: Linepoint) -> float:
-
-        r = np.linalg.norm(np.array(p))
-        lat = np.arcsin(p[2] / r)
-        lon = np.atan2(p[1], p[0])
-
-        x = int(lon / math.tau * self.mapping_distance.shape[1])
-        y = int(lat / math.pi * self.mapping_distance.shape[0])
+        lat, lon = self._cartesian_to_lat_lon(p)
+        x, y = self._lat_lon_to_pixel(lat, lon, self.mapping_distance.shape)
 
         diff = self.config.LINE_DISTANCE[1] - self.config.LINE_DISTANCE[0]
         return self.config.LINE_DISTANCE[0] + diff * (self.mapping_distance[y, x] / 255)
 
     def _map_line_max_length(self, p: Linepoint) -> float:
         return self.config.LINE_MAX_LENGTH[0]  # TODO
-
 
     def _collision(self, p: Linepoint, factor: float = 1.0) -> bool:
         neighbour = list(self.tree_linepoints.nearest(p, 1, objects="raw"))
@@ -188,12 +209,17 @@ class FlowlineHatcher:
         return False
 
     def _next_point(self, p: Linepoint, forwards: bool) -> Linepoint | None:
-
         # direction
         nearest_triangle_ind = list(self.tree_triangles.nearest(p, 1))[0]
-        _, new_nearest_triangle_ind = find_point_on_surface(self.m, self.neighbour_map[nearest_triangle_ind], np.array(p))
+        _, new_nearest_triangle_ind = find_point_on_surface(
+            self.m, self.neighbour_map_1[nearest_triangle_ind], np.array(p)
+        )
         if new_nearest_triangle_ind is None:
-            print("no nearest_triangle_ind found")
+            _, new_nearest_triangle_ind = find_point_on_surface(
+                self.m, self.neighbour_map_2[nearest_triangle_ind], np.array(p)
+            )
+            if new_nearest_triangle_ind is None:
+                print("no nearest_triangle_ind found")
         else:
             nearest_triangle_ind = new_nearest_triangle_ind
 
@@ -208,22 +234,25 @@ class FlowlineHatcher:
 
         v2 = np.array(p) + np.array(v1) * self.config.LINE_STEP_DISTANCE * dir
 
-        v3, _ = find_point_on_surface(self.m, self.neighbour_map[nearest_triangle_ind], v2)
-        if v3 is None:
-            print("no surface point found")
-            return None
+        # v3, _ = find_point_on_surface(self.m, self.neighbour_map_1[nearest_triangle_ind], v2)
+        # if v3 is None:
+        #     v3, _ = find_point_on_surface(self.m, self.neighbour_map_2[nearest_triangle_ind], v2)
+        #     if v3 is None:
+        #         print("no surface point found")
+        #         return None
+
+        v3 = self._map_elevation(v2)
 
         if self._collision(v3.tolist(), factor=self.config.LINE_DISTANCE_END_FACTOR):
             return None
 
-        # TODO: bounding behaviour
-        # Option 1: projected onto the plane of the face it should not be outside of the triangle
-
-        # Option 2: distance to projected point should not be larger than ... LINE_DISTANCE * 2 ?
+        # Sanity check:
+        # if a point is right on the edge between two faces, aligned with the field vectors, we've got a weird
+        # liftoff effect. Fix: ensure closest distance between point and plane of the face should not exceed tolerance
         # c = self.m.centers[nearest_triangle_ind]
         # n = self.m.normals[nearest_triangle_ind]
         # distance_to_face = np.dot(n, v2 - c)
-        # if abs(distance_to_face) > self.config.LINE_DISTANCE[1]:
+        # if abs(distance_to_face) > 1e-2:
         #     return None
 
         # if self.config.MAX_ANGLE_DISCONTINUITY > 0:
@@ -285,7 +314,9 @@ class FlowlineHatcher:
     #         for j in np.linspace(1, self.dimensions[1] - 1, endpoint=False, num=num_gridpoints_y):
     #             self.starting_points.append((i, j))
 
-    def visualize(self, linestrings: list[LineString], new_line_points: deque[Linepoint], starting_points: deque[Linepoint]) -> None:
+    def visualize(
+        self, linestrings: list[LineString], new_line_points: deque[Linepoint], starting_points: deque[Linepoint]
+    ) -> None:
         import pyvista as pv
 
         plotter = pv.Plotter()
@@ -302,11 +333,7 @@ class FlowlineHatcher:
         plotter.add_mesh(pvmesh, opacity=0.5)  # , show_edges=True) #), opacity=0.5)
 
         for i in range(len(self.m.faces)):
-            arrow = pv.Arrow(
-                self.m.centers[i],
-                self.m.centers[i] + self.m.normals[i],
-                scale=0.2
-            )
+            arrow = pv.Arrow(self.m.centers[i], self.m.centers[i] + self.m.normals[i], scale=0.2)
             plotter.add_mesh(arrow, color=[255, 255, 255])
 
         for lp in starting_points:
