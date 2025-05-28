@@ -19,9 +19,7 @@ def downscale(input_path: Path, output_path: Path, scaling_factor: float) -> Non
             resampling=Resampling.bilinear,
         )
 
-        transform = src.transform * src.transform.scale(
-            (src.width / data.shape[-1]), (src.height / data.shape[-2])
-        )
+        transform = src.transform * src.transform.scale((src.width / data.shape[-1]), (src.height / data.shape[-2]))
 
         config = {
             "driver": "GTiff",
@@ -41,13 +39,9 @@ def reproject(src: Path, dst: Path) -> None:
     dst_crs = "ESRI:54029"
 
     with rasterio.open(src) as src:
-        transform, width, height = calculate_default_transform(
-            src.crs, dst_crs, src.width, src.height, *src.bounds
-        )
+        transform, width, height = calculate_default_transform(src.crs, dst_crs, src.width, src.height, *src.bounds)
         kwargs = src.meta.copy()
-        kwargs.update(
-            {"crs": dst_crs, "transform": transform, "width": width, "height": height}
-        )
+        kwargs.update({"crs": dst_crs, "transform": transform, "width": width, "height": height})
 
         with rasterio.open(dst, "w", **kwargs) as dst:
             for i in range(1, src.count + 1):

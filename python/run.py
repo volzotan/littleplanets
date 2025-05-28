@@ -3,18 +3,20 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 import textwrap
-from typing import Any
+import datetime
 
 import rasterio
 import rtree
 from stl import mesh
 import numpy as np
 import pyvista as pv
-
-
-import datetime
-
 from shapely.geometry import LineString
+import cv2
+
+# since the magnitude of the elevation direction vector is so small
+# a strong weight is required in order to have _any_ noticeable effect
+# compared to the light axis direction unit vector
+ELEVATION_VECTOR_WEIGHT = 0.6  # 0.95
 
 
 @dataclass
@@ -259,12 +261,12 @@ def subdivide(m: Mesh, n: int) -> Mesh:
 
 
 def _map(raster: np.ndarray, lat: float, lon: float) -> np.ndarray:
-    height, width = raster.shape[1:3]
+    height, width = raster.shape
 
     y = int(((lat / math.pi) + 0.0) * height)
     x = int(((lon / math.tau) + 0.0) * width)
 
-    return raster[:, y, x]
+    return raster[y, x]
 
 
 def project(m: Mesh, raster: np.ndarray | None, scale: float = 0.1) -> Mesh:
@@ -277,7 +279,7 @@ def project(m: Mesh, raster: np.ndarray | None, scale: float = 0.1) -> Mesh:
 
         r = 1.0
         if raster is not None:
-            r += _map(raster, lat, lon)[0] * scale
+            r += _map(raster, lat, lon) * scale
 
         x = r * math.sin(lat) * math.cos(lon)
         y = r * math.sin(lat) * math.sin(lon)
@@ -297,7 +299,11 @@ def add_color(m: Mesh, raster: np.ndarray) -> Mesh:
         lat = math.acos(p[2] / d)
         lon = math.atan2(p[1], p[0])
 
-        c = _map(raster, lat, lon).astype(np.uint8)
+        c = [
+            _map(raster[0, :, :], lat, lon).astype(np.uint8),
+            _map(raster[1, :, :], lat, lon).astype(np.uint8),
+            _map(raster[2, :, :], lat, lon).astype(np.uint8),
+        ]
         m.colors.append(c)
 
     return m
@@ -448,11 +454,6 @@ def add_field_vectors(m: Mesh, axis: np.array) -> Mesh:
     for i in range(len(elevation_vectors)):
         projected = elevation_vectors[i] - (np.dot(elevation_vectors[i], normals[i])) * normals[i]
         magnitude = np.arccos(np.dot(elevation_vectors[i], normals[i]))
-
-        # since the magnitude of the elevation direction vector is so small
-        # a strong weight is required in order to have _any_ noticeable effect
-        # compared to the light axis direction unit vector
-        ELEVATION_VECTOR_WEIGHT = 0.95
 
         combined = _normalize_vector(
             directions[i] * (1 - magnitude) * (1 - ELEVATION_VECTOR_WEIGHT)
@@ -610,24 +611,35 @@ def visualize(m: Mesh, lines: list[LineString]) -> pv.Plotter:
     return plotter
 
 
+def visualize_lines(m: Mesh, lines: list[LineString]) -> pv.Plotter:
+    plotter = pv.Plotter()
+
+    # X, Y, Z axes
+    plotter.add_mesh(pv.Spline(np.array([[0, 0, 0], [0.5, 0, 0]]), 10).tube(radius=0.01), color=[255, 0, 0])
+    plotter.add_mesh(pv.Spline(np.array([[0, 0, 0], [0, 0.5, 0]]), 10).tube(radius=0.01), color=[0, 255, 0])
+    plotter.add_mesh(pv.Spline(np.array([[0, 0, 0], [0, 0, 0.5]]), 10).tube(radius=0.01), color=[0, 0, 255])
+
+    # mesh
+    points_pv = np.stack(m.points)
+    faces_pv = np.hstack([[3, *face] for face in m.faces])
+    pvmesh = pv.PolyData(points_pv, faces_pv)
+    plotter.add_mesh(pvmesh)  # , opacity=0.2, show_edges=True)
+
+    # light axis
+    light_axis = _normalize_vector(np.array([0, 1, 1])) * 0.5
+    spline = pv.Spline(np.array([[0, 0, 0], light_axis], dtype=np.float32)).tube(radius=0.01)
+    plotter.add_mesh(spline, color=[255, 255, 0])
+
+    for line in lines:
+        plotter.add_lines(np.array(list(line.coords)), color="purple", width=3, connected=True)
+
+    return plotter
+
+
 def write_obj(plotter: pv.Plotter, filename: Path) -> None:
     if not filename.suffix == ".obj":
         filename = filename.parent / (filename.name + ".obj")
     plotter.export_obj(filename)
-
-
-def build_neighbour_map(m: Mesh) -> dict[int, set[int]]:
-    point_to_face = {}
-    for f in range(len(m.faces)):
-        for p in m.faces[f].tolist():
-            point_to_face[p] = point_to_face.get(p, []) + [f]
-
-    face_to_face = {}
-    for f in range(len(m.faces)):
-        for p in m.faces[f].tolist():
-            face_to_face[f] = face_to_face.get(f, set()).union(set(point_to_face[p]))
-
-    return face_to_face
 
 
 if __name__ == "__main__":
@@ -723,10 +735,13 @@ if __name__ == "__main__":
     #
     # print("Completed in: {:.3f}s".format((datetime.datetime.now() - timer_start).total_seconds()))
 
-    SCALE = 1e-1
+    SCALE = 5e-2
     poly = subdivide(tetrahedron(), n=6)
 
-    dem_raster = normalize_elevation(load_raster(Path(asset_dir, "Lunar_DEM_resized.tif")))
+    dem_raster = normalize_elevation(load_raster(Path(asset_dir, "Lunar_DEM_resized.tif")))[0, :, :]
+    size = (np.array([dem_raster.shape[1], dem_raster.shape[0]]) * 0.25).astype(int).tolist()
+    dem_raster = cv2.resize(dem_raster, size)
+
     poly = project(poly, dem_raster, scale=SCALE)
     # poly = project(poly, None)
     poly = add_field_vectors(poly, _normalize_vector(np.array([0, 1, 1])))
@@ -742,7 +757,7 @@ if __name__ == "__main__":
     # mapping_line_distance = np.mean(color_raster[0:3, :, :], axis=0)
     lines = flowlines3.FlowlineHatcher(
         poly,
-        1 + dem_raster[0, :, :] * SCALE,
+        1 + dem_raster * SCALE,
         np.zeros([1, 1], dtype=np.uint8),  # mapping_line_distance,
         np.zeros([1, 1], dtype=np.uint8),
         np.zeros([1, 1], dtype=np.uint8),
@@ -754,14 +769,16 @@ if __name__ == "__main__":
 
     print("Completed in: {:.3f}s".format((datetime.datetime.now() - timer_start).total_seconds()))
 
-    points = []
-    for line in lines:
-        points += [np.array(p) for p in line.coords]
-    pointcloud = Mesh(points, [])
-    write_ply_pointcloud(pointcloud, Path("pointcloud.ply"))
+    # points = []
+    # for line in lines:
+    #     points += [np.array(p) for p in line.coords]
+    # pointcloud = Mesh(points, [])
+    # write_ply_pointcloud(pointcloud, Path("pointcloud.ply"))
 
     # plotter = visualize(poly, lines)
     # write_obj(plotter, Path("scene.obj"))
     # plotter.show()
 
     # visualize(poly, []).show()
+
+    visualize_lines(poly, lines).show()

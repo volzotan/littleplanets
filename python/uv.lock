@@ -167,6 +167,15 @@ wheels = [
 ]
 
 [[package]]
+name = "imath"
+version = "0.0.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/a1/56c2e6f0039c379d85fb5d1eebb3442525c5e200bb27a642b79e753c4754/imath-0.0.2.tar.gz", hash = "sha256:548f6e8799a206ffb6589ba81738a6a6c2192b6626a54226e1f51c4a81963dce", size = 2268 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c6/f6/ae312eb2d71228297336b253f404022760093a9b56271ded622ee405508b/imath-0.0.2-py3-none-any.whl", hash = "sha256:1920852970b7eb2a504c7d31d26111f89acfd646d80ad1cb5d55a42ad1148f9c", size = 2338 },
+]
+
+[[package]]
 name = "kiwisolver"
 version = "1.4.8"
 source = { registry = "https://pypi.org/simple" }
@@ -210,10 +219,12 @@ dependencies = [
     { name = "loguru", marker = "python_full_version >= '3.13'" },
     { name = "numpy-stl", marker = "python_full_version >= '3.13'" },
     { name = "opencv-python", marker = "python_full_version >= '3.13'" },
+    { name = "openexr-numpy", marker = "python_full_version >= '3.13'" },
     { name = "pyvista", marker = "python_full_version >= '3.13'" },
     { name = "rasterio", marker = "python_full_version >= '3.13'" },
     { name = "rtree", marker = "python_full_version >= '3.13'" },
     { name = "shapely", marker = "python_full_version >= '3.13'" },
+    { name = "tifffile", marker = "python_full_version >= '3.13'" },
 ]
 
 [package.metadata]
@@ -221,10 +232,12 @@ requires-dist = [
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "numpy-stl", specifier = ">=3.2.0" },
     { name = "opencv-python", specifier = ">=4.11.0.86" },
+    { name = "openexr-numpy", specifier = ">=0.0.8" },
     { name = "pyvista", specifier = ">=0.45.2" },
     { name = "rasterio", specifier = ">=1.4.3" },
     { name = "rtree", specifier = ">=1.4.0" },
     { name = "shapely", specifier = ">=2.1.0" },
+    { name = "tifffile", specifier = ">=2025.5.26" },
 ]
 
 [[package]]
@@ -327,6 +340,29 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/2c/8b/90eb44a40476fa0e71e05a0283947cfd74a5d36121a11d926ad6f3193cc4/opencv_python-4.11.0.86-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6b02611523803495003bd87362db3e1d2a0454a6a63025dc6658a9830570aa0d", size = 62986597 },
     { url = "https://files.pythonhosted.org/packages/fb/d7/1d5941a9dde095468b288d989ff6539dd69cd429dbf1b9e839013d21b6f0/opencv_python-4.11.0.86-cp37-abi3-win32.whl", hash = "sha256:810549cb2a4aedaa84ad9a1c92fbfdfc14090e2749cedf2c1589ad8359aa169b", size = 29384337 },
     { url = "https://files.pythonhosted.org/packages/a4/7d/f1c30a92854540bf789e9cd5dde7ef49bbe63f855b85a2e6b3db8135c591/opencv_python-4.11.0.86-cp37-abi3-win_amd64.whl", hash = "sha256:085ad9b77c18853ea66283e98affefe2de8cc4c1f43eda4c100cf9b2721142ec", size = 39488044 },
+]
+
+[[package]]
+name = "openexr"
+version = "3.3.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", marker = "python_full_version >= '3.13'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/85/27/e15c927f422daaf00caf8448cac77221c298cc3ae6f03ed3c8d95b71abdb/openexr-3.3.3.tar.gz", hash = "sha256:f443b0e05cc6874e291e64e5e169d3bc772199da4b5f9f43b373b0103f603f5b", size = 21072144 }
+
+[[package]]
+name = "openexr-numpy"
+version = "0.0.8"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "imath", marker = "python_full_version >= '3.13'" },
+    { name = "numpy", marker = "python_full_version >= '3.13'" },
+    { name = "openexr", marker = "python_full_version >= '3.13'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/22/8e/716c7162b9d93462f6858d12bf3447fe9d1c7f4f1c96bb04f6f723ab4936/openexr_numpy-0.0.8.tar.gz", hash = "sha256:5a01398445437dc152c4d59ebee90a06c7d9745b797be71eb759f3eaf6422c8d", size = 8834 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/20/0b/6ac017280d6efe63cbe0a42b5621e669ed131ee106c603e685956c717842/openexr_numpy-0.0.8-py3-none-any.whl", hash = "sha256:a655fceee35cd95894728373564768bda7ec42e362bfeb67f08f1bb305515f59", size = 7664 },
 ]
 
 [[package]]
@@ -539,6 +575,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050 },
+]
+
+[[package]]
+name = "tifffile"
+version = "2025.5.26"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", marker = "python_full_version >= '3.13'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a1/8c/5032a5a90ccbe33009418bfa3338e4a0d243833f4152d12b3ecdf2f75ea5/tifffile-2025.5.26.tar.gz", hash = "sha256:512ad634b142a8aa7e3004f81acb81cd5b0f2ccd16979cb1ef2f01a7fd971bfc", size = 369350 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/be/5b/6e79401acf8a2f10a702d935d940f5445ba6cef280d5bfb881a9b900d7bc/tifffile-2025.5.26-py3-none-any.whl", hash = "sha256:c316c9191c935d3a1fd7617e7af1d4367dfe2d8bd74d98d147bc21c074cc3ea9", size = 230328 },
 ]
 
 [[package]]
