@@ -110,7 +110,7 @@ def write_stl(m: Mesh, filename: Path) -> None:
 
 
 def write_ply(m: Mesh, filename: Path, color_vertices=False) -> None:
-    if not color_vertices:  # triangles
+    if not color_vertices:  # faces
         with open(filename, "w") as f:
             data = f"""
                     ply
@@ -198,7 +198,7 @@ def write_ply_pointcloud(m: Mesh, filename: Path) -> None:
 
         for i in range(len(m.points)):
             p0, p1, p2 = m.points[i]
-            c0, c1, c2 = m.colors[i] if not m.colors is None else [255, 255, 255]
+            c0, c1, c2 = m.colors[i] if m.colors is not None else [255, 255, 255]
 
             f.write(f"{p0:.4f} {p1:.4f} {p2:.4f} {c0:d} {c1:d} {c2:d}\n")
 
@@ -290,11 +290,16 @@ def project(m: Mesh, raster: np.ndarray | None, scale: float = 0.1) -> Mesh:
     return m
 
 
-def add_color(m: Mesh, raster: np.ndarray) -> Mesh:
+def add_color(m: Mesh, raster: np.ndarray, color_vertices=False) -> Mesh:
     m.colors = []
-    for i in range(len(m.faces)):  # color matched to faces, not vertices
-        p = m.points[m.faces[i][0]]
 
+    points = []
+    if not color_vertices:
+        points = [m.points[f[0]] for f in m.faces]
+    else:
+        points = m.points
+
+    for p in points:
         d = math.sqrt(np.sum(np.power(p, 2)))
         lat = math.acos(p[2] / d)
         lon = math.atan2(p[1], p[0])
@@ -644,6 +649,7 @@ def write_obj(plotter: pv.Plotter, filename: Path) -> None:
 
 if __name__ == "__main__":
     asset_dir = Path("..", "assets")
+    asset_lowres_dir = Path("..", "asset_lowres")
     os.makedirs(asset_dir, exist_ok=True)
 
     timer_start = datetime.datetime.now()
@@ -653,101 +659,44 @@ if __name__ == "__main__":
     # empty = np.zeros([color_mapping.shape[0], int(color_mapping.shape[1] * 25/90), color_mapping.shape[2]], dtype=np.uint8)
     # color_mapping = np.concatenate([empty, color_mapping, empty], axis=1)
 
-    # poly = project(
-    #     subdivide(tetrahedron(), n=10),
-    #     normalize_elevation(load_raster(Path(asset_dir, "Lunar_DEM_resized.tif"))),
-    #     load_raster(Path(asset_dir, "lroc_color_poles.tif"))[0:3, :, :],
-    #     scale=3e-2,
-    # )
-    #
-    # write_ply_with_vertex_colors(poly, Path(asset_dir, "output.ply"))
-    # write_stl(poly, Path(asset_dir, "output.stl"))
-
-    # write_stl(project_to_sphere(subdivide(tetrahedron(), n=1)), Path(asset_dir, "unit_sphere_n1.stl"))
-
-    # poly = set_direction_vectors(project_to_sphere(subdivide(cube(), n=1)))
-    # write_ply_with_triangle_colors(poly, Path(asset_dir, "direction_sphere.ply"))
-
-    # poly = project(
-    #     subdivide(tetrahedron(), n=10),
-    #     normalize_elevation(load_raster(Path(asset_dir, "Lunar_DEM_resized.tif"))),
-    #     load_raster(Path(asset_dir, "lroc_color_poles.tif"))[0:3, :, :],
-    #     scale=3e-2,
-    # )
-    # write_ply_with_triangle_colors(set_direction_vectors(poly), Path(asset_dir, "direction_sphere.ply"))
-
-    # poly = add_normal_vectors(project_to_sphere(subdivide(cube(), n=5)))
-    # write_ply_with_triangle_colors(poly, Path(asset_dir, "direction_sphere.ply"))
-
-    # poly = add_field_vectors(project_to_sphere(subdivide(cube(), n=5)))
-    # write_ply_with_triangle_colors(poly, Path(asset_dir, "direction_sphere.ply"))
-
-    # poly = project(
-    #     subdivide(tetrahedron(), n=10),
-    #     normalize_elevation(load_raster(Path(asset_dir, "Lunar_DEM_resized.tif"))),
-    #     load_raster(Path(asset_dir, "lroc_color_poles.tif"))[0:3, :, :],
-    #     scale=1e-1,
-    # )
-    #
-    # write_ply_with_triangle_colors(
-    #     add_field_vectors(poly), Path(asset_dir, "direction_sphere.ply")
-    # )
-
-    # poly = subdivide(tetrahedron(), n=10)
-    # poly = add_color(poly)
-    # write_ply_with_triangle_colors(poly, Path(asset_dir, "test.ply"))
-
-    # poly = subdivide(tetrahedron(), n=10)
-    # poly = project(
-    #     poly,
-    #     normalize_elevation(load_raster(Path(asset_dir, "Lunar_DEM_resized.tif"))),
-    #     scale=1e-1,
-    # )
-    # # poly = add_color(poly, load_raster(Path(asset_dir, "lroc_color_poles.tif"))[0:3, :, :])
-    #
-    # poly = add_seedpoints(poly, 1000)
-    #
-    # write_ply(
-    #     poly,
-    #     Path(asset_dir, "flow.ply")
-    # )
-    #
-    # print("Completed in: {:.3f}s".format((datetime.datetime.now() - timer_start).total_seconds()))
-
     # points = get_seedpoints(1000)
     # mesh = Mesh(points, [], [np.array([255, 255, 255])] * len(points))
     # write_ply_pointcloud(mesh, Path("pointcloud.ply"))
 
-    # poly = subdivide(tetrahedron(), n=8)
-    # poly = project(
-    #     poly,
-    #     normalize_elevation(load_raster(Path(asset_dir, "Lunar_DEM_resized.tif"))),
-    #     scale=1e-1,
-    # )
-    # # poly = add_color(poly, load_raster(Path(asset_dir, "lroc_color_poles.tif"))[0:3, :, :])
-    #
-    # poly = add_seedpoints(poly, 1000)
-    #
-    # write_ply(
-    #     poly,
-    #     Path(asset_dir, "flow.ply")
-    # )
-    #
-    # print("Completed in: {:.3f}s".format((datetime.datetime.now() - timer_start).total_seconds()))
+    # WRITE
+    SCALE = 3e-2
+    SUBDIVISION_STEPS = 7
+
+    dem_raster = normalize_elevation(load_raster(asset_lowres_dir / "Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"))[0, :, :]
+    color_raster = load_raster(asset_dir / "lroc_color_poles.tif")[0:3, :, :]
+
+    poly = project(
+        subdivide(tetrahedron(), n=SUBDIVISION_STEPS),
+        dem_raster,
+        scale=SCALE
+    )
+    write_ply(
+        add_color(poly, color_raster, color_vertices=True),
+        Path(f"Moon_n{SUBDIVISION_STEPS}.ply"),
+        color_vertices=True
+    )
+
+    print("Completed in: {:.3f}s".format((datetime.datetime.now() - timer_start).total_seconds()))
+    exit()
+
+    # 3D Hatching
 
     SCALE = 5e-2
     poly = subdivide(tetrahedron(), n=6)
 
-    dem_raster = normalize_elevation(load_raster(Path(asset_dir, "Lunar_DEM_resized.tif")))[0, :, :]
+    dem_raster = normalize_elevation(load_raster(asset_lowres_dir / "Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"))[0, :, :]
     size = (np.array([dem_raster.shape[1], dem_raster.shape[0]]) * 0.25).astype(int).tolist()
     dem_raster = cv2.resize(dem_raster, size)
 
     poly = project(poly, dem_raster, scale=SCALE)
-    # poly = project(poly, None)
     poly = add_field_vectors(poly, _normalize_vector(np.array([0, 1, 1])))
-    # poly = add_field_vectors(poly, _normalize_vector(np.array([0, 1, 1])))
 
-    color_raster = load_raster(Path(asset_dir, "lroc_color_poles.tif"))[0:3, :, :]
+    color_raster = load_raster(asset_dir / "lroc_color_poles.tif")[0:3, :, :]
     add_color(poly, color_raster)
     write_ply(poly, "planet.ply")
 
