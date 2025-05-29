@@ -3,18 +3,13 @@ name = "littleplanets"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "loguru>=0.7.3",
-    "numpy-stl>=3.2.0",
     "opencv-python>=4.11.0.86",
     "openexr-numpy>=0.0.8",
     "pyvista>=0.45.2",
     "rasterio>=1.4.3",
-    "rtree>=1.4.0",
-    "shapely>=2.1.0",
+    "shapely>=2.1.1",
     "tifffile>=2025.5.26",
 ]
-
-[tool.ruff]
-line-length = 120

@@ -223,7 +223,8 @@ class FlowlineHatcher:
         else:
             nearest_triangle_ind = new_nearest_triangle_ind
 
-        v1 = self.m.field_vectors[nearest_triangle_ind]
+        # v1 = self.m.field_vectors[nearest_triangle_ind]
+        v1 = self.m.field_elevation_vectors[nearest_triangle_ind]
 
         if self._map_flat(p):
             return None

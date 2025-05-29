@@ -8,8 +8,8 @@ import openexr_numpy
 os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
 import cv2
 
-# ASSET_DIR = Path("..", "assets")
-ASSET_DIR = Path("..", "assets_lowres")
+ASSET_DIR = Path("..", "assets")
+# ASSET_DIR = Path("..", "assets_lowres")
 
 OUTPUT_DIR = Path("..", "output")
 

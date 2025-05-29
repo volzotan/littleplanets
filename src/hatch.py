@@ -4,16 +4,15 @@ from pathlib import Path
 
 import flowlines_py
 import openexr_numpy
-import shapely.affinity
-
-
+import shapely
 import cv2
 import numpy as np
-
 from shapely import LineString
 
 import flowlines
 
+
+BLUR_MAPPING_ANGLE_KERNEL_SIZE = 2
 
 def _linestring_to_coordinate_pairs(
     linestring: LineString,
@@ -46,8 +45,7 @@ if __name__ == "__main__":
     mapping_distance = cv2.imread("../output/mapping_distance.png", cv2.IMREAD_GRAYSCALE)
     mapping_flat = cv2.imread("../output/mapping_flat.png", cv2.IMREAD_GRAYSCALE)
 
-    mapping_angle = cv2.blur(mapping_angle, )
-
+    mapping_angle = cv2.blur(mapping_angle, (BLUR_MAPPING_ANGLE_KERNEL_SIZE, BLUR_MAPPING_ANGLE_KERNEL_SIZE))
 
     # white ink on black paper, invert grayscale image
     mapping_distance = ~mapping_distance
@@ -72,7 +70,7 @@ if __name__ == "__main__":
 
     config = flowlines.FlowlineHatcherConfig()
     config.LINE_DISTANCE = (.5, 10)
-    config.LINE_MAX_LENGTH = (10, 10)
+    config.LINE_MAX_LENGTH = (20, 20)
     config.LINE_DISTANCE_END_FACTOR = 0.25
     hatcher = flowlines.FlowlineHatcher(
         dimensions,
@@ -83,7 +81,7 @@ if __name__ == "__main__":
         config
     )
     linestrings: list[LineString] = hatcher.hatch()
-    linestrings = [shapely.simplify(l, 1) for l in linestrings]
+    linestrings = [shapely.simplify(l, 0.01) for l in linestrings]
 
     print(f"num linestrings: {len(linestrings)}")
 
@@ -93,4 +91,4 @@ if __name__ == "__main__":
         int(dimensions[1] * 5),
         3
     ], dtype=np.uint8)
-    cv2.imwrite("foo.png", draw_line_image(canvas, linestrings, dimensions))
+    cv2.imwrite("../foo.png", draw_line_image(canvas, linestrings, dimensions))
