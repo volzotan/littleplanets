@@ -649,7 +649,7 @@ def write_obj(plotter: pv.Plotter, filename: Path) -> None:
 
 if __name__ == "__main__":
     asset_dir = Path("..", "assets")
-    asset_lowres_dir = Path("..", "asset_lowres")
+    asset_lowres_dir = Path("..", "assets_lowres")
     os.makedirs(asset_dir, exist_ok=True)
 
     timer_start = datetime.datetime.now()
@@ -665,10 +665,14 @@ if __name__ == "__main__":
 
     # WRITE
     SCALE = 3e-2
-    SUBDIVISION_STEPS = 7
+    SCALE = 0.09
+    SUBDIVISION_STEPS = 10
+    BLUR_DEM_RASTER_KERNEL_SIZE = 100
 
     dem_raster = normalize_elevation(load_raster(asset_lowres_dir / "Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"))[0, :, :]
     color_raster = load_raster(asset_dir / "lroc_color_poles.tif")[0:3, :, :]
+
+    dem_raster = cv2.blur(dem_raster, (BLUR_DEM_RASTER_KERNEL_SIZE, BLUR_DEM_RASTER_KERNEL_SIZE))
 
     poly = project(
         subdivide(tetrahedron(), n=SUBDIVISION_STEPS),
@@ -677,7 +681,7 @@ if __name__ == "__main__":
     )
     write_ply(
         add_color(poly, color_raster, color_vertices=True),
-        Path(f"Moon_n{SUBDIVISION_STEPS}.ply"),
+        asset_dir / Path(f"Moon_n{SUBDIVISION_STEPS}.ply"),
         color_vertices=True
     )
 

@@ -48,6 +48,7 @@ class FlowlineHatcher:
         mapping_flat: np.ndarray,
         config: FlowlineHatcherConfig,
         initial_seed_points: list[tuple[float, float]] = [],
+        exclusion_points: list[tuple[float, float]] = [],
     ):
         self.dimensions = dimensions
         self.config = config
@@ -79,6 +80,8 @@ class FlowlineHatcher:
 
             for x in range(self.num_bins_x):
                 self.point_bins.append([np.empty([0, 2], dtype=float)] * self.num_bins_y)
+
+        self._register_for_collision_check(exclusion_points)
 
     def _map_line_distance(self, x: float, y: float) -> float:
         return float(
@@ -156,6 +159,21 @@ class FlowlineHatcher:
             return self._collision_approximate(x, y, factor)
         else:
             return self._collision_precise(x, y, factor)
+
+    def _register_for_collision_check(self, line_points: list[tuple[float, float]]) -> None:
+        for lp in line_points:
+            x = int(lp[0])
+            y = int(lp[1])
+            if self.config.COLLISION_APPROXIMATE:
+                self.point_raster[
+                    int(y * self.MAPPING_FACTOR_COLLISION), int(x * self.MAPPING_FACTOR_COLLISION)
+                ] = True
+            else:
+                # self.point_map[f"{x},{y}"].append(lp)
+                # self.point_bins[int(x/self.bin_size)][int(y/self.bin_size)].append(lp)
+                self.point_bins[int(x / self.bin_size)][int(y / self.bin_size)] = np.append(
+                    self.point_bins[int(x / self.bin_size)][int(y / self.bin_size)], [lp], axis=0
+                )
 
     def _next_point(self, x1: float, y1: float, forwards: bool) -> tuple[float, float] | None:
         a1 = self._map_angle(x1, y1)
@@ -236,10 +254,7 @@ class FlowlineHatcher:
 
         for i in range(MAX_ITERATIONS):
             if i >= MAX_ITERATIONS - 1:
-                if len(self.tile_name) > 0:
-                    logger.warning(f"{self.tile_name}: max iterations exceeded")
-                else:
-                    logger.warning("max iterations exceeded")
+                logger.warning("max iterations exceeded")
 
             if len(starting_points) == 0:
                 break
@@ -288,18 +303,6 @@ class FlowlineHatcher:
             starting_points.extendleft(self._seed_points(line_points))
 
             # collision checks
-            for lp in line_points:
-                x = int(lp[0])
-                y = int(lp[1])
-                if self.config.COLLISION_APPROXIMATE:
-                    self.point_raster[
-                        int(y * self.MAPPING_FACTOR_COLLISION), int(x * self.MAPPING_FACTOR_COLLISION)
-                    ] = True
-                else:
-                    # self.point_map[f"{x},{y}"].append(lp)
-                    # self.point_bins[int(x/self.bin_size)][int(y/self.bin_size)].append(lp)
-                    self.point_bins[int(x / self.bin_size)][int(y / self.bin_size)] = np.append(
-                        self.point_bins[int(x / self.bin_size)][int(y / self.bin_size)], [lp], axis=0
-                    )
+            self._register_for_collision_check(line_points)
 
         return linestrings
