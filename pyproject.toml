@@ -16,3 +16,6 @@ dependencies = [
     "tifffile>=2025.5.26",
     "trimesh>=4.6.11",
 ]
+
+[tool.ruff]
+line-length = 120

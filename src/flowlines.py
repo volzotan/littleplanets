@@ -9,6 +9,7 @@ from shapely import LineString
 
 MAX_ITERATIONS = 20_000_000
 
+
 @dataclass
 class FlowlineHatcherConfig:
     # distance between lines in mm
@@ -166,13 +167,16 @@ class FlowlineHatcher:
             y = int(lp[1])
             if self.config.COLLISION_APPROXIMATE:
                 self.point_raster[
-                    int(y * self.MAPPING_FACTOR_COLLISION), int(x * self.MAPPING_FACTOR_COLLISION)
+                    int(y * self.MAPPING_FACTOR_COLLISION),
+                    int(x * self.MAPPING_FACTOR_COLLISION),
                 ] = True
             else:
                 # self.point_map[f"{x},{y}"].append(lp)
                 # self.point_bins[int(x/self.bin_size)][int(y/self.bin_size)].append(lp)
                 self.point_bins[int(x / self.bin_size)][int(y / self.bin_size)] = np.append(
-                    self.point_bins[int(x / self.bin_size)][int(y / self.bin_size)], [lp], axis=0
+                    self.point_bins[int(x / self.bin_size)][int(y / self.bin_size)],
+                    [lp],
+                    axis=0,
                 )
 
     def _next_point(self, x1: float, y1: float, forwards: bool) -> tuple[float, float] | None:

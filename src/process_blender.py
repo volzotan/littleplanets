@@ -20,8 +20,9 @@ CROSS_FLOW = True
 VISUALIZE = False
 EXPORT = True
 
-LIGHT_POS = [1.5, 0.3, 2] # coordinate system: Y-UP
-LIGHT_POS = [0.2, 0.2, 1] # coordinate system: Y-UP
+LIGHT_POS = [1.5, 0.3, 2]  # coordinate system: Y-UP
+LIGHT_POS = [0.2, 0.2, 1]  # coordinate system: Y-UP
+
 
 def _normalize_vector(v: np.array) -> np.array:
     return v / np.linalg.norm(v)
@@ -39,9 +40,18 @@ def visualize(centers: np.ndarray, vectors: list[np.ndarray], light_axis: np.arr
     plotter.camera.up = (0, 1, 0)
 
     # X, Y, Z axes
-    plotter.add_mesh(pv.Spline(np.array([[0, 0, 0], [1, 0, 0]]), 10).tube(radius=0.005), color=[255, 0, 0])
-    plotter.add_mesh(pv.Spline(np.array([[0, 0, 0], [0, 1, 0]]), 10).tube(radius=0.005), color=[0, 255, 0])
-    plotter.add_mesh(pv.Spline(np.array([[0, 0, 0], [0, 0, 1]]), 10).tube(radius=0.005), color=[0, 0, 255])
+    plotter.add_mesh(
+        pv.Spline(np.array([[0, 0, 0], [1, 0, 0]]), 10).tube(radius=0.005),
+        color=[255, 0, 0],
+    )
+    plotter.add_mesh(
+        pv.Spline(np.array([[0, 0, 0], [0, 1, 0]]), 10).tube(radius=0.005),
+        color=[0, 255, 0],
+    )
+    plotter.add_mesh(
+        pv.Spline(np.array([[0, 0, 0], [0, 0, 1]]), 10).tube(radius=0.005),
+        color=[0, 0, 255],
+    )
 
     # light axis
     spline = pv.Spline(np.array([[0, 0, 0], light_axis], dtype=np.float32)).tube(radius=0.005)
@@ -62,7 +72,11 @@ def visualize(centers: np.ndarray, vectors: list[np.ndarray], light_axis: np.arr
 
 
 def _line_plane_intersection(
-    plane_normal: np.array, plane_point: np.array, line_point: np.array, line_direction: np.array, tol: float = 1e-6
+    plane_normal: np.array,
+    plane_point: np.array,
+    line_point: np.array,
+    line_direction: np.array,
+    tol: float = 1e-6,
 ) -> np.array:
     denom = np.dot(plane_normal, line_direction)
 
@@ -83,6 +97,7 @@ def _compute_intersections(centers: np.ndarray, normals: np.ndarray, axis: np.ar
         intersections[i, :] = _line_plane_intersection(normals[i], centers[i], line_point, axis)
 
     return intersections
+
 
 logger.info("init")
 
@@ -162,10 +177,7 @@ intersections = np.zeros_like(img_normals)
 for x in range(img_normals.shape[1]):
     for y in range(img_normals.shape[0]):
         intersections[y, x, :] = _line_plane_intersection(
-            img_normals[y, x],
-            img_pxpos[y, x],
-            np.array([0.0, 0.0, 0.0]),
-            light_axis
+            img_normals[y, x], img_pxpos[y, x], np.array([0.0, 0.0, 0.0]), light_axis
         )
 
 img_directions = intersections - img_pxpos
@@ -184,7 +196,9 @@ img_field_elevation_vectors_3 = np.zeros_like(img_directions)
 ELEVATION_VECTOR_WEIGHT = 0.5
 
 distance_point_to_light_axis = np.linalg.norm(light_axis - img_normals, axis=-1)
-distance_weight = (distance_point_to_light_axis - np.min(distance_point_to_light_axis)) / np.ptp(distance_point_to_light_axis)
+distance_weight = (distance_point_to_light_axis - np.min(distance_point_to_light_axis)) / np.ptp(
+    distance_point_to_light_axis
+)
 
 for x in range(img_directions.shape[1]):
     for y in range(img_directions.shape[0]):
@@ -226,19 +240,21 @@ if VISUALIZE:
     field_elevation_vectors = img_field_elevation_vectors_2.reshape([-1, 3])
     visualize(centers, [directions, field_elevation_vectors], light_axis).show()
 
+
 def export_angles(arr):
-    arr[:, :, 1] *= -1 # blender Y up / numpy Y down
+    arr[:, :, 1] *= -1  # blender Y up / numpy Y down
     mapping_angle = np.atan2(arr[:, :, 1], arr[:, :, 0])
     mapping_angle = (mapping_angle + np.pi) / (np.pi * 2.0)
     mapping_angle = (mapping_angle * 255).astype(np.uint8)
     return mapping_angle
+
 
 if EXPORT:
     mapping_distance = img_gray
     mapping_distance = ((mapping_distance - np.min(mapping_distance)) / np.ptp(mapping_distance) * 255).astype(np.uint8)
     cv2.imwrite(str(OUTPUT_DIR / "mapping_distance.png"), mapping_distance)
 
-    img_directions[:, :, 1] *= -1 # blender Y up / numpy Y down
+    img_directions[:, :, 1] *= -1  # blender Y up / numpy Y down
     mapping_angle = np.atan2(img_directions[:, :, 1], img_directions[:, :, 0])
     mapping_angle = (mapping_angle + np.pi) / (np.pi * 2.0)
     mapping_angle = (mapping_angle * 255).astype(np.uint8)
@@ -252,22 +268,22 @@ if EXPORT:
 
     cv2.imwrite(
         str(OUTPUT_DIR / "mapping_angle_0.png"),
-        export_angles(img_field_elevation_vectors_0)
+        export_angles(img_field_elevation_vectors_0),
     )
 
     cv2.imwrite(
         str(OUTPUT_DIR / "mapping_angle_1.png"),
-        export_angles(img_field_elevation_vectors_1)
+        export_angles(img_field_elevation_vectors_1),
     )
 
     cv2.imwrite(
         str(OUTPUT_DIR / "mapping_angle_2.png"),
-        export_angles(img_field_elevation_vectors_2)
+        export_angles(img_field_elevation_vectors_2),
     )
 
     cv2.imwrite(
         str(OUTPUT_DIR / "mapping_angle_3.png"),
-        export_angles(img_field_elevation_vectors_3)
+        export_angles(img_field_elevation_vectors_3),
     )
 
     mapping_flat = np.zeros_like(img_pxpos, dtype=np.uint8)

@@ -413,7 +413,11 @@ def _normalize_vectors(v: np.ndarray) -> np.array:
 
 
 def _line_plane_intersection(
-    plane_normal: np.array, plane_point: np.array, line_point: np.array, line_direction: np.array, tol: float = 1e-6
+    plane_normal: np.array,
+    plane_point: np.array,
+    line_point: np.array,
+    line_direction: np.array,
+    tol: float = 1e-6,
 ) -> np.array:
     denom = np.dot(plane_normal, line_direction)
 
@@ -519,9 +523,18 @@ def display(m: Mesh) -> None:
     plotter = pv.Plotter()
 
     # X, Y, Z axes
-    plotter.add_mesh(pv.Spline(np.array([[0, 0, 0], [1, 0, 0]]), 10).tube(radius=0.01), color=[255, 0, 0])
-    plotter.add_mesh(pv.Spline(np.array([[0, 0, 0], [0, 1, 0]]), 10).tube(radius=0.01), color=[0, 255, 0])
-    plotter.add_mesh(pv.Spline(np.array([[0, 0, 0], [0, 0, 1]]), 10).tube(radius=0.01), color=[0, 0, 255])
+    plotter.add_mesh(
+        pv.Spline(np.array([[0, 0, 0], [1, 0, 0]]), 10).tube(radius=0.01),
+        color=[255, 0, 0],
+    )
+    plotter.add_mesh(
+        pv.Spline(np.array([[0, 0, 0], [0, 1, 0]]), 10).tube(radius=0.01),
+        color=[0, 255, 0],
+    )
+    plotter.add_mesh(
+        pv.Spline(np.array([[0, 0, 0], [0, 0, 1]]), 10).tube(radius=0.01),
+        color=[0, 0, 255],
+    )
 
     # mesh
     points_pv = np.stack(m.points)
@@ -562,9 +575,18 @@ def visualize(m: Mesh, lines: list[LineString]) -> pv.Plotter:
     plotter = pv.Plotter()
 
     # X, Y, Z axes
-    plotter.add_mesh(pv.Spline(np.array([[0, 0, 0], [1, 0, 0]]), 10).tube(radius=0.02), color=[255, 0, 0])
-    plotter.add_mesh(pv.Spline(np.array([[0, 0, 0], [0, 1, 0]]), 10).tube(radius=0.02), color=[0, 255, 0])
-    plotter.add_mesh(pv.Spline(np.array([[0, 0, 0], [0, 0, 1]]), 10).tube(radius=0.02), color=[0, 0, 255])
+    plotter.add_mesh(
+        pv.Spline(np.array([[0, 0, 0], [1, 0, 0]]), 10).tube(radius=0.02),
+        color=[255, 0, 0],
+    )
+    plotter.add_mesh(
+        pv.Spline(np.array([[0, 0, 0], [0, 1, 0]]), 10).tube(radius=0.02),
+        color=[0, 255, 0],
+    )
+    plotter.add_mesh(
+        pv.Spline(np.array([[0, 0, 0], [0, 0, 1]]), 10).tube(radius=0.02),
+        color=[0, 0, 255],
+    )
 
     # mesh
     points_pv = np.stack(m.points)
@@ -601,9 +623,10 @@ def visualize(m: Mesh, lines: list[LineString]) -> pv.Plotter:
         projected = elevation_vector - (np.dot(elevation_vector, m.normals[i])) * m.normals[i]
         magnitude = np.arccos(np.dot(elevation_vector, m.normals[i]))
         # spline = pv.Spline(np.array([m.centers[i], m.centers[i] + m.field_elevation_vectors[i]], dtype=np.float32), 10).tube(radius=0.005)
-        spline = pv.Spline(np.array([m.centers[i], m.centers[i] + projected * magnitude], dtype=np.float32), 10).tube(
-            radius=0.005
-        )
+        spline = pv.Spline(
+            np.array([m.centers[i], m.centers[i] + projected * magnitude], dtype=np.float32),
+            10,
+        ).tube(radius=0.005)
         plotter.add_mesh(spline, color=[0, 0, 255])
 
         arrow = pv.Arrow(m.centers[i], m.field_elevation_vectors[i], scale=0.10)
@@ -620,9 +643,18 @@ def visualize_lines(m: Mesh, lines: list[LineString]) -> pv.Plotter:
     plotter = pv.Plotter()
 
     # X, Y, Z axes
-    plotter.add_mesh(pv.Spline(np.array([[0, 0, 0], [0.5, 0, 0]]), 10).tube(radius=0.01), color=[255, 0, 0])
-    plotter.add_mesh(pv.Spline(np.array([[0, 0, 0], [0, 0.5, 0]]), 10).tube(radius=0.01), color=[0, 255, 0])
-    plotter.add_mesh(pv.Spline(np.array([[0, 0, 0], [0, 0, 0.5]]), 10).tube(radius=0.01), color=[0, 0, 255])
+    plotter.add_mesh(
+        pv.Spline(np.array([[0, 0, 0], [0.5, 0, 0]]), 10).tube(radius=0.01),
+        color=[255, 0, 0],
+    )
+    plotter.add_mesh(
+        pv.Spline(np.array([[0, 0, 0], [0, 0.5, 0]]), 10).tube(radius=0.01),
+        color=[0, 255, 0],
+    )
+    plotter.add_mesh(
+        pv.Spline(np.array([[0, 0, 0], [0, 0, 0.5]]), 10).tube(radius=0.01),
+        color=[0, 0, 255],
+    )
 
     # mesh
     points_pv = np.stack(m.points)
@@ -669,20 +701,18 @@ if __name__ == "__main__":
     SUBDIVISION_STEPS = 10
     BLUR_DEM_RASTER_KERNEL_SIZE = 100
 
-    dem_raster = normalize_elevation(load_raster(asset_lowres_dir / "Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"))[0, :, :]
+    dem_raster = normalize_elevation(load_raster(asset_lowres_dir / "Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"))[
+        0, :, :
+    ]
     color_raster = load_raster(asset_dir / "lroc_color_poles.tif")[0:3, :, :]
 
     dem_raster = cv2.blur(dem_raster, (BLUR_DEM_RASTER_KERNEL_SIZE, BLUR_DEM_RASTER_KERNEL_SIZE))
 
-    poly = project(
-        subdivide(tetrahedron(), n=SUBDIVISION_STEPS),
-        dem_raster,
-        scale=SCALE
-    )
+    poly = project(subdivide(tetrahedron(), n=SUBDIVISION_STEPS), dem_raster, scale=SCALE)
     write_ply(
         add_color(poly, color_raster, color_vertices=True),
         asset_dir / Path(f"Moon_n{SUBDIVISION_STEPS}.ply"),
-        color_vertices=True
+        color_vertices=True,
     )
 
     print("Completed in: {:.3f}s".format((datetime.datetime.now() - timer_start).total_seconds()))
@@ -693,7 +723,9 @@ if __name__ == "__main__":
     SCALE = 5e-2
     poly = subdivide(tetrahedron(), n=6)
 
-    dem_raster = normalize_elevation(load_raster(asset_lowres_dir / "Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"))[0, :, :]
+    dem_raster = normalize_elevation(load_raster(asset_lowres_dir / "Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"))[
+        0, :, :
+    ]
     size = (np.array([dem_raster.shape[1], dem_raster.shape[0]]) * 0.25).astype(int).tolist()
     dem_raster = cv2.resize(dem_raster, size)
 

@@ -316,16 +316,28 @@ class FlowlineHatcher:
     #             self.starting_points.append((i, j))
 
     def visualize(
-        self, linestrings: list[LineString], new_line_points: deque[Linepoint], starting_points: deque[Linepoint]
+        self,
+        linestrings: list[LineString],
+        new_line_points: deque[Linepoint],
+        starting_points: deque[Linepoint],
     ) -> None:
         import pyvista as pv
 
         plotter = pv.Plotter()
 
         # X, Y, Z axes
-        plotter.add_mesh(pv.Spline(np.array([[0, 0, 0], [1, 0, 0]]), 10).tube(radius=0.02), color=[255, 0, 0])
-        plotter.add_mesh(pv.Spline(np.array([[0, 0, 0], [0, 1, 0]]), 10).tube(radius=0.02), color=[0, 255, 0])
-        plotter.add_mesh(pv.Spline(np.array([[0, 0, 0], [0, 0, 1]]), 10).tube(radius=0.02), color=[0, 0, 255])
+        plotter.add_mesh(
+            pv.Spline(np.array([[0, 0, 0], [1, 0, 0]]), 10).tube(radius=0.02),
+            color=[255, 0, 0],
+        )
+        plotter.add_mesh(
+            pv.Spline(np.array([[0, 0, 0], [0, 1, 0]]), 10).tube(radius=0.02),
+            color=[0, 255, 0],
+        )
+        plotter.add_mesh(
+            pv.Spline(np.array([[0, 0, 0], [0, 0, 1]]), 10).tube(radius=0.02),
+            color=[0, 0, 255],
+        )
 
         # mesh
         points_pv = np.stack(self.m.points)
