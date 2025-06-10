@@ -114,6 +114,12 @@ if __name__ == "__main__":
     linestrings_for_projection = _rotate_linestrings(linestrings_for_projection, math.pi / 4, 0, math.pi / 4)
     linestrings_for_projection = [_project_linestring(l, P, scaling_factor) for l in linestrings_for_projection]
 
+    FILENAME_OVERLAY = Path("../assets") / "Moon_linestrings_overlay.npz"
+    overlay_npz = np.load(FILENAME_OVERLAY)
+    linestrings_for_projection = [LineString(arr) for arr in overlay_npz.values()]
+    linestrings_for_projection = [_project_linestring(l, P, scaling_factor) for l in linestrings_for_projection]
+
+
     exclusion_points = []
     for ls in linestrings_for_projection:
         exclusion_points += shapely.get_coordinates(ls).tolist()

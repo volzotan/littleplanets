@@ -1,3 +1,5 @@
+import csv
+import json
 from pathlib import Path
 import trimesh
 import shapely
@@ -7,15 +9,9 @@ import math
 import cv2
 import rasterio
 import pyvista as pv
+from hershey import HersheyFont, Align
 
 import rtree
-
-# read mesh
-
-ASSETS_DIR = Path("../assets")
-INPUT_FILE = ASSETS_DIR / "Moon_Z.ply"
-ASSETS_LOWRES_DIR = Path("..", "assets_lowres")
-
 
 def _rotate_linestrings(lines: list[LineString], x: float, y: float, z: float) -> list[LineString]:
     R_x = np.array(
@@ -164,39 +160,100 @@ def visualize(linestrings: list[LineString]) -> pv.Plotter:
     return plotter
 
 
-# rotate and project POIs on mesh surface
+def write_csv(filename: Path, linestrings: list[LineString]) -> None:
+    with open(filename, "w") as csvfile:
+        writer = csv.writer(csvfile, delimiter=" ")
 
-linestrings = []
-linestrings.append(Point([0, 0]).buffer(0.10).boundary.segmentize(0.1))
-linestrings.append(Point([0, 0]).buffer(0.20).boundary.segmentize(0.1))
-linestrings.append(Point([0, 0]).buffer(0.30).boundary.segmentize(0.1))
+        for ls in linestrings:
+            writer.writerow(shapely.get_coordinates(ls, include_z=True).tolist())
 
-for i in range(len(linestrings)): # add Z
-    ls = linestrings[i]
-    coords = shapely.get_coordinates(ls)
-    new_col = np.full([coords.shape[0], 1], 1.0)
-    coords_with_z = np.concatenate((coords, new_col), axis=1)
-    linestrings[i] = LineString(coords_with_z)
 
-linestrings_rotated = _rotate_linestrings(linestrings, math.pi / 4, 0, math.pi / 4)
+def write_npz(filename: Path, linestrings: list[LineString]) -> None:
+    arrays = [shapely.get_coordinates(l, include_z=True) for l in linestrings]
+    np.savez(filename, *arrays)
 
-dem_raster = normalize_elevation(load_raster(ASSETS_LOWRES_DIR / "Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"))
-dem_raster = dem_raster[0, :, :]
-size = (np.array([dem_raster.shape[1], dem_raster.shape[0]]) * 0.25).astype(int).tolist()
-dem_raster = cv2.resize(dem_raster, size)
+if __name__ == "__main__":
 
-# TODO: Caveat: height data derived from the DEM raster is missing blender mesh rotation info
-linestrings_projected = [
-    LineString(project(dem_raster, shapely.get_coordinates(l, include_z=True), 0.1)) for l in linestrings_rotated
-]
+    ASSETS_DIR = Path("../assets")
+    INPUT_MESH = ASSETS_DIR / "Moon_Z.ply"
+    ASSETS_DIR = Path("..", "assets")
+    ASSETS_LOWRES_DIR = Path("..", "assets_lowres")
+    POI_DATA = ASSETS_DIR / "Moon_apollo_landing_sites.json"
+    OUTPUT_DIR = ASSETS_DIR
+    output_filename = "Moon_linestrings_overlay.npz"
 
-# TODO: Caveat: height data derived from the blender export mesh does not line up with lat/lon point coordinatess
-mesh = trimesh.load(INPUT_FILE)
-linestrings_projected2 = [
-    LineString(project_vertices(mesh.vertices, shapely.get_coordinates(l, include_z=True), 0.1))
-    for l in linestrings_rotated
-]
+    DEFAULT_ROTATION = np.array([-math.pi/2, 0, 0])
 
-visualize(linestrings_projected + linestrings_projected2).show()
+    CIRCLE_RADIUS = 0.03
+    FONT_SIZE = 0.025
 
-# export XYZ linestrings as JSON
+    linestrings = []
+    # linestrings.append(Point([0, 0]).buffer(0.10).boundary.segmentize(0.1))
+    # linestrings.append(Point([0, 0]).buffer(0.20).boundary.segmentize(0.1))
+    # linestrings.append(Point([0, 0]).buffer(0.30).boundary.segmentize(0.1))
+
+    # DRAW POINTS OF INTEREST
+
+    pois = []
+    with open(POI_DATA) as f:
+        pois = json.load(f)
+
+    font = HersheyFont(font_file=Path(HersheyFont.DEFAULT_FONT))
+
+    for poi in pois:
+        circle = Point([0, 0]).buffer(CIRCLE_RADIUS).boundary.segmentize(0.05)
+        path_text_baseline = Point([0, 0]).buffer(CIRCLE_RADIUS+0.01).boundary.segmentize(0.01)
+
+        linestrings_along_path1 = font.lines_for_text(
+            poi["name"],
+            FONT_SIZE,
+            path=path_text_baseline,
+            align=Align.CENTER,
+            reverse_path=True
+        )
+        text = [LineString(shapely.get_coordinates(l) * np.array([1, -1])) for l in linestrings_along_path1]
+        ls_poi = [circle] + text
+
+        for i in range(len(ls_poi)): # add Z
+            ls = ls_poi[i]
+            coords = shapely.get_coordinates(ls)
+            new_col = np.full([coords.shape[0], 1], 1.0)
+            coords_with_z = np.concatenate((coords, new_col), axis=1)
+            ls_poi[i] = LineString(coords_with_z)
+
+        rot_x = (poi["lat"] * -1 + 90.0) / 180 * math.pi
+        rot_z = (poi["lon"]) / 360 * math.tau
+
+        ls_rotated = _rotate_linestrings(ls_poi, *[rot_x, 0, rot_z])
+        ls_rotated = _rotate_linestrings(ls_rotated, *DEFAULT_ROTATION)
+
+        linestrings += ls_rotated
+
+    # visualize(linestrings).show()
+
+    # PROJECT ONTO SURFACE
+
+    dem_raster = normalize_elevation(load_raster(ASSETS_LOWRES_DIR / "Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"))
+    dem_raster = dem_raster[0, :, :]
+    size = (np.array([dem_raster.shape[1], dem_raster.shape[0]]) * 0.25).astype(int).tolist()
+    dem_raster = cv2.resize(dem_raster, size)
+
+    # TODO: Caveat: height data derived from the DEM raster is missing blender mesh rotation info
+    linestrings_projected = [
+        LineString(project(dem_raster, shapely.get_coordinates(l, include_z=True), 0.1)) for l in linestrings
+    ]
+
+    # TODO: Caveat: height data derived from the blender export mesh does not line up with lat/lon point coordinatess
+    # mesh = trimesh.load(INPUT_MESH)
+    # linestrings_projected2 = [
+    #     LineString(project_vertices(mesh.vertices, shapely.get_coordinates(l, include_z=True), 0.1))
+    #     for l in linestrings
+    # ]
+
+    # visualize(linestrings_projected + linestrings_projected2).show()
+    # visualize(linestrings_projected).show()
+
+    # EXPORT
+
+    # write_npz(OUTPUT_DIR / output_filename, linestrings_projected)
+    write_npz(OUTPUT_DIR / output_filename, linestrings)
