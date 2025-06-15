@@ -12,6 +12,7 @@ dependencies = [
     "pyvista>=0.45.2",
     "rasterio>=1.4.3",
     "rtree>=1.4.0",
+    "scikit-image>=0.25.2",
     "shapely>=2.1.1",
     "svgpathtools>=1.7.1",
     "tifffile>=2025.5.26",
@@ -20,3 +21,6 @@ dependencies = [
 
 [tool.ruff]
 line-length = 120
+
+[tool.ruff.lint.pydocstyle]
+convention = "google" 

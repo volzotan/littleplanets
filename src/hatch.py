@@ -1,18 +1,15 @@
 import math
-import os
 from pathlib import Path
 
+import cv2
 import flowlines_py
-import openexr_numpy
+import numpy as np
 import shapely
 import shapely.ops
-import cv2
-import numpy as np
 from shapely import LineString
 from shapely.geometry import Point
 
 import flowlines
-
 
 BLUR_MAPPING_ANGLE_KERNEL_SIZE = 1
 BLUR_MAPPING_DISTANCE_KERNEL_SIZE = 1
@@ -33,7 +30,10 @@ def draw_line_image(canvas: np.ndarray, line_sets: list[list[LineString]], dimen
     scale_x = canvas.shape[1] / dimensions[0]
     scale_y = canvas.shape[0] / dimensions[1]
 
-    colors = [(0, 0, 0), (255, 0, 0), (0, 255, 0), (0, 0, 255)]
+    # colors = [(0, 0, 0), (255, 0, 0), (0, 255, 0), (0, 0, 255)]
+    # colors = [(0, 0, 0)] * 10
+    colors = [(255, 255, 255), (0, 255, 255)]
+    colors = [(255, 255, 255)] * 10
 
     for li, lines in enumerate(line_sets):
         for linestring in lines:
@@ -87,42 +87,24 @@ def _rotate_linestrings(lines: list[LineString], x: float, y: float, z: float) -
 if __name__ == "__main__":
     # FILENAME_CAMERA_MATRIX = "../blender/P3x4.npy"
     FILENAME_CAMERA_MATRIX = "../blender/P3x4_2.npy"
+    FILENAME_OVERLAY = Path("..", "assets") / "Moon_linestrings_overlay.npz"
+    FILENAME_CONTOURS = Path("..", "assets") / "contours.npz"
 
     P = np.load(FILENAME_CAMERA_MATRIX)
     scaling_factor = 1000.0 / 6000.0
 
-    # ls = LineString([
-    #     [-1, 0, 0],
-    #     [1, 0, 0]
-    # ])
-
-    # print(P @ np.array([0, 0, 0, 1]))
-
-    linestrings_for_projection = []
-    linestrings_for_projection.append(Point([0, 0]).buffer(0.10).boundary.segmentize(0.1))
-    linestrings_for_projection.append(Point([0, 0]).buffer(0.20).boundary.segmentize(0.1))
-    linestrings_for_projection.append(Point([0, 0]).buffer(0.30).boundary.segmentize(0.1))
-
-    # add Z
-    for i in range(len(linestrings_for_projection)):
-        ls = linestrings_for_projection[i]
-        coords = shapely.get_coordinates(ls)
-        new_col = np.full([coords.shape[0], 1], 1.0)
-        coords_with_z = np.concatenate((coords, new_col), axis=1)
-        linestrings_for_projection[i] = LineString(coords_with_z)
-
-    linestrings_for_projection = _rotate_linestrings(linestrings_for_projection, math.pi / 4, 0, math.pi / 4)
-    linestrings_for_projection = [_project_linestring(l, P, scaling_factor) for l in linestrings_for_projection]
-
-    FILENAME_OVERLAY = Path("../assets") / "Moon_linestrings_overlay.npz"
     overlay_npz = np.load(FILENAME_OVERLAY)
+
     linestrings_for_projection = [LineString(arr) for arr in overlay_npz.values()]
     linestrings_for_projection = [_project_linestring(l, P, scaling_factor) for l in linestrings_for_projection]
 
+    contours_npz = np.load(FILENAME_CONTOURS)
+    # TODO: contours don't need to be projected, but they need to be scaled (currently missing!)
+    linestrings_for_projection += [LineString(arr) for arr in contours_npz.values()]
 
     exclusion_points = []
     for ls in linestrings_for_projection:
-        exclusion_points += shapely.get_coordinates(ls).tolist()
+        exclusion_points += shapely.get_coordinates(ls.segmentize(0.01)).tolist()
 
     # FILENAME_MAPPING_ANGLE = "../output/mapping_angle.png"
     # FILENAME_MAPPING_ANGLE = "../output/mapping_angle_0.png"
@@ -149,7 +131,7 @@ if __name__ == "__main__":
     # exit()
 
     # white ink on black paper, invert grayscale image
-    # mapping_distance = ~mapping_distance
+    mapping_distance = ~mapping_distance
 
     # mapping_distance = np.zeros_like(mapping_angle, dtype=np.uint8)
     mapping_max_length = np.zeros_like(mapping_angle)
@@ -162,17 +144,17 @@ if __name__ == "__main__":
         mapping_flat,
     ]
 
-    config = flowlines_py.FlowlinesConfig()
-    config.line_distance = (3.5, 10)
-    config.line_max_length = [30] * 2
-    config.line_step_distance = 0.25
-    config.line_distance_end_factor = 0.5
-    lines: list[list[tuple[float, float]]] = flowlines_py.hatch(dimensions, config, *mappings)
-    linestrings = [shapely.simplify(LineString(l), 0.01) for l in lines]
+    # config = flowlines_py.FlowlinesConfig()
+    # config.line_distance = (3.5, 10)
+    # config.line_max_length = [30] * 2
+    # config.line_step_distance = 0.25
+    # config.line_distance_end_factor = 0.5
+    # lines: list[list[tuple[float, float]]] = flowlines_py.hatch(dimensions, config, *mappings)
+    # linestrings = [shapely.simplify(LineString(l), 0.01) for l in lines]
 
     config = flowlines.FlowlineHatcherConfig()
     config.LINE_DISTANCE = (2.0, 9)
-    config.LINE_MAX_LENGTH = [30] * 2
+    config.LINE_MAX_LENGTH = [50] * 2
     config.LINE_STEP_DISTANCE = 0.25
     config.LINE_DISTANCE_END_FACTOR = 0.50
     hatcher = flowlines.FlowlineHatcher(dimensions, *mappings, config, exclusion_points=exclusion_points)
@@ -182,7 +164,7 @@ if __name__ == "__main__":
     print(f"num linestrings: {len(linestrings)}")
 
     # canvas = cv2.resize((img_gray * 0.5).astype(np.uint8), output_dimensions)
-    canvas = np.full([int(dimensions[0] * 5), int(dimensions[1] * 5), 3], 255, dtype=np.uint8)
+    canvas = np.full([int(dimensions[0] * 5), int(dimensions[1] * 5), 3], 0, dtype=np.uint8)
 
     cv2.imwrite(
         str(".." / Path("foo_" + Path(FILENAME_MAPPING_ANGLE).name)),

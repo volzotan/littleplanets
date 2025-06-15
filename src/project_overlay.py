@@ -13,6 +13,7 @@ from hershey import HersheyFont, Align
 
 import rtree
 
+
 def _rotate_linestrings(lines: list[LineString], x: float, y: float, z: float) -> list[LineString]:
     R_x = np.array(
         [
@@ -80,19 +81,12 @@ def _map_vertices(raster: np.ndarray, lat: float, lon: float) -> np.ndarray:
     return raster[y, x]
 
 
-def project_vertices(vertices: np.ndarray, points: np.ndarray, scale: float) -> np.ndarray:
+def project_vertices(tree: rtree.Index, points: np.ndarray, scale: float) -> np.ndarray:
     proj = np.zeros_like(points)
 
     r = np.sqrt(np.sum(np.power(points, 2), axis=1))
     lats = np.acos(points[:, 2] / r)
     lons = np.atan2(points[:, 1], points[:, 0])
-
-    index = rtree.index
-    p = index.Property()
-    p.dimension = 3
-    tree = index.Index(properties=p)
-    for i, v in enumerate(vertices.tolist()):
-        tree.insert(i, v, obj=v)
 
     for i in range(proj.shape[0]):
         nearest_neighbor = list(tree.nearest(points[i, :], 1, objects="raw"))[0]
@@ -172,17 +166,19 @@ def write_npz(filename: Path, linestrings: list[LineString]) -> None:
     arrays = [shapely.get_coordinates(l, include_z=True) for l in linestrings]
     np.savez(filename, *arrays)
 
-if __name__ == "__main__":
 
-    ASSETS_DIR = Path("../assets")
-    INPUT_MESH = ASSETS_DIR / "Moon_Z.ply"
+if __name__ == "__main__":
     ASSETS_DIR = Path("..", "assets")
     ASSETS_LOWRES_DIR = Path("..", "assets_lowres")
+
+    INPUT_MESH = ASSETS_DIR / "Moon_Z.ply"
     POI_DATA = ASSETS_DIR / "Moon_apollo_landing_sites.json"
+
     OUTPUT_DIR = ASSETS_DIR
     output_filename = "Moon_linestrings_overlay.npz"
 
-    DEFAULT_ROTATION = np.array([-math.pi/2, 0, 0])
+    DEFAULT_ROTATION = np.array([-math.pi / 2, 0, 0]) # Blender Camera is aligned with the Z axis
+    BLENDER_ROTATION = np.array([np.radians(c) for c in [0, 0, 0]])
 
     CIRCLE_RADIUS = 0.03
     FONT_SIZE = 0.025
@@ -202,19 +198,16 @@ if __name__ == "__main__":
 
     for poi in pois:
         circle = Point([0, 0]).buffer(CIRCLE_RADIUS).boundary.segmentize(0.05)
-        path_text_baseline = Point([0, 0]).buffer(CIRCLE_RADIUS+0.01).boundary.segmentize(0.01)
+        path_text_baseline = Point([0, 0]).buffer(CIRCLE_RADIUS + 0.01).boundary.segmentize(0.01)
 
-        linestrings_along_path1 = font.lines_for_text(
-            poi["name"],
-            FONT_SIZE,
-            path=path_text_baseline,
-            align=Align.CENTER,
-            reverse_path=True
-        )
+        # linestrings_along_path1 = font.lines_for_text(
+        #     poi["name"], FONT_SIZE, path=path_text_baseline, align=Align.CENTER, reverse_path=True
+        # )
+        linestrings_along_path1 = font.lines_for_text(poi["name"], FONT_SIZE)
         text = [LineString(shapely.get_coordinates(l) * np.array([1, -1])) for l in linestrings_along_path1]
         ls_poi = [circle] + text
 
-        for i in range(len(ls_poi)): # add Z
+        for i in range(len(ls_poi)):  # add Z
             ls = ls_poi[i]
             coords = shapely.get_coordinates(ls)
             new_col = np.full([coords.shape[0], 1], 1.0)
@@ -226,6 +219,7 @@ if __name__ == "__main__":
 
         ls_rotated = _rotate_linestrings(ls_poi, *[rot_x, 0, rot_z])
         ls_rotated = _rotate_linestrings(ls_rotated, *DEFAULT_ROTATION)
+        ls_rotated = _rotate_linestrings(ls_rotated, *BLENDER_ROTATION)
 
         linestrings += ls_rotated
 
@@ -239,21 +233,29 @@ if __name__ == "__main__":
     dem_raster = cv2.resize(dem_raster, size)
 
     # TODO: Caveat: height data derived from the DEM raster is missing blender mesh rotation info
-    linestrings_projected = [
-        LineString(project(dem_raster, shapely.get_coordinates(l, include_z=True), 0.1)) for l in linestrings
-    ]
+    # linestrings_projected = [
+    #     LineString(project(dem_raster, shapely.get_coordinates(l, include_z=True), 0.1)) for l in linestrings
+    # ]
 
     # TODO: Caveat: height data derived from the blender export mesh does not line up with lat/lon point coordinatess
-    # mesh = trimesh.load(INPUT_MESH)
-    # linestrings_projected2 = [
-    #     LineString(project_vertices(mesh.vertices, shapely.get_coordinates(l, include_z=True), 0.1))
-    #     for l in linestrings
-    # ]
+    mesh = trimesh.load(INPUT_MESH)
+
+    index = rtree.index
+    p = index.Property()
+    p.dimension = 3
+    tree = index.Index(properties=p)
+    for i, v in enumerate(mesh.vertices.tolist()):
+        tree.insert(i, v, obj=v)
+
+    linestrings_projected = [
+        LineString(project_vertices(tree, shapely.get_coordinates(l, include_z=True), 0.1))
+        for l in linestrings
+    ]
 
     # visualize(linestrings_projected + linestrings_projected2).show()
     # visualize(linestrings_projected).show()
 
     # EXPORT
 
-    # write_npz(OUTPUT_DIR / output_filename, linestrings_projected)
-    write_npz(OUTPUT_DIR / output_filename, linestrings)
+    write_npz(OUTPUT_DIR / output_filename, linestrings_projected)
+    # write_npz(OUTPUT_DIR / output_filename, linestrings)
