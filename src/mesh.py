@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import textwrap
 import datetime
+import argparse
 
 import rasterio
 import rtree
@@ -680,9 +681,18 @@ def write_obj(plotter: pv.Plotter, filename: Path) -> None:
 
 
 if __name__ == "__main__":
-    asset_dir = Path("..", "assets")
-    asset_lowres_dir = Path("..", "assets_lowres")
-    os.makedirs(asset_dir, exist_ok=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("elevation_raster", type=Path, help="Elevation raster data in the GeoTiff format")
+    parser.add_argument("color_raster", type=Path, help="Surface color raster data in the Tiff format")
+    parser.add_argument("--output", type=Path, default="mesh.ply", help="Output filename [PLY]")
+    parser.add_argument("--scale", type=float, default=0.10, help="Scaling factor (float)")
+    parser.add_argument("--blur", type=int, default=100, help="Elevation raster blurring kernel size (int)")
+    parser.add_argument("--subdivision", type=int, default=10, help="Number of subdivision steps (int)")
+
+    args = parser.parse_args()
+    os.makedirs(args.output if args.output.is_dir() else args.output.parent, exist_ok=True)
+
+    # WRITE
 
     timer_start = datetime.datetime.now()
 
@@ -691,50 +701,36 @@ if __name__ == "__main__":
     # empty = np.zeros([color_mapping.shape[0], int(color_mapping.shape[1] * 25/90), color_mapping.shape[2]], dtype=np.uint8)
     # color_mapping = np.concatenate([empty, color_mapping, empty], axis=1)
 
-    # points = get_seedpoints(1000)
-    # mesh = Mesh(points, [], [np.array([255, 255, 255])] * len(points))
-    # write_ply_pointcloud(mesh, Path("pointcloud.ply"))
+    dem_raster = normalize_elevation(load_raster(args.elevation_raster))[0, :, :]
+    color_raster = load_raster(args.color_raster)[0:3, :, :]
 
-    # WRITE
-    SCALE = 3e-2
-    SCALE = 0.09
-    SUBDIVISION_STEPS = 10
-    BLUR_DEM_RASTER_KERNEL_SIZE = 100
+    if args.blur is not None and args.blur > 1:
+        dem_raster = cv2.blur(dem_raster, (args.blur, args.blur))
 
-    dem_raster = normalize_elevation(load_raster(asset_lowres_dir / "Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"))[
-        0, :, :
-    ]
-    color_raster = load_raster(asset_dir / "lroc_color_poles.tif")[0:3, :, :]
-
-    dem_raster = cv2.blur(dem_raster, (BLUR_DEM_RASTER_KERNEL_SIZE, BLUR_DEM_RASTER_KERNEL_SIZE))
-
-    poly = project(subdivide(tetrahedron(), n=SUBDIVISION_STEPS), dem_raster, scale=SCALE)
+    poly = project(subdivide(tetrahedron(), n=args.subdivision), dem_raster, scale=args.scale)
     write_ply(
         add_color(poly, color_raster, color_vertices=True),
-        asset_dir / Path(f"Moon_n{SUBDIVISION_STEPS}.ply"),
+        args.output,
         color_vertices=True,
     )
 
     print("Completed in: {:.3f}s".format((datetime.datetime.now() - timer_start).total_seconds()))
     exit()
 
-    # 3D Hatching
+    # 3D HATCHING / TODO: remove
 
-    SCALE = 5e-2
-    poly = subdivide(tetrahedron(), n=6)
+    poly = subdivide(tetrahedron(), n=args.subdivision)
 
-    dem_raster = normalize_elevation(load_raster(asset_lowres_dir / "Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"))[
-        0, :, :
-    ]
+    dem_raster = normalize_elevation(load_raster(args.elevation_raster))[0, :, :]
     size = (np.array([dem_raster.shape[1], dem_raster.shape[0]]) * 0.25).astype(int).tolist()
     dem_raster = cv2.resize(dem_raster, size)
 
-    poly = project(poly, dem_raster, scale=SCALE)
+    poly = project(poly, dem_raster, scale=args.scale)
     poly = add_field_vectors(poly, _normalize_vector(np.array([0, 1, 1])))
 
-    color_raster = load_raster(asset_dir / "lroc_color_poles.tif")[0:3, :, :]
+    color_raster = load_raster(args.color_raster)[0:3, :, :]
     add_color(poly, color_raster)
-    write_ply(poly, "planet.ply")
+    write_ply(poly, args.output)
 
     import flowlines3
 
@@ -751,7 +747,6 @@ if __name__ == "__main__":
     ).hatch()
 
     print(f"lines: {len(lines)}")
-
     print("Completed in: {:.3f}s".format((datetime.datetime.now() - timer_start).total_seconds()))
 
     # points = []

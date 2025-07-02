@@ -3,11 +3,32 @@
 import bpy
 import numpy as np
 
+import sys
+import argparse
+from pathlib import Path
 from mathutils import Vector
 
 # camera property calculations from:
 # https://blender.stackexchange.com/a/177530
 # https://blender.stackexchange.com/a/120063
+
+# src: https://blender.stackexchange.com/a/134596/118415
+class ArgumentParserForBlender(argparse.ArgumentParser):
+
+    def _get_argv_after_doubledash(self):
+        try:
+            idx = sys.argv.index("--")
+            return sys.argv[idx+1:] # the list after '--'
+        except ValueError as e: # '--' not in the list:
+            return []
+
+    # overrides superclass
+    def parse_args(self):
+        return super().parse_args(args=self._get_argv_after_doubledash())
+
+parser = ArgumentParserForBlender()
+parser.add_argument("--output", type=Path, default="Raytrace.npy", help="Output filename [NPY]")
+args = parser.parse_args()
 
 context = bpy.context
 scene = context.scene
@@ -46,7 +67,9 @@ for x in range(resolution_x):
         if hit:
             values[y, x, :] = location
 
-with open("raytracing.npy", "wb") as f:
+with open(args.output, "wb") as f:
     np.save(f, values)
 
-print("> Raytracing completed")
+print(f"Raytracing complete. Data written to file {args.output}")
+
+bpy.ops.wm.quit_blender()

@@ -5,37 +5,38 @@ from mathutils import Matrix, Vector
 
 import numpy
 
-# ---------------------------------------------------------------
-# 3x4 P matrix from Blender camera
-# ---------------------------------------------------------------
+import argparse
+import sys
+from pathlib import Path
 
+#---------------------------------------------------------------
+# 3x4 P matrix from Blender camera
+#---------------------------------------------------------------
 
 # BKE_camera_sensor_size
 def get_sensor_size(sensor_fit, sensor_x, sensor_y):
-    if sensor_fit == "VERTICAL":
+    if sensor_fit == 'VERTICAL':
         return sensor_y
     return sensor_x
 
-
 # BKE_camera_sensor_fit
 def get_sensor_fit(sensor_fit, size_x, size_y):
-    if sensor_fit == "AUTO":
+    if sensor_fit == 'AUTO':
         if size_x >= size_y:
-            return "HORIZONTAL"
+            return 'HORIZONTAL'
         else:
-            return "VERTICAL"
+            return 'VERTICAL'
     return sensor_fit
-
 
 # Build intrinsic camera parameters from Blender camera data
 #
-# See notes on this in
+# See notes on this in 
 # blender.stackexchange.com/questions/15102/what-is-blenders-camera-projection-matrix-model
 # as well as
 # https://blender.stackexchange.com/a/120063/3581
 def get_calibration_matrix_K_from_blender(camd):
-    if camd.type != "PERSP":
-        raise ValueError("Non-perspective cameras not supported")
+    if camd.type != 'PERSP':
+        raise ValueError('Non-perspective cameras not supported')
     scene = bpy.context.scene
     f_in_mm = camd.lens
     scale = scene.render.resolution_percentage / 100
@@ -45,10 +46,10 @@ def get_calibration_matrix_K_from_blender(camd):
     sensor_fit = get_sensor_fit(
         camd.sensor_fit,
         scene.render.pixel_aspect_x * resolution_x_in_px,
-        scene.render.pixel_aspect_y * resolution_y_in_px,
+        scene.render.pixel_aspect_y * resolution_y_in_px
     )
     pixel_aspect_ratio = scene.render.pixel_aspect_y / scene.render.pixel_aspect_x
-    if sensor_fit == "HORIZONTAL":
+    if sensor_fit == 'HORIZONTAL':
         view_fac_in_px = resolution_x_in_px
     else:
         view_fac_in_px = pixel_aspect_ratio * resolution_y_in_px
@@ -59,14 +60,16 @@ def get_calibration_matrix_K_from_blender(camd):
     # Parameters of intrinsic calibration matrix K
     u_0 = resolution_x_in_px / 2 - camd.shift_x * view_fac_in_px
     v_0 = resolution_y_in_px / 2 + camd.shift_y * view_fac_in_px / pixel_aspect_ratio
-    skew = 0  # only use rectangular pixels
+    skew = 0 # only use rectangular pixels
 
-    K = Matrix(((s_u, skew, u_0), (0, s_v, v_0), (0, 0, 1)))
+    K = Matrix(
+        ((s_u, skew, u_0),
+        (   0,  s_v, v_0),
+        (   0,    0,   1)))
     return K
 
-
 # Returns camera rotation and translation matrices from Blender.
-#
+# 
 # There are 3 coordinate systems involved:
 #    1. The World coordinates: "world"
 #       - right-handed
@@ -76,14 +79,17 @@ def get_calibration_matrix_K_from_blender(camd):
 #       - right-handed: negative z look-at direction
 #    3. The desired computer vision camera coordinates: "cv"
 #       - x is horizontal
-#       - y is down (to align to the actual pixel coordinates
+#       - y is down (to align to the actual pixel coordinates 
 #         used in digital images)
 #       - right-handed: positive z look-at direction
 def get_3x4_RT_matrix_from_blender(cam):
     # bcam stands for blender camera
-    R_bcam2cv = Matrix(((1, 0, 0), (0, -1, 0), (0, 0, -1)))
+    R_bcam2cv = Matrix(
+        ((1, 0,  0),
+        (0, -1, 0),
+        (0, 0, -1)))
 
-    # Transpose since the rotation is object rotation,
+    # Transpose since the rotation is object rotation, 
     # and we want coordinate rotation
     # R_world2bcam = cam.rotation_euler.to_matrix().transposed()
     # T_world2bcam = -1*R_world2bcam @ location
@@ -94,43 +100,50 @@ def get_3x4_RT_matrix_from_blender(cam):
 
     # Convert camera location to translation vector used in coordinate changes
     # T_world2bcam = -1*R_world2bcam @ cam.location
-    # Use location from matrix_world to account for constraints:
-    T_world2bcam = -1 * R_world2bcam @ location
+    # Use location from matrix_world to account for constraints:     
+    T_world2bcam = -1*R_world2bcam @ location
 
     # Build the coordinate transform matrix from world to computer vision camera
-    R_world2cv = R_bcam2cv @ R_world2bcam
-    T_world2cv = R_bcam2cv @ T_world2bcam
+    R_world2cv = R_bcam2cv@R_world2bcam
+    T_world2cv = R_bcam2cv@T_world2bcam
 
     # put into 3x4 matrix
-    RT = Matrix(
-        (R_world2cv[0][:] + (T_world2cv[0],), R_world2cv[1][:] + (T_world2cv[1],), R_world2cv[2][:] + (T_world2cv[2],))
-    )
+    RT = Matrix((
+        R_world2cv[0][:] + (T_world2cv[0],),
+        R_world2cv[1][:] + (T_world2cv[1],),
+        R_world2cv[2][:] + (T_world2cv[2],)
+        ))
     return RT
-
 
 def get_3x4_P_matrix_from_blender(cam):
     K = get_calibration_matrix_K_from_blender(cam.data)
     RT = get_3x4_RT_matrix_from_blender(cam)
-    return K @ RT, K, RT
-
+    return K@RT, K, RT
 
 # ----------------------------------------------------------
-if __name__ == "__main__":
-    # Insert your camera name here
-    cam = bpy.data.objects["Camera"]
-    P, K, RT = get_3x4_P_matrix_from_blender(cam)
-    print("K")
-    print(K)
-    print("RT")
-    print(RT)
-    print("P")
-    print(P)
 
-    print("==== 3D Cursor projection ====")
-    pc = P @ bpy.context.scene.cursor.location
-    pc /= pc[2]
-    print("Projected cursor location")
-    print(pc)
+# src: https://blender.stackexchange.com/a/134596/118415
+class ArgumentParserForBlender(argparse.ArgumentParser):
 
-    with open("P3x4_2.npy", "wb") as f:
-        numpy.save(f, P)
+    def _get_argv_after_doubledash(self):
+        try:
+            idx = sys.argv.index("--")
+            return sys.argv[idx+1:] # the list after '--'
+        except ValueError as e: # '--' not in the list:
+            return []
+
+    # overrides superclass
+    def parse_args(self):
+        return super().parse_args(args=self._get_argv_after_doubledash())
+
+parser = ArgumentParserForBlender()
+parser.add_argument("--output", type=Path, default="projection_matrix.npy", help="Output filename [NPY]")
+args = parser.parse_args()
+
+cam = bpy.data.objects['Camera']
+P, K, RT = get_3x4_P_matrix_from_blender(cam)
+
+with open(args.output, "wb") as f:
+    numpy.save(f, P)
+
+bpy.ops.wm.quit_blender()

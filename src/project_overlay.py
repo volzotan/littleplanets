@@ -1,9 +1,10 @@
+import argparse
 import csv
 import json
 from pathlib import Path
 import trimesh
 import shapely
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, Point, MultiLineString
 import numpy as np
 import math
 import cv2
@@ -168,14 +169,15 @@ def write_npz(filename: Path, linestrings: list[LineString]) -> None:
 
 
 if __name__ == "__main__":
-    ASSETS_DIR = Path("..", "assets")
-    ASSETS_LOWRES_DIR = Path("..", "assets_lowres")
 
-    INPUT_MESH = ASSETS_DIR / "Moon_Z.ply"
-    POI_DATA = ASSETS_DIR / "Moon_apollo_landing_sites.json"
-
-    OUTPUT_DIR = ASSETS_DIR
-    output_filename = "Moon_linestrings_overlay.npz"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("mesh", type=Path, help="Input mesh path (PLY)")
+    parser.add_argument("POIs", type=Path, help="Position of interest data (JSON)")
+    parser.add_argument("--output", type=Path, default="overlay.npz", help="Output filename [NPZ]")
+    parser.add_argument("--circle-radius", type=float, default=0.02, help="POI circle radius (float)")
+    parser.add_argument("--font-size", type=int, default=0.03, help="Label font size (float)")
+    parser.add_argument("--subdivision", type=int, default=10, help="Number of subdivision steps (int)")
+    args = parser.parse_args()
 
     DEFAULT_ROTATION = np.array([-math.pi / 2, 0, 0])  # Blender Camera is aligned with the Z axis
 
@@ -183,31 +185,52 @@ if __name__ == "__main__":
     # but Lat/Lon needs to be adjusted for any additional rotation
     BLENDER_ROTATION = np.array([np.radians(c) for c in [0, 0, -45]])
 
-    CIRCLE_RADIUS = 0.03
-    FONT_SIZE = 0.025
-
     linestrings = []
-    # linestrings.append(Point([0, 0]).buffer(0.10).boundary.segmentize(0.1))
-    # linestrings.append(Point([0, 0]).buffer(0.20).boundary.segmentize(0.1))
-    # linestrings.append(Point([0, 0]).buffer(0.30).boundary.segmentize(0.1))
 
     # DRAW POINTS OF INTEREST
 
     pois = []
-    with open(POI_DATA) as f:
+    with open(args.pois) as f:
         pois = json.load(f)
 
     font = HersheyFont(font_file=Path(HersheyFont.DEFAULT_FONT))
 
     for poi in pois:
-        circle = Point([0, 0]).buffer(CIRCLE_RADIUS).boundary.segmentize(0.05)
-        path_text_baseline = Point([0, 0]).buffer(CIRCLE_RADIUS + 0.01).boundary.segmentize(0.01)
+        circle = Point([0, 0]).buffer(args.circle_radius).boundary.segmentize(0.05)
 
-        # linestrings_along_path1 = font.lines_for_text(
+        # circular text
+        # path_text_baseline = Point([0, 0]).buffer(CIRCLE_RADIUS + 0.01).boundary.segmentize(0.01)
+        # linestrings_along_path = font.lines_for_text(
         #     poi["name"], FONT_SIZE, path=path_text_baseline, align=Align.CENTER, reverse_path=True
         # )
-        linestrings_along_path1 = font.lines_for_text(poi["name"], FONT_SIZE)
-        text = [LineString(shapely.get_coordinates(l) * np.array([1, -1])) for l in linestrings_along_path1]
+
+        # linear text
+        linestrings_along_path = font.lines_for_text(poi["name"], args.font_size)
+
+        angle = poi.get("label_angle", 0.0)
+        dist = args.circle_radius * 1.30
+        geom = MultiLineString(linestrings_along_path)
+
+        x = 0
+        y = geom.bounds[3] / 2  # vertical align
+
+        if math.isclose(angle, 90):
+            x += -geom.bounds[2] / 2
+        elif math.isclose(angle, 270):
+            x += -geom.bounds[2] / 2
+        elif angle > 90 and angle < 270:
+            x += -geom.bounds[2]
+        else:
+            pass
+
+        linestrings_along_path = [shapely.affinity.translate(ls, xoff=x, yoff=y) for ls in linestrings_along_path]
+        linestrings_along_path = [
+            shapely.affinity.translate(
+                ls, xoff=dist * math.cos(math.radians(angle)), yoff=dist * math.sin(math.radians(angle))
+            )
+            for ls in linestrings_along_path
+        ]
+        text = [LineString(shapely.get_coordinates(l) * np.array([1, -1])) for l in linestrings_along_path]
         ls_poi = [circle] + text
 
         for i in range(len(ls_poi)):  # add Z
@@ -228,22 +251,23 @@ if __name__ == "__main__":
 
         linestrings += ls_rotated
 
+    # VISUALIZE
+
     # visualize(linestrings).show()
     # exit()
 
     # PROJECT ONTO SURFACE
-    # TODO: Caveat: height data derived from the DEM raster is missing blender mesh rotation info
 
+    # TODO: Caveat: height data derived from the DEM raster is missing blender mesh rotation info
     # dem_raster = normalize_elevation(load_raster(ASSETS_LOWRES_DIR / "Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"))
     # dem_raster = dem_raster[0, :, :]
     # size = (np.array([dem_raster.shape[1], dem_raster.shape[0]]) * 0.25).astype(int).tolist()
     # dem_raster = cv2.resize(dem_raster, size)
-
     # linestrings_projected = [
     #     LineString(project(dem_raster, shapely.get_coordinates(l, include_z=True), 0.1)) for l in linestrings
     # ]
 
-    mesh = trimesh.load(INPUT_MESH)
+    mesh = trimesh.load(args.mesh)
     index = rtree.index
     p = index.Property()
     p.dimension = 3
@@ -252,15 +276,11 @@ if __name__ == "__main__":
         tree.insert(i, v, obj=v)
 
     linestrings_projected = [
-        LineString(project_vertices(tree, shapely.get_coordinates(l, include_z=True), 0.1))
-        for l in linestrings
+        LineString(project_vertices(tree, shapely.get_coordinates(l, include_z=True), 0.1)) for l in linestrings
     ]
-
-    # visualize(linestrings_projected + linestrings_projected2).show()
-    # visualize(linestrings_projected).show()
 
     # EXPORT
 
-    # write_npz(OUTPUT_DIR / output_filename, linestrings)
-    write_npz(OUTPUT_DIR / output_filename, linestrings_projected)
-    # write_npz(OUTPUT_DIR / output_filename, linestrings)
+    # write_npz(args.output, linestrings)
+    write_npz(args.output, linestrings_projected)
+    # write_npz(args.output, linestrings)

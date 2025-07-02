@@ -1,3 +1,5 @@
+import argparse
+import datetime
 import math
 from pathlib import Path
 
@@ -13,6 +15,12 @@ import flowlines
 
 BLUR_MAPPING_ANGLE_KERNEL_SIZE = 1
 BLUR_MAPPING_DISTANCE_KERNEL_SIZE = 1
+
+INVERT_COLOR = False
+CUTOUT_THRESHOLD = 230
+
+INVERT_COLOR = True
+CUTOUT_THRESHOLD = 50
 
 
 def _linestring_to_coordinate_pairs(
@@ -31,16 +39,21 @@ def draw_line_image(canvas: np.ndarray, line_sets: list[list[LineString]], dimen
     scale_y = canvas.shape[0] / dimensions[1]
 
     # colors = [(0, 0, 0), (255, 0, 0), (0, 255, 0), (0, 0, 255)]
-    # colors = [(0, 0, 0)] * 10
-    colors = [(255, 255, 255), (0, 255, 255)]
-    colors = [(255, 255, 255)] * 10
+    colors = [(0, 0, 0)]
+    # colors = [(255, 255, 255), (0, 255, 255), (0, 0, 255)]
+    # colors = [(255, 255, 255)] * 10
+
+    if INVERT_COLOR:
+        colors = [(255, 255, 255)]
+
+    colors *= 10
 
     for li, lines in enumerate(line_sets):
         for linestring in lines:
             for pair in _linestring_to_coordinate_pairs(linestring):
                 pt1 = [int(pair[0][0] * scale_x), int(pair[0][1] * scale_y)]
                 pt2 = [int(pair[1][0] * scale_x), int(pair[1][1] * scale_y)]
-                cv2.line(canvas, pt1, pt2, colors[li], 8)
+                cv2.line(canvas, pt1, pt2, colors[li], 3)
 
     return canvas
 
@@ -85,26 +98,36 @@ def _rotate_linestrings(lines: list[LineString], x: float, y: float, z: float) -
 
 
 if __name__ == "__main__":
-    # FILENAME_CAMERA_MATRIX = "../blender/P3x4.npy"
-    FILENAME_CAMERA_MATRIX = "../blender/P3x4_2.npy"
-    FILENAME_OVERLAY = Path("..", "assets") / "Moon_linestrings_overlay.npz"
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("Mapping Angle", type=Path, default="mapping_angle.png", help="Mapping angle (PNG)")
+    parser.add_argument("Mapping Distance", type=Path, default="mapping_distance.png", help="Mapping distance (PNG)")
+    parser.add_argument("Mapping Flat", type=Path, default="mapping_flat.png", help="Mapping flat (PNG)")
+    parser.add_argument("Overlay", type=Path, default="overlay.npz", help="Overlay linestrings (NPZ)")
+    parser.add_argument("Projection matrix", type=Path, default="P3x4.npy", help="3x4 projection matrix (NPY)")
+    parser.add_argument("--output", type=Path, default="temp", help="Output directory")
+    args = parser.parse_args()
+
     FILENAME_CONTOURS = Path("..", "assets") / "contours.npz"
 
-    P = np.load(FILENAME_CAMERA_MATRIX)
+    P = np.load(args.projection_matrix)
     scaling_factor = 1000.0 / 6000.0
 
-    overlay_npz = np.load(FILENAME_OVERLAY)
-
-    linestrings_for_projection = [LineString(arr) for arr in overlay_npz.values()]
-    linestrings_for_projection = [_project_linestring(l, P, scaling_factor) for l in linestrings_for_projection]
+    overlay_npz = np.load(args.overlay)
+    linestrings_overlay = [LineString(arr) for arr in overlay_npz.values()]
+    linestrings_overlay = [_project_linestring(l, P, scaling_factor) for l in linestrings_overlay]
 
     contours_npz = np.load(FILENAME_CONTOURS)
     # TODO: contours don't need to be projected, but they need to be scaled (currently missing!)
-    linestrings_for_projection += [LineString(arr) for arr in contours_npz.values()]
+    linestrings_contours = [LineString(arr) for arr in contours_npz.values()]
 
     exclusion_points = []
-    for ls in linestrings_for_projection:
+    for ls in linestrings_overlay:
         exclusion_points += shapely.get_coordinates(ls.segmentize(0.01)).tolist()
+
+    contour_points = []
+    for ls in linestrings_contours:
+        contour_points += shapely.get_coordinates(ls.segmentize(0.01)).tolist()
 
     # FILENAME_MAPPING_ANGLE = "../output/mapping_angle.png"
     # FILENAME_MAPPING_ANGLE = "../output/mapping_angle_0.png"
@@ -113,25 +136,21 @@ if __name__ == "__main__":
     # FILENAME_MAPPING_ANGLE = "../output/mapping_angle_3.png"
 
     # uint8 image must be centered around 128 to deal with negative values
-    mapping_angle = cv2.imread(FILENAME_MAPPING_ANGLE, cv2.IMREAD_GRAYSCALE)
-    mapping_distance = cv2.imread("../output/mapping_distance.png", cv2.IMREAD_GRAYSCALE)
-    # mapping_distance = cv2.imread("../output/mapping_distance_increased_contrast.png", cv2.IMREAD_GRAYSCALE)
-    mapping_flat = cv2.imread("../output/mapping_flat.png", cv2.IMREAD_GRAYSCALE)
+    mapping_angle = cv2.imread(args.mapping_angle, cv2.IMREAD_GRAYSCALE)
+    mapping_distance = cv2.imread(args.mapping_distance, cv2.IMREAD_GRAYSCALE)
+    mapping_flat = cv2.imread(args.mapping_flat, cv2.IMREAD_GRAYSCALE)
 
     # mapping_angle = cv2.blur(mapping_angle, (BLUR_MAPPING_ANGLE_KERNEL_SIZE, BLUR_MAPPING_ANGLE_KERNEL_SIZE))
     # mapping_distance = cv2.blur(mapping_distance, (BLUR_MAPPING_DISTANCE_KERNEL_SIZE, BLUR_MAPPING_DISTANCE_KERNEL_SIZE))
 
     mapping_distance = ((mapping_distance - np.min(mapping_distance)) / np.ptp(mapping_distance) * 255).astype(np.uint8)
 
-    # black_enhanced = np.zeros_like(mapping_distance, dtype=np.uint8)
-    # black_enhanced[mapping_distance < 50] = 255
-    # mapping_flat[black_enhanced > 0] = 255
-
-    # cv2.imwrite("black_enhanced.png", black_enhanced)
-    # exit()
-
-    # white ink on black paper, invert grayscale image
-    mapping_distance = ~mapping_distance
+    if not INVERT_COLOR:
+        # all areas above a brightness threshold should be kept empty
+        mapping_flat[mapping_distance > CUTOUT_THRESHOLD] = 255
+    else:  # white ink on black paper, invert grayscale image
+        mapping_flat[mapping_distance < CUTOUT_THRESHOLD] = 255
+        mapping_distance = ~mapping_distance
 
     # mapping_distance = np.zeros_like(mapping_angle, dtype=np.uint8)
     mapping_max_length = np.zeros_like(mapping_angle)
@@ -153,20 +172,41 @@ if __name__ == "__main__":
     # linestrings = [shapely.simplify(LineString(l), 0.01) for l in lines]
 
     config = flowlines.FlowlineHatcherConfig()
-    config.LINE_DISTANCE = (2.0, 9)
-    config.LINE_MAX_LENGTH = [50] * 2
+    config.LINE_DISTANCE = (0.8, 15)
+    config.LINE_MAX_LENGTH = [30, 60]  # [50] * 2 #[10, 200]
     config.LINE_STEP_DISTANCE = 0.25
     config.LINE_DISTANCE_END_FACTOR = 0.50
+    # hatcher = flowlines.FlowlineHatcher(dimensions, *mappings, config, exclusion_points=exclusion_points + contour_points)
+    # hatcher = flowlines.FlowlineHatcher(dimensions, *mappings, config, exclusion_points=exclusion_points, initial_seed_points=contour_points)
     hatcher = flowlines.FlowlineHatcher(dimensions, *mappings, config, exclusion_points=exclusion_points)
     linestrings: list[LineString] = hatcher.hatch()
     linestrings = [shapely.simplify(l, 0.01) for l in linestrings]
 
     print(f"num linestrings: {len(linestrings)}")
 
+    # cut buffered overlay from hatched linestrings
+    timer_start = datetime.datetime.now()
+    stencil = shapely.ops.unary_union(linestrings_overlay).buffer(2.5)
+    linestrings_cut = []
+    for ls in linestrings:
+        cut = shapely.difference(ls, stencil)
+        if not cut.is_empty and type(cut) is LineString:
+            linestrings_cut.append(cut)
+    linestrings = linestrings_cut
+    print(f"time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}")
+
+    linestrings_stencil = []
+    for g in stencil.boundary.geoms:
+        linestrings_stencil.append(g)
+
     # canvas = cv2.resize((img_gray * 0.5).astype(np.uint8), output_dimensions)
-    canvas = np.full([int(dimensions[0] * 5), int(dimensions[1] * 5), 3], 0, dtype=np.uint8)
+    canvas = np.full([int(dimensions[0] * 10), int(dimensions[1] * 10), 3], 0 if INVERT_COLOR else 255, dtype=np.uint8)
 
     cv2.imwrite(
-        str(".." / Path("foo_" + Path(FILENAME_MAPPING_ANGLE).name)),
-        draw_line_image(canvas, [linestrings, linestrings_for_projection], dimensions),
+        # str(".." / Path("foo_" + Path(FILENAME_MAPPING_ANGLE).name)),
+        str(".." / Path("out_no_seeds.png")),
+        # draw_line_image(canvas, [linestrings, linestrings_overlay, linestrings_contours], dimensions),
+        draw_line_image(canvas, [linestrings, linestrings_overlay], dimensions),
+        # draw_line_image(canvas, [linestrings_stencil], dimensions),
+        # draw_line_image(canvas, [linestrings], dimensions),
     )

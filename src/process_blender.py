@@ -1,3 +1,4 @@
+import argparse
 import os
 from pathlib import Path
 
@@ -21,7 +22,10 @@ VISUALIZE = False
 EXPORT = True
 
 LIGHT_POS = [1.5, 0.3, 2]  # coordinate system: Y-UP
-LIGHT_POS = [0.2, 0.2, 1]  # coordinate system: Y-UP
+LIGHT_POS = [0.22, 0.22, 1]  # coordinate system: Y-UP
+LIGHT_POS = [1, 1, 1]  # coordinate system: Y-UP
+
+CONTRAST_INCREASE_CUTOFF_PERCENTILE = 1.5
 
 
 def _normalize_vector(v: np.array) -> np.array:
@@ -98,194 +102,190 @@ def _compute_intersections(centers: np.ndarray, normals: np.ndarray, axis: np.ar
 
     return intersections
 
+if __name__ == "__main__":
 
-logger.info("init")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("Normals", type=Path, default="Normals.exr", help="Normals (EXR)")
+    parser.add_argument("Image", type=Path, default="Image.tif", help="RGB image (TIFF)")
+    parser.add_argument("Raytrace", type=Path, default="Raytrace.npy", help="Raytracing distance raster (NPY)")
+    parser.add_argument("--output", type=Path, default="temp", help="Output directory")
+    parser.add_argument("--resize", action="store_true", default=False, help="Resize raster input")
+    args = parser.parse_args()
 
-# img_normals = openexr_numpy.imread(str(ASSET_DIR / "Moon_Normals.exr"), "XYZ")
-# img_gray = cv2.imread(str(ASSET_DIR / "Moon_Image.tif"), cv2.IMREAD_GRAYSCALE)
-# img_pxpos = np.load(ASSET_DIR / "Moon_Raytracing.npy")
+    img_normals = openexr_numpy.imread(str(args.normals), "XYZ")
+    img_gray = cv2.imread(str(args.image), cv2.IMREAD_GRAYSCALE)
+    img_pxpos = np.load(args.raytrace)
 
-# img_normals = openexr_numpy.imread(str(ASSET_DIR / "Moon_Normals_smooth.exr"), "XYZ")
-# img_gray = cv2.imread(str(ASSET_DIR / "Moon_Image_smooth.tif"), cv2.IMREAD_GRAYSCALE)
-# img_pxpos = np.load(ASSET_DIR / "Moon_Raytracing_smooth.npy")
+    light_axis = _normalize_vector(np.array(LIGHT_POS))
 
-img_normals = openexr_numpy.imread(str(ASSET_DIR / "Icosaeder_Normals.exr"), "XYZ")
-img_gray = cv2.imread(str(ASSET_DIR / "Icosaeder_Image.tif"), cv2.IMREAD_GRAYSCALE)
-img_pxpos = np.load(ASSET_DIR / "Icosaeder_Raytracing.npy")
+    if args.resize:
+        img_normals = cv2.resize(img_normals, RESIZE_SIZE)
+        img_gray = cv2.resize(img_gray, RESIZE_SIZE)
+        img_pxpos = cv2.resize(img_pxpos, RESIZE_SIZE)
 
-# img_normals = openexr_numpy.imread(str(ASSET_DIR / "Icosaeder_negative_Normals.exr"), "XYZ")
-# img_gray = cv2.imread(str(ASSET_DIR / "Icosaeder_negative_Image.tif"), cv2.IMREAD_GRAYSCALE)
-# img_pxpos = np.load(ASSET_DIR / "Icosaeder_negative_Raytracing.npy")
-
-logger.info("loaded")
-
-light_axis = _normalize_vector(np.array(LIGHT_POS))
-
-if RESIZE:
-    img_normals = cv2.resize(img_normals, RESIZE_SIZE)
-    img_gray = cv2.resize(img_gray, RESIZE_SIZE)
-    img_pxpos = cv2.resize(img_pxpos, RESIZE_SIZE)
-
-logger.info("resized")
-
-# centers = []
-# normals = []
-#
-# for x in range(img_normals.shape[1]):
-#     for y in range(img_normals.shape[0]):
-#         if abs(np.linalg.norm(img_normals[y, x, :])) < 0.01:
-#             continue
-#
-#         # centers.append(np.array([
-#         #     (x / img_normals.shape[1] - 0.5) * 2,
-#         #     (y / img_normals.shape[0] - 0.5) * 2 * -1, # Y axis coordinate flip: numpy origin top-left, blender bottom-left
-#         #     img_pxpos[y, x, 2]
-#         # ]))
-#
-#         centers.append(np.nan_to_num(img_pxpos[y, x, :]))
-#         normals.append(img_normals[y, x, :])
-#
-# centers = np.array(centers)
-# normals = np.array(normals)
-#
-# intersections = _compute_intersections(centers, normals, light_axis)
-# directions = _normalize_vectors(intersections - centers)
-#
-# # flip direction if intersection point is on the opposite end of the axis
-# # necessary to avoid a flipping of direction signs when moving from one face to the next one
-# opposite_directions = np.full_like(directions, 1, dtype=np.float32)
-# opposite_directions[np.dot(intersections, light_axis) < 0] = -1
-# directions *= opposite_directions
-#
-# ELEVATION_VECTOR_WEIGHT = 0.6
-# elevation_vectors = _normalize_vectors(centers)
-# field_elevation_vectors = []
-# for i in range(len(elevation_vectors)):
-#     projected = elevation_vectors[i] - (np.dot(elevation_vectors[i], normals[i])) * normals[i]
-#     magnitude = np.arccos(np.dot(elevation_vectors[i], normals[i]))
-#     combined = _normalize_vector(
-#         directions[i] * (1 - magnitude) * (1 - ELEVATION_VECTOR_WEIGHT)
-#         + projected * magnitude * ELEVATION_VECTOR_WEIGHT
-#     )
-#     field_elevation_vectors.append(combined)
-#
-# visualize(centers, [normals, directions], light_axis).show()
-# visualize(centers, [directions, field_elevation_vectors], light_axis).show()
-# visualize(centers, [directions], light_axis).show()
-
-intersections = np.zeros_like(img_normals)
-for x in range(img_normals.shape[1]):
-    for y in range(img_normals.shape[0]):
-        intersections[y, x, :] = _line_plane_intersection(
-            img_normals[y, x], img_pxpos[y, x], np.array([0.0, 0.0, 0.0]), light_axis
-        )
-
-img_directions = intersections - img_pxpos
-
-# flip direction if intersection point is on the opposite end of the axis
-# necessary to avoid a flipping of direction signs when moving from one face to the next one
-opposite_directions = np.full_like(img_directions, 1, dtype=np.float32)
-opposite_directions[np.dot(img_directions, light_axis) < 0] = -1
-img_directions *= opposite_directions
-
-img_field_elevation_vectors_0 = np.zeros_like(img_directions)
-img_field_elevation_vectors_1 = np.zeros_like(img_directions)
-img_field_elevation_vectors_2 = np.zeros_like(img_directions)
-img_field_elevation_vectors_3 = np.zeros_like(img_directions)
-
-ELEVATION_VECTOR_WEIGHT = 0.5
-
-distance_point_to_light_axis = np.linalg.norm(light_axis - img_normals, axis=-1)
-distance_weight = (distance_point_to_light_axis - np.min(distance_point_to_light_axis)) / np.ptp(
-    distance_point_to_light_axis
-)
-
-for x in range(img_directions.shape[1]):
-    for y in range(img_directions.shape[0]):
-        elevation_vector = _normalize_vector(img_pxpos[y, x])
-        projected = elevation_vector - (np.dot(elevation_vector, img_normals[y, x])) * img_normals[y, x]
-        magnitude = np.arccos(np.dot(elevation_vector, img_normals[y, x]))
-
-        img_field_elevation_vectors_0[y, x] = _normalize_vector(
-            img_directions[y, x] * (1 - magnitude) * (1 - ELEVATION_VECTOR_WEIGHT)
-            + projected * magnitude * ELEVATION_VECTOR_WEIGHT
-        )
-
-        img_field_elevation_vectors_1[y, x] = _normalize_vector(
-            img_directions[y, x] * (1 - ELEVATION_VECTOR_WEIGHT) + projected * ELEVATION_VECTOR_WEIGHT
-        )
-
-        img_field_elevation_vectors_2[y, x] = _normalize_vector(
-            img_directions[y, x] * (1 - distance_weight[y, x]) + projected * distance_weight[y, x]
-        )
-
-        img_field_elevation_vectors_3[y, x] = projected
-
-if CROSS_FLOW:
-    img_directions = np.cross(img_directions, img_normals)
-    img_field_elevation_vectors_0 = np.cross(img_field_elevation_vectors_0, img_normals)
-    img_field_elevation_vectors_1 = np.cross(img_field_elevation_vectors_1, img_normals)
-    img_field_elevation_vectors_2 = np.cross(img_field_elevation_vectors_2, img_normals)
-    img_field_elevation_vectors_3 = np.cross(img_field_elevation_vectors_3, img_normals)
-
-logger.info("computed")
-
-if VISUALIZE:
-    centers = img_pxpos.reshape([-1, 3])
-    normals = img_normals.reshape([-1, 3])
-    directions = img_directions.reshape([-1, 3])
+    # centers = []
+    # normals = []
+    #
+    # for x in range(img_normals.shape[1]):
+    #     for y in range(img_normals.shape[0]):
+    #         if abs(np.linalg.norm(img_normals[y, x, :])) < 0.01:
+    #             continue
+    #
+    #         # centers.append(np.array([
+    #         #     (x / img_normals.shape[1] - 0.5) * 2,
+    #         #     (y / img_normals.shape[0] - 0.5) * 2 * -1, # Y axis coordinate flip: numpy origin top-left, blender bottom-left
+    #         #     img_pxpos[y, x, 2]
+    #         # ]))
+    #
+    #         centers.append(np.nan_to_num(img_pxpos[y, x, :]))
+    #         normals.append(img_normals[y, x, :])
+    #
+    # centers = np.array(centers)
+    # normals = np.array(normals)
+    #
+    # intersections = _compute_intersections(centers, normals, light_axis)
+    # directions = _normalize_vectors(intersections - centers)
+    #
+    # # flip direction if intersection point is on the opposite end of the axis
+    # # necessary to avoid a flipping of direction signs when moving from one face to the next one
+    # opposite_directions = np.full_like(directions, 1, dtype=np.float32)
+    # opposite_directions[np.dot(intersections, light_axis) < 0] = -1
+    # directions *= opposite_directions
+    #
+    # ELEVATION_VECTOR_WEIGHT = 0.6
+    # elevation_vectors = _normalize_vectors(centers)
+    # field_elevation_vectors = []
+    # for i in range(len(elevation_vectors)):
+    #     projected = elevation_vectors[i] - (np.dot(elevation_vectors[i], normals[i])) * normals[i]
+    #     magnitude = np.arccos(np.dot(elevation_vectors[i], normals[i]))
+    #     combined = _normalize_vector(
+    #         directions[i] * (1 - magnitude) * (1 - ELEVATION_VECTOR_WEIGHT)
+    #         + projected * magnitude * ELEVATION_VECTOR_WEIGHT
+    #     )
+    #     field_elevation_vectors.append(combined)
+    #
     # visualize(centers, [normals, directions], light_axis).show()
+    # visualize(centers, [directions, field_elevation_vectors], light_axis).show()
     # visualize(centers, [directions], light_axis).show()
 
-    field_elevation_vectors = img_field_elevation_vectors_2.reshape([-1, 3])
-    visualize(centers, [directions, field_elevation_vectors], light_axis).show()
+    intersections = np.zeros_like(img_normals)
+    for x in range(img_normals.shape[1]):
+        for y in range(img_normals.shape[0]):
+            intersections[y, x, :] = _line_plane_intersection(
+                img_normals[y, x], img_pxpos[y, x], np.array([0.0, 0.0, 0.0]), light_axis
+            )
 
+    img_directions = intersections - img_pxpos
 
-def export_angles(arr):
-    arr[:, :, 1] *= -1  # blender Y up / numpy Y down
-    mapping_angle = np.atan2(arr[:, :, 1], arr[:, :, 0])
-    mapping_angle = (mapping_angle + np.pi) / (np.pi * 2.0)
-    mapping_angle = (mapping_angle * 255).astype(np.uint8)
-    return mapping_angle
+    # flip direction if intersection point is on the opposite end of the axis
+    # necessary to avoid a flipping of direction signs when moving from one face to the next one
+    opposite_directions = np.full_like(img_directions, 1, dtype=np.float32)
+    opposite_directions[np.dot(img_directions, light_axis) < 0] = -1
+    img_directions *= opposite_directions
 
+    img_field_elevation_vectors_0 = np.zeros_like(img_directions)
+    img_field_elevation_vectors_1 = np.zeros_like(img_directions)
+    img_field_elevation_vectors_2 = np.zeros_like(img_directions)
+    img_field_elevation_vectors_3 = np.zeros_like(img_directions)
 
-if EXPORT:
-    mapping_distance = img_gray
-    mapping_distance = ((mapping_distance - np.min(mapping_distance)) / np.ptp(mapping_distance) * 255).astype(np.uint8)
-    cv2.imwrite(str(OUTPUT_DIR / "mapping_distance.png"), mapping_distance)
+    ELEVATION_VECTOR_WEIGHT = 0.5
 
-    img_directions[:, :, 1] *= -1  # blender Y up / numpy Y down
-    mapping_angle = np.atan2(img_directions[:, :, 1], img_directions[:, :, 0])
-    mapping_angle = (mapping_angle + np.pi) / (np.pi * 2.0)
-    mapping_angle = (mapping_angle * 255).astype(np.uint8)
-    cv2.imwrite(str(OUTPUT_DIR / "mapping_angle.png"), mapping_angle)
-
-    # img_field_elevation_vectors[:, :, 1] *= -1 # blender Y up / numpy Y down
-    # mapping_angle = np.atan2(img_field_elevation_vectors[:, :, 1], img_field_elevation_vectors[:, :, 0])
-    # mapping_angle = (mapping_angle + np.pi) / (np.pi * 2.0)
-    # mapping_angle = (mapping_angle * 255).astype(np.uint8)
-    # cv2.imwrite(str(OUTPUT_DIR / f"mapping_angle_{ELEVATION_VECTOR_WEIGHT:3.1f}.png"), mapping_angle)
-
-    cv2.imwrite(
-        str(OUTPUT_DIR / "mapping_angle_0.png"),
-        export_angles(img_field_elevation_vectors_0),
+    distance_point_to_light_axis = np.linalg.norm(light_axis - img_normals, axis=-1)
+    distance_weight = (distance_point_to_light_axis - np.min(distance_point_to_light_axis)) / np.ptp(
+        distance_point_to_light_axis
     )
 
-    cv2.imwrite(
-        str(OUTPUT_DIR / "mapping_angle_1.png"),
-        export_angles(img_field_elevation_vectors_1),
-    )
+    for x in range(img_directions.shape[1]):
+        for y in range(img_directions.shape[0]):
+            elevation_vector = _normalize_vector(img_pxpos[y, x])
+            projected = elevation_vector - (np.dot(elevation_vector, img_normals[y, x])) * img_normals[y, x]
+            magnitude = np.arccos(np.dot(elevation_vector, img_normals[y, x]))
 
-    cv2.imwrite(
-        str(OUTPUT_DIR / "mapping_angle_2.png"),
-        export_angles(img_field_elevation_vectors_2),
-    )
+            img_field_elevation_vectors_0[y, x] = _normalize_vector(
+                img_directions[y, x] * (1 - magnitude) * (1 - ELEVATION_VECTOR_WEIGHT)
+                + projected * magnitude * ELEVATION_VECTOR_WEIGHT
+            )
 
-    cv2.imwrite(
-        str(OUTPUT_DIR / "mapping_angle_3.png"),
-        export_angles(img_field_elevation_vectors_3),
-    )
+            img_field_elevation_vectors_1[y, x] = _normalize_vector(
+                img_directions[y, x] * (1 - ELEVATION_VECTOR_WEIGHT) + projected * ELEVATION_VECTOR_WEIGHT
+            )
 
-    mapping_flat = np.zeros_like(img_pxpos, dtype=np.uint8)
-    mapping_flat[np.isnan(img_pxpos)] = 255
-    cv2.imwrite(str(OUTPUT_DIR / "mapping_flat.png"), mapping_flat)
+            img_field_elevation_vectors_2[y, x] = _normalize_vector(
+                img_directions[y, x] * (1 - distance_weight[y, x]) + projected * distance_weight[y, x]
+            )
+
+            img_field_elevation_vectors_3[y, x] = projected
+
+    if CROSS_FLOW:
+        img_directions = np.cross(img_directions, img_normals)
+        img_field_elevation_vectors_0 = np.cross(img_field_elevation_vectors_0, img_normals)
+        img_field_elevation_vectors_1 = np.cross(img_field_elevation_vectors_1, img_normals)
+        img_field_elevation_vectors_2 = np.cross(img_field_elevation_vectors_2, img_normals)
+        img_field_elevation_vectors_3 = np.cross(img_field_elevation_vectors_3, img_normals)
+
+    logger.info("computed")
+
+    if VISUALIZE:
+        centers = img_pxpos.reshape([-1, 3])
+        normals = img_normals.reshape([-1, 3])
+        directions = img_directions.reshape([-1, 3])
+        # visualize(centers, [normals, directions], light_axis).show()
+        # visualize(centers, [directions], light_axis).show()
+
+        field_elevation_vectors = img_field_elevation_vectors_2.reshape([-1, 3])
+        visualize(centers, [directions, field_elevation_vectors], light_axis).show()
+
+
+    def export_angles(arr):
+        arr[:, :, 1] *= -1  # blender Y up / numpy Y down
+        mapping_angle = np.atan2(arr[:, :, 1], arr[:, :, 0])
+        mapping_angle = (mapping_angle + np.pi) / (np.pi * 2.0)
+        mapping_angle = (mapping_angle * 255).astype(np.uint8)
+        return mapping_angle
+
+
+    if EXPORT:
+        mapping_distance = img_gray
+        # mapping_distance = ((mapping_distance - np.min(mapping_distance)) / np.ptp(mapping_distance) * 255).astype(np.uint8)
+        minval = np.percentile(mapping_distance, CONTRAST_INCREASE_CUTOFF_PERCENTILE)
+        maxval = np.percentile(mapping_distance, 100 - CONTRAST_INCREASE_CUTOFF_PERCENTILE)
+        mapping_distance = np.clip(mapping_distance, minval, maxval)
+        mapping_distance = (((mapping_distance - minval) / (maxval - minval)) * 255).astype(np.uint8)
+
+        cv2.imwrite(str(OUTPUT_DIR / "mapping_distance.png"), mapping_distance)
+
+        img_directions[:, :, 1] *= -1  # blender Y up / numpy Y down
+        mapping_angle = np.atan2(img_directions[:, :, 1], img_directions[:, :, 0])
+        mapping_angle = (mapping_angle + np.pi) / (np.pi * 2.0)
+        mapping_angle = (mapping_angle * 255).astype(np.uint8)
+        cv2.imwrite(str(OUTPUT_DIR / "mapping_angle.png"), mapping_angle)
+
+        # img_field_elevation_vectors[:, :, 1] *= -1 # blender Y up / numpy Y down
+        # mapping_angle = np.atan2(img_field_elevation_vectors[:, :, 1], img_field_elevation_vectors[:, :, 0])
+        # mapping_angle = (mapping_angle + np.pi) / (np.pi * 2.0)
+        # mapping_angle = (mapping_angle * 255).astype(np.uint8)
+        # cv2.imwrite(str(OUTPUT_DIR / f"mapping_angle_{ELEVATION_VECTOR_WEIGHT:3.1f}.png"), mapping_angle)
+
+        cv2.imwrite(
+            str(OUTPUT_DIR / "mapping_angle_0.png"),
+            export_angles(img_field_elevation_vectors_0),
+        )
+
+        cv2.imwrite(
+            str(OUTPUT_DIR / "mapping_angle_1.png"),
+            export_angles(img_field_elevation_vectors_1),
+        )
+
+        cv2.imwrite(
+            str(OUTPUT_DIR / "mapping_angle_2.png"),
+            export_angles(img_field_elevation_vectors_2),
+        )
+
+        cv2.imwrite(
+            str(OUTPUT_DIR / "mapping_angle_3.png"),
+            export_angles(img_field_elevation_vectors_3),
+        )
+
+        mapping_flat = np.zeros_like(img_pxpos, dtype=np.uint8)
+        mapping_flat[np.isnan(img_pxpos)] = 255
+        cv2.imwrite(str(OUTPUT_DIR / "mapping_flat.png"), mapping_flat)
