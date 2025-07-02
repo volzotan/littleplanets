@@ -177,8 +177,11 @@ if __name__ == "__main__":
     OUTPUT_DIR = ASSETS_DIR
     output_filename = "Moon_linestrings_overlay.npz"
 
-    DEFAULT_ROTATION = np.array([-math.pi / 2, 0, 0]) # Blender Camera is aligned with the Z axis
-    BLENDER_ROTATION = np.array([np.radians(c) for c in [0, 0, 0]])
+    DEFAULT_ROTATION = np.array([-math.pi / 2, 0, 0])  # Blender Camera is aligned with the Z axis
+
+    # PLY exported from Blender is already correctly rotated with regard to Z axis up
+    # but Lat/Lon needs to be adjusted for any additional rotation
+    BLENDER_ROTATION = np.array([np.radians(c) for c in [0, 0, -45]])
 
     CIRCLE_RADIUS = 0.03
     FONT_SIZE = 0.025
@@ -217,29 +220,30 @@ if __name__ == "__main__":
         rot_x = (poi["lat"] * -1 + 90.0) / 180 * math.pi
         rot_z = (poi["lon"]) / 360 * math.tau
 
-        ls_rotated = _rotate_linestrings(ls_poi, *[rot_x, 0, rot_z])
+        ls_rotated = ls_poi
+        ls_rotated = _rotate_linestrings(ls_rotated, *[0, 0, -BLENDER_ROTATION[2]])
+        ls_rotated = _rotate_linestrings(ls_rotated, *[rot_x, 0, rot_z])
         ls_rotated = _rotate_linestrings(ls_rotated, *DEFAULT_ROTATION)
         ls_rotated = _rotate_linestrings(ls_rotated, *BLENDER_ROTATION)
 
         linestrings += ls_rotated
 
     # visualize(linestrings).show()
+    # exit()
 
     # PROJECT ONTO SURFACE
-
-    dem_raster = normalize_elevation(load_raster(ASSETS_LOWRES_DIR / "Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"))
-    dem_raster = dem_raster[0, :, :]
-    size = (np.array([dem_raster.shape[1], dem_raster.shape[0]]) * 0.25).astype(int).tolist()
-    dem_raster = cv2.resize(dem_raster, size)
-
     # TODO: Caveat: height data derived from the DEM raster is missing blender mesh rotation info
+
+    # dem_raster = normalize_elevation(load_raster(ASSETS_LOWRES_DIR / "Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"))
+    # dem_raster = dem_raster[0, :, :]
+    # size = (np.array([dem_raster.shape[1], dem_raster.shape[0]]) * 0.25).astype(int).tolist()
+    # dem_raster = cv2.resize(dem_raster, size)
+
     # linestrings_projected = [
     #     LineString(project(dem_raster, shapely.get_coordinates(l, include_z=True), 0.1)) for l in linestrings
     # ]
 
-    # TODO: Caveat: height data derived from the blender export mesh does not line up with lat/lon point coordinatess
     mesh = trimesh.load(INPUT_MESH)
-
     index = rtree.index
     p = index.Property()
     p.dimension = 3
@@ -257,5 +261,6 @@ if __name__ == "__main__":
 
     # EXPORT
 
+    # write_npz(OUTPUT_DIR / output_filename, linestrings)
     write_npz(OUTPUT_DIR / output_filename, linestrings_projected)
     # write_npz(OUTPUT_DIR / output_filename, linestrings)
