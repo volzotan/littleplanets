@@ -3,6 +3,9 @@ from pathlib import Path
 import rasterio
 from rasterio.warp import calculate_default_transform, Resampling
 
+import argparse
+from pathlib import Path
+
 
 def downscale(input_path: Path, output_path: Path, scaling_factor: float) -> None:
     """
@@ -59,8 +62,11 @@ def reproject(src: Path, dst: Path) -> None:
 
 
 if __name__ == "__main__":
-    input_path = Path("assets", "Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tiff")
-    output_path = Path("assets", "Lunar_DEM_resized.tif")
-    scaling_factor = 0.25
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input", type=Path, help="input filename")
+    parser.add_argument("output", type=Path, help="output filename")
+    parser.add_argument("scaling_factor", type=float, help="scaling factor (float)")
 
-    downscale(input_path, output_path, scaling_factor)
+    args = parser.parse_args()
+
+    downscale(args.input, args.output, args.scaling_factor)

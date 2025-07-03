@@ -4,7 +4,8 @@ import math
 from pathlib import Path
 
 import cv2
-import flowlines_py
+
+# import flowlines_py
 import numpy as np
 import shapely
 import shapely.ops
@@ -98,17 +99,16 @@ def _rotate_linestrings(lines: list[LineString], x: float, y: float, z: float) -
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
-    parser.add_argument("Mapping Angle", type=Path, default="mapping_angle.png", help="Mapping angle (PNG)")
-    parser.add_argument("Mapping Distance", type=Path, default="mapping_distance.png", help="Mapping distance (PNG)")
-    parser.add_argument("Mapping Flat", type=Path, default="mapping_flat.png", help="Mapping flat (PNG)")
-    parser.add_argument("Overlay", type=Path, default="overlay.npz", help="Overlay linestrings (NPZ)")
-    parser.add_argument("Projection matrix", type=Path, default="P3x4.npy", help="3x4 projection matrix (NPY)")
-    parser.add_argument("--output", type=Path, default="temp", help="Output directory")
+    parser.add_argument("mapping_angle", type=Path, default="mapping_angle.png", help="Mapping angle (PNG)")
+    parser.add_argument("mapping_distance", type=Path, default="mapping_distance.png", help="Mapping distance (PNG)")
+    parser.add_argument("mapping_flat", type=Path, default="mapping_flat.png", help="Mapping flat (PNG)")
+    parser.add_argument("overlay", type=Path, default="overlay.npz", help="Overlay linestrings (NPZ)")
+    parser.add_argument("projection_matrix", type=Path, default="P3x4.npy", help="3x4 projection matrix (NPY)")
+    parser.add_argument("--output", type=Path, default="littleplanet.png", help="Output filename")
     args = parser.parse_args()
 
-    FILENAME_CONTOURS = Path("..", "assets") / "contours.npz"
+    # FILENAME_CONTOURS = Path("..", "assets") / "contours.npz"
 
     P = np.load(args.projection_matrix)
     scaling_factor = 1000.0 / 6000.0
@@ -117,9 +117,10 @@ if __name__ == "__main__":
     linestrings_overlay = [LineString(arr) for arr in overlay_npz.values()]
     linestrings_overlay = [_project_linestring(l, P, scaling_factor) for l in linestrings_overlay]
 
-    contours_npz = np.load(FILENAME_CONTOURS)
+    # contours_npz = np.load(FILENAME_CONTOURS)
     # TODO: contours don't need to be projected, but they need to be scaled (currently missing!)
-    linestrings_contours = [LineString(arr) for arr in contours_npz.values()]
+    # linestrings_contours = [LineString(arr) for arr in contours_npz.values()]
+    linestrings_contours = []
 
     exclusion_points = []
     for ls in linestrings_overlay:
@@ -204,7 +205,7 @@ if __name__ == "__main__":
 
     cv2.imwrite(
         # str(".." / Path("foo_" + Path(FILENAME_MAPPING_ANGLE).name)),
-        str(".." / Path("out_no_seeds.png")),
+        str(args.output),
         # draw_line_image(canvas, [linestrings, linestrings_overlay, linestrings_contours], dimensions),
         draw_line_image(canvas, [linestrings, linestrings_overlay], dimensions),
         # draw_line_image(canvas, [linestrings_stencil], dimensions),

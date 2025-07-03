@@ -5,12 +5,7 @@ from pathlib import Path
 import numpy as np
 import pyvista as pv
 import openexr_numpy
-from loguru import logger
 import cv2
-
-# ASSET_DIR = Path("..", "assets_lowres")
-ASSET_DIR = Path("..", "assets")
-OUTPUT_DIR = Path("..", "output")
 
 RESIZE = True
 RESIZE_SIZE = [25, 25]
@@ -102,12 +97,12 @@ def _compute_intersections(centers: np.ndarray, normals: np.ndarray, axis: np.ar
 
     return intersections
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("Normals", type=Path, default="Normals.exr", help="Normals (EXR)")
-    parser.add_argument("Image", type=Path, default="Image.tif", help="RGB image (TIFF)")
-    parser.add_argument("Raytrace", type=Path, default="Raytrace.npy", help="Raytracing distance raster (NPY)")
+    parser.add_argument("normals", type=Path, default="Normals.exr", help="Normals (EXR)")
+    parser.add_argument("image", type=Path, default="Image.tif", help="RGB image (TIFF)")
+    parser.add_argument("raytrace", type=Path, default="Raytrace.npy", help="Raytracing distance raster (NPY)")
     parser.add_argument("--output", type=Path, default="temp", help="Output directory")
     parser.add_argument("--resize", action="store_true", default=False, help="Resize raster input")
     args = parser.parse_args()
@@ -223,8 +218,6 @@ if __name__ == "__main__":
         img_field_elevation_vectors_2 = np.cross(img_field_elevation_vectors_2, img_normals)
         img_field_elevation_vectors_3 = np.cross(img_field_elevation_vectors_3, img_normals)
 
-    logger.info("computed")
-
     if VISUALIZE:
         centers = img_pxpos.reshape([-1, 3])
         normals = img_normals.reshape([-1, 3])
@@ -235,14 +228,12 @@ if __name__ == "__main__":
         field_elevation_vectors = img_field_elevation_vectors_2.reshape([-1, 3])
         visualize(centers, [directions, field_elevation_vectors], light_axis).show()
 
-
     def export_angles(arr):
         arr[:, :, 1] *= -1  # blender Y up / numpy Y down
         mapping_angle = np.atan2(arr[:, :, 1], arr[:, :, 0])
         mapping_angle = (mapping_angle + np.pi) / (np.pi * 2.0)
         mapping_angle = (mapping_angle * 255).astype(np.uint8)
         return mapping_angle
-
 
     if EXPORT:
         mapping_distance = img_gray
@@ -252,13 +243,13 @@ if __name__ == "__main__":
         mapping_distance = np.clip(mapping_distance, minval, maxval)
         mapping_distance = (((mapping_distance - minval) / (maxval - minval)) * 255).astype(np.uint8)
 
-        cv2.imwrite(str(OUTPUT_DIR / "mapping_distance.png"), mapping_distance)
+        cv2.imwrite(str(args.output / "mapping_distance.png"), mapping_distance)
 
         img_directions[:, :, 1] *= -1  # blender Y up / numpy Y down
         mapping_angle = np.atan2(img_directions[:, :, 1], img_directions[:, :, 0])
         mapping_angle = (mapping_angle + np.pi) / (np.pi * 2.0)
         mapping_angle = (mapping_angle * 255).astype(np.uint8)
-        cv2.imwrite(str(OUTPUT_DIR / "mapping_angle.png"), mapping_angle)
+        cv2.imwrite(str(args.output / "mapping_angle.png"), mapping_angle)
 
         # img_field_elevation_vectors[:, :, 1] *= -1 # blender Y up / numpy Y down
         # mapping_angle = np.atan2(img_field_elevation_vectors[:, :, 1], img_field_elevation_vectors[:, :, 0])
@@ -267,25 +258,25 @@ if __name__ == "__main__":
         # cv2.imwrite(str(OUTPUT_DIR / f"mapping_angle_{ELEVATION_VECTOR_WEIGHT:3.1f}.png"), mapping_angle)
 
         cv2.imwrite(
-            str(OUTPUT_DIR / "mapping_angle_0.png"),
+            str(args.output / "mapping_angle_0.png"),
             export_angles(img_field_elevation_vectors_0),
         )
 
         cv2.imwrite(
-            str(OUTPUT_DIR / "mapping_angle_1.png"),
+            str(args.output / "mapping_angle_1.png"),
             export_angles(img_field_elevation_vectors_1),
         )
 
         cv2.imwrite(
-            str(OUTPUT_DIR / "mapping_angle_2.png"),
+            str(args.output / "mapping_angle_2.png"),
             export_angles(img_field_elevation_vectors_2),
         )
 
         cv2.imwrite(
-            str(OUTPUT_DIR / "mapping_angle_3.png"),
+            str(args.output / "mapping_angle_3.png"),
             export_angles(img_field_elevation_vectors_3),
         )
 
         mapping_flat = np.zeros_like(img_pxpos, dtype=np.uint8)
         mapping_flat[np.isnan(img_pxpos)] = 255
-        cv2.imwrite(str(OUTPUT_DIR / "mapping_flat.png"), mapping_flat)
+        cv2.imwrite(str(args.output / "mapping_flat.png"), mapping_flat)

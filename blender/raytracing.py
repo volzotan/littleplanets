@@ -12,19 +12,20 @@ from mathutils import Vector
 # https://blender.stackexchange.com/a/177530
 # https://blender.stackexchange.com/a/120063
 
+
 # src: https://blender.stackexchange.com/a/134596/118415
 class ArgumentParserForBlender(argparse.ArgumentParser):
-
     def _get_argv_after_doubledash(self):
         try:
             idx = sys.argv.index("--")
-            return sys.argv[idx+1:] # the list after '--'
-        except ValueError as e: # '--' not in the list:
+            return sys.argv[idx + 1 :]  # the list after '--'
+        except ValueError as e:  # '--' not in the list:
             return []
 
     # overrides superclass
     def parse_args(self):
         return super().parse_args(args=self._get_argv_after_doubledash())
+
 
 parser = ArgumentParserForBlender()
 parser.add_argument("--output", type=Path, default="Raytrace.npy", help="Output filename [NPY]")
@@ -62,7 +63,7 @@ for x in range(resolution_x):
         pixel_vector.rotate(cam.matrix_world.to_quaternion())
         hit, location, norm, idx, obj, mw = scene.ray_cast(vl.depsgraph, origin, pixel_vector)
 
-        print(f"{x / resolution_x * 100:5.2f} %", end="\r")
+        print(f"> progress: {x / resolution_x * 100:5.2f} %", end="\r")
 
         if hit:
             values[y, x, :] = location

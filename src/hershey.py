@@ -29,8 +29,9 @@ def _linestring_to_coordinate_pairs(
 
     return pairs
 
+
 class HersheyFont:
-    DEFAULT_FONT = "../fonts/HersheySans1.svg"
+    DEFAULT_FONT = "fonts/HersheySans1.svg"
 
     def __init__(self, font_file: Path = DEFAULT_FONT):
         self.font_file = Path(font_file)
@@ -200,7 +201,6 @@ class HersheyFont:
                     linestring = shapely.affinity.translate(linestring, xoff=g["anchor"][0])
                     output.append(linestring)
 
-
         if align == Align.LEFT:
             xoff = glyphs[0]["width"] * -0.3
             output = [shapely.affinity.translate(ls, xoff=xoff) for ls in output]
@@ -338,7 +338,6 @@ if __name__ == "__main__":
             pt1 = [int(c) for c in pair[0]]
             pt2 = [int(c) for c in pair[1]]
             cv2.line(img, pt1, pt2, (0, 0, 0), 4)
-
 
     linestrings = [
         shapely.affinity.translate(l, yoff=+CANVAS_DIMENSIONS[1] * 0.75) for l in font.lines_for_text(TEXT, FONT_SIZE)
