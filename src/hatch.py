@@ -1,6 +1,5 @@
 import argparse
 import datetime
-import math
 from pathlib import Path
 
 import cv2
@@ -10,9 +9,9 @@ import numpy as np
 import shapely
 import shapely.ops
 from shapely import LineString
-from shapely.geometry import Point
 
 import flowlines
+from svgwriter import SvgWriter
 
 BLUR_MAPPING_ANGLE_KERNEL_SIZE = 1
 BLUR_MAPPING_DISTANCE_KERNEL_SIZE = 1
@@ -98,6 +97,14 @@ def _rotate_linestrings(lines: list[LineString], x: float, y: float, z: float) -
     return lines_rotated
 
 
+def _blur_raster(raster: np.ndarray, perc: float) -> np.ndarray:
+    kernel_size = int(max(*raster.shape) * (perc / 100.0))
+    if kernel_size > 0:
+        return cv2.blur(raster, (kernel_size, kernel_size))
+    else:
+        return raster
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("mapping_angle", type=Path, default="mapping_angle.png", help="Mapping angle (PNG)")
@@ -105,13 +112,37 @@ if __name__ == "__main__":
     parser.add_argument("mapping_flat", type=Path, default="mapping_flat.png", help="Mapping flat (PNG)")
     parser.add_argument("overlay", type=Path, default="overlay.npz", help="Overlay linestrings (NPZ)")
     parser.add_argument("projection_matrix", type=Path, default="P3x4.npy", help="3x4 projection matrix (NPY)")
-    parser.add_argument("--output", type=Path, default="littleplanet.png", help="Output filename")
+    # parser.add_argument("--scaling-factor", type=float, default=1.0, help="Scaling factor of the mapping rasters with regard to the original blender export")
+    parser.add_argument(
+        "--blur-angle",
+        type=float,
+        default=0,
+        help="Blurring kernel size as a percentage of the input raster size (float)",
+    )
+    parser.add_argument(
+        "--blur-distance",
+        type=float,
+        default=0,
+        help="Blurring kernel size as a percentage of the input raster size (float)",
+    )
+    parser.add_argument("--output", type=Path, default="littleplanet.svg", help="Output filename")
     args = parser.parse_args()
 
     # FILENAME_CONTOURS = Path("..", "assets") / "contours.npz"
 
+    dimensions = [1000, 1000]
+
+    # uint8 image must be centered around 128 to deal with negative values
+    mapping_angle = cv2.imread(args.mapping_angle, cv2.IMREAD_GRAYSCALE)
+    mapping_distance = cv2.imread(args.mapping_distance, cv2.IMREAD_GRAYSCALE)
+    mapping_flat = cv2.imread(args.mapping_flat, cv2.IMREAD_GRAYSCALE)
+
+    mapping_angle = _blur_raster(mapping_angle, args.blur_angle)
+    mapping_distance = _blur_raster(mapping_distance, args.blur_distance)
+
+    scaling_factor = dimensions[0] / mapping_angle.shape[1]
+
     P = np.load(args.projection_matrix)
-    scaling_factor = 1000.0 / 6000.0
 
     overlay_npz = np.load(args.overlay)
     linestrings_overlay = [LineString(arr) for arr in overlay_npz.values()]
@@ -130,20 +161,6 @@ if __name__ == "__main__":
     for ls in linestrings_contours:
         contour_points += shapely.get_coordinates(ls.segmentize(0.01)).tolist()
 
-    # FILENAME_MAPPING_ANGLE = "../output/mapping_angle.png"
-    # FILENAME_MAPPING_ANGLE = "../output/mapping_angle_0.png"
-    # FILENAME_MAPPING_ANGLE = "../output/mapping_angle_1.png"
-    FILENAME_MAPPING_ANGLE = "../output/mapping_angle_2.png"
-    # FILENAME_MAPPING_ANGLE = "../output/mapping_angle_3.png"
-
-    # uint8 image must be centered around 128 to deal with negative values
-    mapping_angle = cv2.imread(args.mapping_angle, cv2.IMREAD_GRAYSCALE)
-    mapping_distance = cv2.imread(args.mapping_distance, cv2.IMREAD_GRAYSCALE)
-    mapping_flat = cv2.imread(args.mapping_flat, cv2.IMREAD_GRAYSCALE)
-
-    # mapping_angle = cv2.blur(mapping_angle, (BLUR_MAPPING_ANGLE_KERNEL_SIZE, BLUR_MAPPING_ANGLE_KERNEL_SIZE))
-    # mapping_distance = cv2.blur(mapping_distance, (BLUR_MAPPING_DISTANCE_KERNEL_SIZE, BLUR_MAPPING_DISTANCE_KERNEL_SIZE))
-
     mapping_distance = ((mapping_distance - np.min(mapping_distance)) / np.ptp(mapping_distance) * 255).astype(np.uint8)
 
     if not INVERT_COLOR:
@@ -156,7 +173,6 @@ if __name__ == "__main__":
     # mapping_distance = np.zeros_like(mapping_angle, dtype=np.uint8)
     mapping_max_length = np.zeros_like(mapping_angle)
 
-    dimensions = [1000, 1000]
     mappings = [
         mapping_distance,
         mapping_angle,
@@ -200,14 +216,44 @@ if __name__ == "__main__":
     for g in stencil.boundary.geoms:
         linestrings_stencil.append(g)
 
-    # canvas = cv2.resize((img_gray * 0.5).astype(np.uint8), output_dimensions)
-    canvas = np.full([int(dimensions[0] * 10), int(dimensions[1] * 10), 3], 0 if INVERT_COLOR else 255, dtype=np.uint8)
+    # canvas = np.full([int(dimensions[0] * 10), int(dimensions[1] * 10), 3], 0 if INVERT_COLOR else 255, dtype=np.uint8)
+    #
+    # cv2.imwrite(
+    #     # str(".." / Path("foo_" + Path(FILENAME_MAPPING_ANGLE).name)),
+    #     str(args.output),
+    #     # draw_line_image(canvas, [linestrings, linestrings_overlay, linestrings_contours], dimensions),
+    #     draw_line_image(canvas, [linestrings, linestrings_overlay], dimensions),
+    #     # draw_line_image(canvas, [linestrings_stencil], dimensions),
+    #     # draw_line_image(canvas, [linestrings], dimensions),
+    # )
 
-    cv2.imwrite(
-        # str(".." / Path("foo_" + Path(FILENAME_MAPPING_ANGLE).name)),
-        str(args.output),
-        # draw_line_image(canvas, [linestrings, linestrings_overlay, linestrings_contours], dimensions),
-        draw_line_image(canvas, [linestrings, linestrings_overlay], dimensions),
-        # draw_line_image(canvas, [linestrings_stencil], dimensions),
-        # draw_line_image(canvas, [linestrings], dimensions),
-    )
+    svg = SvgWriter(args.output, dimensions)
+    svg.background_color = "#000000"
+
+    layer_styles = {}
+
+    layer_styles["lines"] = {
+        "fill": "none",
+        "stroke": "white",
+        "stroke-width": "0.40",
+        "fill-opacity": "1.0",
+    }
+
+    layer_styles["overlay"] = {
+        "fill": "none",
+        "stroke": "yellow",
+        "stroke-width": "0.40",
+        "fill-opacity": "1.0",
+    }
+
+    for k, v in layer_styles.items():
+        svg.add_style(k, v)
+
+    svg.add("lines", linestrings)
+    svg.add("overlay", linestrings_overlay)
+
+    svg.write()
+    # try:
+    #     convert_svg_to_png(svg, svg.dimensions[0] * 10)
+    # except Exception as e:
+    #     print(f"SVG to PNG conversion failed: {e}")
