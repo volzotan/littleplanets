@@ -99,7 +99,7 @@ if __name__ == "__main__":
     parser.add_argument("normals", type=Path, default="Normals.exr", help="Normals (EXR)")
     parser.add_argument("image", type=Path, default="Image.tif", help="RGB image (TIFF)")
     parser.add_argument("raytrace", type=Path, default="Raytrace.npy", help="Raytracing distance raster (NPY)")
-    # parser.add_argument("--scaling-factor", type=float, default=None, help="Scaling factor (float)")
+    parser.add_argument("--scaling-factor", type=float, default=None, help="Scaling factor (float)")
     parser.add_argument("--output", type=Path, default="temp", help="Output directory")
     args = parser.parse_args()
 
@@ -109,14 +109,13 @@ if __name__ == "__main__":
 
     light_axis = _normalize_vector(np.array(LIGHT_POS))
 
-    # if args.scaling_factor is not None:
-    #     resize_size = (int(img_normals.shape[1] * args.scaling_factor), int(img_normals.shape[0] * args.scaling_factor))
-    #     img_normals = cv2.resize(img_normals, resize_size)
-    #     img_gray = cv2.resize(img_gray, resize_size)
-    #     img_pxpos = cv2.resize(img_pxpos, resize_size)
+    if args.scaling_factor is not None:
+        resize_size = (int(img_normals.shape[1] * args.scaling_factor), int(img_normals.shape[0] * args.scaling_factor))
+        img_normals = cv2.resize(img_normals, resize_size)
+        img_gray = cv2.resize(img_gray, resize_size)
+        img_pxpos = cv2.resize(img_pxpos, resize_size)
 
-
-
+    # EXPERIMENTS
 
     # centers = []
     # normals = []
@@ -162,10 +161,6 @@ if __name__ == "__main__":
     # visualize(centers, [normals, directions], light_axis).show()
     # visualize(centers, [directions, field_elevation_vectors], light_axis).show()
     # visualize(centers, [directions], light_axis).show()
-
-
-
-
 
     intersections = np.zeros_like(img_normals)
     for x in range(img_normals.shape[1]):

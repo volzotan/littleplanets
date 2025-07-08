@@ -38,7 +38,7 @@ obj = scene.objects.get(args.input.stem)
 if obj is not None:
     print(f"deleting existing object {obj}")
     obj.select_set(True)
-    bpy.ops.object.delete() 
+    bpy.ops.object.delete()
 
 # import
 
@@ -53,24 +53,24 @@ obj.rotation_euler = (
 
 # add material (derived from the vertice colors)
 
-mesh = obj.data   
+mesh = obj.data
 mat = bpy.data.materials.get("vertex_colors")
 if mat is None:
-    mat = bpy.data.materials.new(name = "vertex_colors")
-    
+    mat = bpy.data.materials.new(name="vertex_colors")
+
 mat.use_nodes = True
-    
+
 if mesh.materials:
     mesh.materials[0] = mat
 else:
     mesh.materials.append(mat)
-    
+
 nodes = mat.node_tree.nodes
 principled_bsdf_node = nodes.get("Principled BSDF")
 
 vertex_color_node = None
 if not "VERTEX_COLOR" in [node.type for node in nodes]:
-    vertex_color_node = nodes.new(type = "ShaderNodeVertexColor")
+    vertex_color_node = nodes.new(type="ShaderNodeVertexColor")
 else:
     vertex_color_node = nodes.get("Color Attribute")
 

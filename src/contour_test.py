@@ -8,15 +8,19 @@ import shapely
 from shapely.geometry import LineString
 from skimage.morphology import skeletonize
 
+import random
+
 ASSET_DIR: Path = Path("..", "assets")
 OUTPUT_DIR: Path = ASSET_DIR
 
-TOLERANCE: float = 2.0
+TOLERANCE: float = 0.5
 OPENING_KERNEL_SIZE: int | None = None  # 3
 
-RESIZE_SIZE = [1000, 1000]
+RESIZE_SIZE = [2000, 2000]
+OUTPUT_SIZE = [1000, 1000]
 
 OUTPUT_FILENAME = "contours.npz"
+
 
 def write_npz(filename: Path, linestrings: list[LineString]) -> None:
     arrays = [shapely.get_coordinates(l, include_z=True) for l in linestrings]
@@ -26,11 +30,11 @@ def write_npz(filename: Path, linestrings: list[LineString]) -> None:
 # img_normals = openexr_numpy.imread(str(ASSET_DIR / "Icosaeder_Normals.exr"), "XYZ")
 # img_pxpos = np.load(ASSET_DIR / "Icosaeder_Raytracing.npy")
 
-img_normals = openexr_numpy.imread(str(ASSET_DIR / "Icosaeder_negative_Normals.exr"), "XYZ")
-img_pxpos = np.load(ASSET_DIR / "Icosaeder_negative_Raytracing.npy")
+# img_normals = openexr_numpy.imread(str(ASSET_DIR / "Icosaeder_negative_Normals.exr"), "XYZ")
+# img_pxpos = np.load(ASSET_DIR / "Icosaeder_negative_Raytracing.npy")
 
-# img_normals = openexr_numpy.imread(str(ASSET_DIR / "Moon_Normals_smooth.exr"), "XYZ")
-# img_pxpos = np.load(ASSET_DIR / "Moon_Raytracing_smooth.npy")
+img_normals = openexr_numpy.imread(str(ASSET_DIR / "Moon_Normals.exr"), "XYZ")
+img_pxpos = np.load(ASSET_DIR / "Moon_Raytracing.npy")
 
 if RESIZE_SIZE is not None:
     img_normals = cv2.resize(img_normals, RESIZE_SIZE)
@@ -54,7 +58,11 @@ if OPENING_KERNEL_SIZE is not None:
 
 skeleton = skeletonize(out)
 
+out = cv2.resize(out, OUTPUT_SIZE, interpolation=cv2.INTER_AREA)
+skeleton = cv2.resize(skeleton.astype(np.uint8) * 255, OUTPUT_SIZE, interpolation=cv2.INTER_AREA).astype(bool)
+
 img = np.dstack([out, skeleton.astype(np.uint8) * 255, np.zeros_like(out)])
+
 
 # cv2.imwrite(str(OUTPUT_DIR / "cross.png"), out)
 # cv2.imwrite(str(OUTPUT_DIR / "skeleton.png"), skeleton.astype(np.uint8)*255)
@@ -71,15 +79,12 @@ cv2.imwrite(str(OUTPUT_DIR / "skeleton.png"), img)
 
 timer_start = datetime.datetime.now()
 
-import random
-
 from trace_skeleton import *
 
-im = thinning(skeleton)
 im0 = np.zeros([skeleton.shape[0], skeleton.shape[1], 3], dtype=np.uint8)
 
 rects = []
-polys = traceSkeleton(im, 0, 0, im.shape[1], im.shape[0], 10, 999, rects)
+polys = traceSkeleton(skeleton, 0, 0, skeleton.shape[1], skeleton.shape[0], 10, 999, rects)
 
 for l in polys:
     c = (200 * random.random(), 200 * random.random(), 200 * random.random())

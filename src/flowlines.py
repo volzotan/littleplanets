@@ -260,7 +260,7 @@ class FlowlineHatcher:
             if i >= MAX_ITERATIONS - 1:
                 logger.warning("max iterations exceeded")
 
-            if len(starting_points) == 0:
+            if len(starting_points_priority) + len(starting_points) == 0:
                 break
 
             seed = None

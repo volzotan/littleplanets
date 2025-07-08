@@ -280,6 +280,6 @@ if __name__ == "__main__":
 
     # EXPORT
 
-    # write_npz(args.output, linestrings)
     write_npz(args.output, linestrings_projected)
+    # write_npz(args.output, linestrings)
     # write_npz(args.output, linestrings)
