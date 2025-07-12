@@ -172,6 +172,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("mesh", type=Path, help="Input mesh path (PLY)")
     parser.add_argument("pois", type=Path, help="Position of interest data (JSON)")
+    parser.add_argument("--rotX", type=float, default=0, help="rotation X in degrees [float]")
+    parser.add_argument("--rotY", type=float, default=0, help="rotation Y in degrees [float]")
+    parser.add_argument("--rotZ", type=float, default=0, help="rotation Z in degrees [float]")
     parser.add_argument("--output", type=Path, default="overlay.npz", help="Output filename [NPZ]")
     parser.add_argument("--circle-radius", type=float, default=0.02, help="POI circle radius (float)")
     parser.add_argument("--font-size", type=int, default=0.03, help="Label font size (float)")
@@ -182,7 +185,7 @@ if __name__ == "__main__":
 
     # PLY exported from Blender is already correctly rotated with regard to Z axis up
     # but Lat/Lon needs to be adjusted for any additional rotation
-    BLENDER_ROTATION = np.array([np.radians(c) for c in [0, 0, -45]])
+    BLENDER_ROTATION = np.array([np.radians(c) for c in [args.rotX, args.rotY, args.rotZ]])
 
     linestrings = []
 

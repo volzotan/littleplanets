@@ -110,8 +110,8 @@ if __name__ == "__main__":
     parser.add_argument("mapping_angle", type=Path, default="mapping_angle.png", help="Mapping angle (PNG)")
     parser.add_argument("mapping_distance", type=Path, default="mapping_distance.png", help="Mapping distance (PNG)")
     parser.add_argument("mapping_flat", type=Path, default="mapping_flat.png", help="Mapping flat (PNG)")
-    parser.add_argument("overlay", type=Path, default="overlay.npz", help="Overlay linestrings (NPZ)")
-    parser.add_argument("projection_matrix", type=Path, default="P3x4.npy", help="3x4 projection matrix (NPY)")
+    parser.add_argument("--overlay", type=Path, default=None, help="Overlay linestrings (NPZ)")
+    parser.add_argument("--projection_matrix", type=Path, default=None, help="3x4 projection matrix (NPY)")
     # parser.add_argument("--scaling-factor", type=float, default=1.0, help="Scaling factor of the mapping rasters with regard to the original blender export")
     parser.add_argument(
         "--blur-angle",
@@ -142,11 +142,13 @@ if __name__ == "__main__":
 
     scaling_factor = dimensions[0] / mapping_angle.shape[1]
 
-    P = np.load(args.projection_matrix)
+    linestrings_overlay = []
+    if args.overlay is not None:
+        P = np.load(args.projection_matrix)
 
-    overlay_npz = np.load(args.overlay)
-    linestrings_overlay = [LineString(arr) for arr in overlay_npz.values()]
-    linestrings_overlay = [_project_linestring(l, P, scaling_factor) for l in linestrings_overlay]
+        overlay_npz = np.load(args.overlay)
+        linestrings_overlay = [LineString(arr) for arr in overlay_npz.values()]
+        linestrings_overlay = [_project_linestring(l, P, scaling_factor) for l in linestrings_overlay]
 
     # contours_npz = np.load(FILENAME_CONTOURS)
     # TODO: contours don't need to be projected, but they need to be scaled (currently missing!)
@@ -190,7 +192,7 @@ if __name__ == "__main__":
 
     config = flowlines.FlowlineHatcherConfig()
     config.LINE_DISTANCE = (0.8, 15)
-    config.LINE_MAX_LENGTH = [30, 60]  # [50] * 2 #[10, 200]
+    config.LINE_MAX_LENGTH = [45, 90]  # [50] * 2 #[10, 200]
     config.LINE_STEP_DISTANCE = 0.25
     config.LINE_DISTANCE_END_FACTOR = 0.50
     # hatcher = flowlines.FlowlineHatcher(dimensions, *mappings, config, exclusion_points=exclusion_points + contour_points)
