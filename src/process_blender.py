@@ -7,7 +7,7 @@ import pyvista as pv
 import openexr_numpy
 import cv2
 
-CROSS_FLOW = True
+CROSS_FLOW = False
 
 VISUALIZE = False
 EXPORT = True
@@ -15,8 +15,18 @@ EXPORT = True
 LIGHT_POS = [1.5, 0.3, 2]  # coordinate system: Y-UP
 LIGHT_POS = [0.22, 0.22, 1]  # coordinate system: Y-UP
 LIGHT_POS = [1, 1, 1]  # coordinate system: Y-UP
+LIGHT_POS = [1, 1, 0]
 
-CONTRAST_INCREASE_CUTOFF_PERCENTILE = 1.5
+CONTRAST_ENHANCEMENT = True
+CONTRAST_VALUE = 1.60
+
+CLIPPING = False
+CLIPPING_CUTOFF_PERCENTILE = 0.5
+
+MAGNITUDE_THRESHOLD = 0.1
+
+# VISUALIZE = True
+# EXPORT = False
 
 
 def _normalize_vector(v: np.array) -> np.array:
@@ -115,6 +125,12 @@ if __name__ == "__main__":
         img_gray = cv2.resize(img_gray, resize_size)
         img_pxpos = cv2.resize(img_pxpos, resize_size)
 
+    if VISUALIZE:
+        resize_size = [50, 50]
+        img_normals = cv2.resize(img_normals, resize_size)
+        img_gray = cv2.resize(img_gray, resize_size)
+        img_pxpos = cv2.resize(img_pxpos, resize_size)
+
     # EXPERIMENTS
 
     # centers = []
@@ -181,6 +197,7 @@ if __name__ == "__main__":
     img_field_elevation_vectors_1 = np.zeros_like(img_directions)
     img_field_elevation_vectors_2 = np.zeros_like(img_directions)
     img_field_elevation_vectors_3 = np.zeros_like(img_directions)
+    img_field_elevation_vectors_4 = np.zeros_like(img_directions)
 
     ELEVATION_VECTOR_WEIGHT = 0.5
 
@@ -195,86 +212,113 @@ if __name__ == "__main__":
             projected = elevation_vector - (np.dot(elevation_vector, img_normals[y, x])) * img_normals[y, x]
             magnitude = np.arccos(np.dot(elevation_vector, img_normals[y, x]))
 
-            img_field_elevation_vectors_0[y, x] = _normalize_vector(
-                img_directions[y, x] * (1 - magnitude) * (1 - ELEVATION_VECTOR_WEIGHT)
-                + projected * magnitude * ELEVATION_VECTOR_WEIGHT
-            )
+            # img_field_elevation_vectors_0[y, x] = _normalize_vector(
+            #     img_directions[y, x] * (1 - magnitude) * (1 - ELEVATION_VECTOR_WEIGHT)
+            #     + projected * magnitude * ELEVATION_VECTOR_WEIGHT
+            # )
+            #
+            # img_field_elevation_vectors_1[y, x] = _normalize_vector(
+            #     img_directions[y, x] * (1 - ELEVATION_VECTOR_WEIGHT) + projected * ELEVATION_VECTOR_WEIGHT
+            # )
+            #
+            # img_field_elevation_vectors_2[y, x] = _normalize_vector(
+            #     img_directions[y, x] * (1 - distance_weight[y, x]) + projected * distance_weight[y, x]
+            # )
+            #
+            # img_field_elevation_vectors_3[y, x] = projected
 
-            img_field_elevation_vectors_1[y, x] = _normalize_vector(
-                img_directions[y, x] * (1 - ELEVATION_VECTOR_WEIGHT) + projected * ELEVATION_VECTOR_WEIGHT
-            )
+            img_field_elevation_vectors_4[y, x] = projected if magnitude > MAGNITUDE_THRESHOLD else img_directions[y, x]
 
-            img_field_elevation_vectors_2[y, x] = _normalize_vector(
-                img_directions[y, x] * (1 - distance_weight[y, x]) + projected * distance_weight[y, x]
-            )
-
-            img_field_elevation_vectors_3[y, x] = projected
 
     if CROSS_FLOW:
-        img_directions = np.cross(img_directions, img_normals)
-        img_field_elevation_vectors_0 = np.cross(img_field_elevation_vectors_0, img_normals)
-        img_field_elevation_vectors_1 = np.cross(img_field_elevation_vectors_1, img_normals)
-        img_field_elevation_vectors_2 = np.cross(img_field_elevation_vectors_2, img_normals)
-        img_field_elevation_vectors_3 = np.cross(img_field_elevation_vectors_3, img_normals)
+        # img_directions = np.cross(img_directions, img_normals)
+        # img_field_elevation_vectors_0 = np.cross(img_field_elevation_vectors_0, img_normals)
+        # img_field_elevation_vectors_1 = np.cross(img_field_elevation_vectors_1, img_normals)
+        # img_field_elevation_vectors_2 = np.cross(img_field_elevation_vectors_2, img_normals)
+        # img_field_elevation_vectors_3 = np.cross(img_field_elevation_vectors_3, img_normals)
+        img_field_elevation_vectors_4 = np.cross(img_field_elevation_vectors_4, img_normals)
 
     if VISUALIZE:
         centers = img_pxpos.reshape([-1, 3])
-        normals = img_normals.reshape([-1, 3])
+        # normals = img_normals.reshape([-1, 3])
         directions = img_directions.reshape([-1, 3])
         # visualize(centers, [normals, directions], light_axis).show()
         # visualize(centers, [directions], light_axis).show()
 
-        field_elevation_vectors = img_field_elevation_vectors_2.reshape([-1, 3])
+        field_elevation_vectors = img_field_elevation_vectors_4.reshape([-1, 3])
         visualize(centers, [directions, field_elevation_vectors], light_axis).show()
 
-    def export_angles(arr):
+    def export_angles(arr: np.ndarray) -> np.ndarray:
         arr[:, :, 1] *= -1  # blender Y up / numpy Y down
         mapping_angle = np.atan2(arr[:, :, 1], arr[:, :, 0])
         mapping_angle = (mapping_angle + np.pi) / (np.pi * 2.0)
         mapping_angle = (mapping_angle * 255).astype(np.uint8)
         return mapping_angle
 
+    def adjust_contrast_brightness(img, contrast: float = 1.0, brightness: int = 0) -> np.ndarray:
+        """
+        Adjusts contrast and brightness of an uint8 image.
+        contrast:   (0.0,  inf) with 1.0 leaving the contrast as is
+        brightness: [-255, 255] with 0 leaving the brightness as is
+        """
+        brightness += int(round(255 * (1 - contrast) / 2))
+        return cv2.addWeighted(img, contrast, img, 0, brightness)
+
     if EXPORT:
         mapping_distance = img_gray
         # mapping_distance = ((mapping_distance - np.min(mapping_distance)) / np.ptp(mapping_distance) * 255).astype(np.uint8)
-        minval = np.percentile(mapping_distance, CONTRAST_INCREASE_CUTOFF_PERCENTILE)
-        maxval = np.percentile(mapping_distance, 100 - CONTRAST_INCREASE_CUTOFF_PERCENTILE)
-        mapping_distance = np.clip(mapping_distance, minval, maxval)
-        mapping_distance = (((mapping_distance - minval) / (maxval - minval)) * 255).astype(np.uint8)
+
+        if CONTRAST_ENHANCEMENT:
+
+            # evaluating a good CONTRAST_VALUE:
+            # for i in range(1, 10):
+            #     contrast = 1.0+i/10
+            #     cv2.imwrite(str(args.output / f"mapping_distance_{contrast:5.2f}.png"), adjust_contrast_brightness(mapping_distance, contrast=contrast))
+
+            mapping_distance = adjust_contrast_brightness(mapping_distance, contrast=CONTRAST_VALUE)
+
+        if CLIPPING:
+            minval = np.percentile(mapping_distance, CLIPPING_CUTOFF_PERCENTILE)
+            maxval = np.percentile(mapping_distance, 100 - CLIPPING_CUTOFF_PERCENTILE)
+            mapping_distance = np.clip(mapping_distance, minval, maxval)
+            mapping_distance = (((mapping_distance - minval) / (maxval - minval)) * 255).astype(np.uint8)
 
         cv2.imwrite(str(args.output / "mapping_distance.png"), mapping_distance)
 
-        img_directions[:, :, 1] *= -1  # blender Y up / numpy Y down
-        mapping_angle = np.atan2(img_directions[:, :, 1], img_directions[:, :, 0])
-        mapping_angle = (mapping_angle + np.pi) / (np.pi * 2.0)
-        mapping_angle = (mapping_angle * 255).astype(np.uint8)
-        cv2.imwrite(str(args.output / "mapping_angle.png"), mapping_angle)
-
-        # img_field_elevation_vectors[:, :, 1] *= -1 # blender Y up / numpy Y down
-        # mapping_angle = np.atan2(img_field_elevation_vectors[:, :, 1], img_field_elevation_vectors[:, :, 0])
-        # mapping_angle = (mapping_angle + np.pi) / (np.pi * 2.0)
-        # mapping_angle = (mapping_angle * 255).astype(np.uint8)
-        # cv2.imwrite(str(OUTPUT_DIR / f"mapping_angle_{ELEVATION_VECTOR_WEIGHT:3.1f}.png"), mapping_angle)
-
         cv2.imwrite(
-            str(args.output / "mapping_angle_0.png"),
-            export_angles(img_field_elevation_vectors_0),
+            str(args.output / "mapping_angle.png"),
+            export_angles(img_field_elevation_vectors_4),
         )
 
-        cv2.imwrite(
-            str(args.output / "mapping_angle_1.png"),
-            export_angles(img_field_elevation_vectors_1),
-        )
-
-        cv2.imwrite(
-            str(args.output / "mapping_angle_2.png"),
-            export_angles(img_field_elevation_vectors_2),
-        )
-
-        cv2.imwrite(
-            str(args.output / "mapping_angle_3.png"),
-            export_angles(img_field_elevation_vectors_3),
-        )
+        # cv2.imwrite(
+        #     str(args.output / "mapping_angle.png"),
+        #     export_angles(img_directions),
+        # )
+        #
+        # cv2.imwrite(
+        #     str(args.output / "mapping_angle_0.png"),
+        #     export_angles(img_field_elevation_vectors_0),
+        # )
+        #
+        # cv2.imwrite(
+        #     str(args.output / "mapping_angle_1.png"),
+        #     export_angles(img_field_elevation_vectors_1),
+        # )
+        #
+        # cv2.imwrite(
+        #     str(args.output / "mapping_angle_2.png"),
+        #     export_angles(img_field_elevation_vectors_2),
+        # )
+        #
+        # cv2.imwrite(
+        #     str(args.output / "mapping_angle_3.png"),
+        #     export_angles(img_field_elevation_vectors_3),
+        # )
+        #
+        # cv2.imwrite(
+        #     str(args.output / "mapping_angle_4.png"),
+        #     export_angles(img_field_elevation_vectors_4),
+        # )
 
         mapping_flat = np.zeros_like(img_pxpos, dtype=np.uint8)
         mapping_flat[np.isnan(img_pxpos)] = 255

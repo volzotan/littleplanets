@@ -20,7 +20,7 @@ INVERT_COLOR = False
 CUTOUT_THRESHOLD = 230
 
 INVERT_COLOR = True
-CUTOUT_THRESHOLD = 50
+CUTOUT_THRESHOLD = 60
 
 
 def _linestring_to_coordinate_pairs(
@@ -111,7 +111,7 @@ if __name__ == "__main__":
     parser.add_argument("mapping_distance", type=Path, default="mapping_distance.png", help="Mapping distance (PNG)")
     parser.add_argument("mapping_flat", type=Path, default="mapping_flat.png", help="Mapping flat (PNG)")
     parser.add_argument("--overlay", type=Path, default=None, help="Overlay linestrings (NPZ)")
-    parser.add_argument("--projection_matrix", type=Path, default=None, help="3x4 projection matrix (NPY)")
+    parser.add_argument("--projection-matrix", type=Path, default=None, help="3x4 projection matrix (NPY)")
     # parser.add_argument("--scaling-factor", type=float, default=1.0, help="Scaling factor of the mapping rasters with regard to the original blender export")
     parser.add_argument(
         "--blur-angle",
@@ -192,7 +192,7 @@ if __name__ == "__main__":
 
     config = flowlines.FlowlineHatcherConfig()
     config.LINE_DISTANCE = (0.8, 15)
-    config.LINE_MAX_LENGTH = [45, 90]  # [50] * 2 #[10, 200]
+    config.LINE_MAX_LENGTH = [15, 90]  # [50] * 2 #[10, 200]
     config.LINE_STEP_DISTANCE = 0.25
     config.LINE_DISTANCE_END_FACTOR = 0.50
     # hatcher = flowlines.FlowlineHatcher(dimensions, *mappings, config, exclusion_points=exclusion_points + contour_points)
