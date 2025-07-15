@@ -72,25 +72,25 @@ $(DATA_LOWRES_DIR)/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif: $(SRC_DIR)/resiz
 
 # ----------
 
-# DEM_FILE := Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif
-# COLOR_FILE := lroc_color_poles.tif 
+DEM_FILE := Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif
+COLOR_FILE := lroc_color_poles.tif 
 
 ROT_X := -90
 ROT_Y := 90
 ROT_Z := 0
 
-DEM_FILE := Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif
-COLOR_FILE := Mars_Viking_ClrMosaic_global_925m.tif
+# DEM_FILE := Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif
+# COLOR_FILE := Mars_Viking_ClrMosaic_global_925m.tif
 
-ROT_X := -90
-ROT_Y := 150
-ROT_Z := 0
+# ROT_X := -90
+# ROT_Y := 150
+# ROT_Z := 0
 
 # ----------
 
 $(BUILD_DIR)/mesh.ply: $(SRC_DIR)/mesh.py $(DATA_LOWRES_DIR)/$(DEM_FILE) $(DATA_DIR)/$(COLOR_FILE)
 	@echo "Generating mesh"
-	uv run $^ --output $@ --scale 0.10
+	uv run $^ --output $@ --scale 0.06
 
 $(BLENDER_FILE): $(BUILD_DIR)/mesh.ply
 	@echo "Running blender mesh update"
@@ -125,7 +125,7 @@ $(BUILD_DIR)/mapping_angle.png $(BUILD_DIR)/mapping_distance.png $(BUILD_DIR)/ma
 
 run: $(SRC_DIR)/hatch.py $(BUILD_DIR)/mapping_angle.png $(BUILD_DIR)/mapping_distance.png $(BUILD_DIR)/mapping_flat.png $(BUILD_DIR)/overlay.npz $(BUILD_DIR)/projection_matrix.npy 
 	@echo "Processing blender output"
-	uv run 														\
+	uv run $(SRC_DIR)/hatch.py									\
 		$(BUILD_DIR)/mapping_angle.png 							\
 		$(BUILD_DIR)/mapping_distance.png 						\
 		$(BUILD_DIR)/mapping_flat.png 							\
@@ -138,6 +138,14 @@ run_no_overlay: $(SRC_DIR)/hatch.py $(BUILD_DIR)/mapping_angle.png $(BUILD_DIR)/
 	@echo "Processing blender output"
 	uv run $^ --output $(BUILD_DIR)/littleplanets.svg
 	inkscape $(BUILD_DIR)/littleplanets.svg --export-filename=littleplanets.png --export-width=2000 --export-background=#000000
+
+special: $(SRC_DIR)/hatch.py $(BUILD_DIR)/mapping_angle.png $(BUILD_DIR)/mapping_distance.png $(BUILD_DIR)/mapping_flat.png
+	@echo "Processing blender output"
+	for i in mapping_angle.png mapping_angle_0.png mapping_angle_1.png mapping_angle_2.png mapping_angle_3.png mapping_angle_4.png ; do \
+		echo "$$i"	; \
+		uv run $(SRC_DIR)/hatch.py $(BUILD_DIR)/$$i $(BUILD_DIR)/mapping_distance.png $(BUILD_DIR)/mapping_flat.png --output $(BUILD_DIR)/littleplanets.svg ; \
+		inkscape $(BUILD_DIR)/littleplanets.svg --export-filename=littleplanets_$$i --export-width=2000 --export-background=#000000 ; \
+	done
 
 gcode: $(BUILD_DIR)/littleplanets.svg
 	uv run svgtogcode.py $^
