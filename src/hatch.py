@@ -16,11 +16,11 @@ from svgwriter import SvgWriter
 BLUR_MAPPING_ANGLE_KERNEL_SIZE = 1
 BLUR_MAPPING_DISTANCE_KERNEL_SIZE = 1
 
-INVERT_COLOR = False
-CUTOUT_THRESHOLD = 230
+# INVERT_COLOR = False
+# CUTOUT_THRESHOLD = 230
 
 INVERT_COLOR = True
-CUTOUT_THRESHOLD = 60
+CUTOUT_THRESHOLD = 10
 
 
 def _linestring_to_coordinate_pairs(
@@ -109,6 +109,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("mapping_angle", type=Path, default="mapping_angle.png", help="Mapping angle (PNG)")
     parser.add_argument("mapping_distance", type=Path, default="mapping_distance.png", help="Mapping distance (PNG)")
+    parser.add_argument("mapping_line_length", type=Path, default="mapping_length.png", help="Mapping line length (PNG)")
     parser.add_argument("mapping_flat", type=Path, default="mapping_flat.png", help="Mapping flat (PNG)")
     parser.add_argument("--overlay", type=Path, default=None, help="Overlay linestrings (NPZ)")
     parser.add_argument("--projection-matrix", type=Path, default=None, help="3x4 projection matrix (NPY)")
@@ -135,6 +136,7 @@ if __name__ == "__main__":
     # uint8 image must be centered around 128 to deal with negative values
     mapping_angle = cv2.imread(args.mapping_angle, cv2.IMREAD_GRAYSCALE)
     mapping_distance = cv2.imread(args.mapping_distance, cv2.IMREAD_GRAYSCALE)
+    mapping_line_length = cv2.imread(args.mapping_line_length, cv2.IMREAD_GRAYSCALE)
     mapping_flat = cv2.imread(args.mapping_flat, cv2.IMREAD_GRAYSCALE)
 
     mapping_angle = _blur_raster(mapping_angle, args.blur_angle)
@@ -173,12 +175,12 @@ if __name__ == "__main__":
         mapping_distance = ~mapping_distance
 
     # mapping_distance = np.zeros_like(mapping_angle, dtype=np.uint8)
-    mapping_max_length = np.zeros_like(mapping_angle)
+    # mapping_line_length = np.zeros_like(mapping_angle)
 
     mappings = [
         mapping_distance,
         mapping_angle,
-        mapping_max_length,
+        mapping_line_length,
         mapping_flat,
     ]
 

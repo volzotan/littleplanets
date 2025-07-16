@@ -1,11 +1,11 @@
 import argparse
-import os
 from pathlib import Path
 
 import numpy as np
 import pyvista as pv
 import openexr_numpy
 import cv2
+from scipy import ndimage
 
 CROSS_FLOW = False
 
@@ -20,8 +20,8 @@ LIGHT_POS = [1, 1, 0]
 CONTRAST_ENHANCEMENT = True
 CONTRAST_VALUE = 1.60
 
-CLIPPING = False
-CLIPPING_CUTOFF_PERCENTILE = 0.5
+CLIPPING = True
+CLIPPING_CUTOFF_PERCENTILE = 0.25
 
 MAGNITUDE_THRESHOLD = 0.1
 
@@ -178,6 +178,8 @@ if __name__ == "__main__":
     # visualize(centers, [directions, field_elevation_vectors], light_axis).show()
     # visualize(centers, [directions], light_axis).show()
 
+    # Mapping Angle
+
     intersections = np.zeros_like(img_normals)
     for x in range(img_normals.shape[1]):
         for y in range(img_normals.shape[0]):
@@ -229,6 +231,32 @@ if __name__ == "__main__":
 
             img_field_elevation_vectors_4[y, x] = projected if magnitude > MAGNITUDE_THRESHOLD else img_directions[y, x]
 
+    # Mapping Line Length
+
+    # distance from pixel location to origin
+    img_distance = np.linalg.norm(img_pxpos, axis=-1)
+    img_distance = np.nan_to_num(img_distance)
+
+    # print(np.min(img_distance), np.max(img_distance))
+    # cv2.imwrite(str("img_distance.png"), (img_distance * 255 / np.max(img_distance)).astype(np.uint8))
+
+    WINDOW_SIZE = 20
+    MAX_WIN_VAR = 1e-6
+    win_mean = ndimage.uniform_filter(img_distance, (WINDOW_SIZE, WINDOW_SIZE))
+    win_sqr_mean = ndimage.uniform_filter(img_distance**2, (WINDOW_SIZE, WINDOW_SIZE))
+    win_var = win_sqr_mean - win_mean**2
+
+    print(np.min(win_var), np.max(win_var))
+
+    win_var = np.clip(win_var, 0, MAX_WIN_VAR)
+    win_var = win_var * -1 + MAX_WIN_VAR
+
+    mapping_line_length = (np.iinfo(np.uint8).max * ((win_var - np.min(win_var)) / np.ptp(win_var))).astype(np.uint8)
+
+    # Mapping Flat
+
+    mapping_flat = np.zeros_like(img_pxpos, dtype=np.uint8)
+    mapping_flat[np.isnan(img_pxpos)] = 255
 
     if CROSS_FLOW:
         # img_directions = np.cross(img_directions, img_normals)
@@ -269,7 +297,6 @@ if __name__ == "__main__":
         # mapping_distance = ((mapping_distance - np.min(mapping_distance)) / np.ptp(mapping_distance) * 255).astype(np.uint8)
 
         if CONTRAST_ENHANCEMENT:
-
             # evaluating a good CONTRAST_VALUE:
             # for i in range(1, 10):
             #     contrast = 1.0+i/10
@@ -320,6 +347,7 @@ if __name__ == "__main__":
         #     export_angles(img_field_elevation_vectors_4),
         # )
 
-        mapping_flat = np.zeros_like(img_pxpos, dtype=np.uint8)
-        mapping_flat[np.isnan(img_pxpos)] = 255
+
+        cv2.imwrite(str(args.output / "mapping_line_length.png"), mapping_line_length)
+
         cv2.imwrite(str(args.output / "mapping_flat.png"), mapping_flat)
