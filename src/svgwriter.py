@@ -84,12 +84,18 @@ class SvgWriter:
             out.write('xmlns:ev="http://www.w3.org/2001/xml-events" ')
             out.write('xmlns:xlink="http://www.w3.org/1999/xlink" ')
             out.write('xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" ')
+            out.write('xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" ')
             out.write(">\n")
-            out.write("<defs />\n")
-            out.write("\n")
+
+            out.write('<sodipodi:namedview ')
+            out.write('id="namedview1" ')
+            out.write(f'pagecolor="{self.background_color}" ')
+            out.write('/>\n')
+
+            out.write('<defs />\n')
+            out.write('\n')
 
             out.write("<style>\n")
-
             out.write("path, line { stroke-linecap: round; stroke-linejoin: round; }\n")
 
             if self.background_color is not None:
