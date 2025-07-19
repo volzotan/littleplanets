@@ -51,6 +51,12 @@ obj.rotation_euler = (
     math.radians(args.rotZ),
 )
 
+# smooth shading
+
+mesh = obj.data
+for f in mesh.polygons:
+    f.use_smooth = True
+
 # add material (derived from the vertice colors)
 
 mesh = obj.data
