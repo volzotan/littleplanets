@@ -12,22 +12,13 @@ from loguru import logger
 from shapely import LineString, Point
 from svgpathtools import parse_path
 
+from src.util.misc import linestring_to_coordinate_pairs
+
 
 class Align(Enum):
     LEFT = "LEFT"
     RIGHT = "RIGHT"
     CENTER = "CENTER"
-
-
-def _linestring_to_coordinate_pairs(
-    linestring: LineString,
-) -> list[list[tuple[float, float]]]:
-    pairs = []
-
-    for i in range(len(linestring.coords) - 1):
-        pairs.append([linestring.coords[i], linestring.coords[i + 1]])
-
-    return pairs
 
 
 class HersheyFont:
@@ -251,7 +242,7 @@ class HersheyFont:
             char_baseline = LineString([[0, 0], [g["width"], 0]])
             char_baseline = shapely.affinity.rotate(char_baseline, angle, origin=(0, 0, 0), use_radians=True)
             char_baseline = shapely.affinity.translate(char_baseline, xoff=matching_point[0], yoff=matching_point[1])
-            for pair in _linestring_to_coordinate_pairs(char_baseline):
+            for pair in linestring_to_coordinate_pairs(char_baseline):
                 pt1 = [int(c) for c in pair[0]]
                 pt2 = [int(c) for c in pair[1]]
                 cv2.line(img, pt1, pt2, (0, 0, 255), 2)
@@ -262,7 +253,7 @@ class HersheyFont:
                 linestring = shapely.affinity.translate(linestring, xoff=matching_point[0], yoff=matching_point[1])
                 output.append(linestring)
 
-                for pair in _linestring_to_coordinate_pairs(linestring):
+                for pair in linestring_to_coordinate_pairs(linestring):
                     pt1 = [int(c) for c in pair[0]]
                     pt2 = [int(c) for c in pair[1]]
                     cv2.line(img, pt1, pt2, (0, 0, 0), 4)
@@ -298,7 +289,7 @@ if __name__ == "__main__":
     linestrings_along_path2 = font.lines_for_text(TEXT, FONT_SIZE, path=path2, align=Align.LEFT, reverse_path=True)
 
     for linestring in linestrings_along_path2:
-        for pair in _linestring_to_coordinate_pairs(linestring):
+        for pair in linestring_to_coordinate_pairs(linestring):
             pt1 = [int(c) for c in pair[0]]
             pt2 = [int(c) for c in pair[1]]
             cv2.line(img, pt1, pt2, (0, 0, 0), 4)
@@ -307,7 +298,7 @@ if __name__ == "__main__":
     linestrings_along_path3 = font.lines_for_text(TEXT, FONT_SIZE, path=path3, align=Align.RIGHT, reverse_path=True)
 
     for linestring in linestrings_along_path3:
-        for pair in _linestring_to_coordinate_pairs(linestring):
+        for pair in linestring_to_coordinate_pairs(linestring):
             pt1 = [int(c) for c in pair[0]]
             pt2 = [int(c) for c in pair[1]]
             cv2.line(img, pt1, pt2, (0, 0, 0), 4)
@@ -318,7 +309,7 @@ if __name__ == "__main__":
     )
 
     for linestring in linestrings_along_path4:
-        for pair in _linestring_to_coordinate_pairs(linestring):
+        for pair in linestring_to_coordinate_pairs(linestring):
             pt1 = [int(c) for c in pair[0]]
             pt2 = [int(c) for c in pair[1]]
             cv2.line(img, pt1, pt2, (0, 0, 0), 4)
@@ -328,13 +319,13 @@ if __name__ == "__main__":
         "m QUICK brown fox jumps", FONT_SIZE, path=path5, align=Align.CENTER, center_vertical=True, reverse_path=True
     )
 
-    for pair in _linestring_to_coordinate_pairs(path5):
+    for pair in linestring_to_coordinate_pairs(path5):
         pt1 = [int(c) for c in pair[0]]
         pt2 = [int(c) for c in pair[1]]
         cv2.line(img, pt1, pt2, (0, 0, 255), 2)
 
     for linestring in linestrings_along_path5:
-        for pair in _linestring_to_coordinate_pairs(linestring):
+        for pair in linestring_to_coordinate_pairs(linestring):
             pt1 = [int(c) for c in pair[0]]
             pt2 = [int(c) for c in pair[1]]
             cv2.line(img, pt1, pt2, (0, 0, 0), 4)
@@ -344,17 +335,17 @@ if __name__ == "__main__":
     ]
 
     for linestring in linestrings:
-        for pair in _linestring_to_coordinate_pairs(linestring):
+        for pair in linestring_to_coordinate_pairs(linestring):
             pt1 = [int(c) for c in pair[0]]
             pt2 = [int(c) for c in pair[1]]
             cv2.line(img, pt1, pt2, (0, 0, 0), 4)
 
-    for pair in _linestring_to_coordinate_pairs(path2):
+    for pair in linestring_to_coordinate_pairs(path2):
         pt1 = [int(c) for c in pair[0]]
         pt2 = [int(c) for c in pair[1]]
         cv2.line(img, pt1, pt2, (0, 0, 0), 2)
 
-    for pair in _linestring_to_coordinate_pairs(path2):
+    for pair in linestring_to_coordinate_pairs(path2):
         pt1 = [int(c) for c in pair[0]]
         pt2 = [int(c) for c in pair[1]]
         cv2.circle(img, pt2, 1, (0, 0, 255), -1)

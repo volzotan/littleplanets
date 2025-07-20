@@ -14,6 +14,8 @@ from hershey import HersheyFont, Align
 
 import rtree
 
+from src.util.misc import linestring_to_coordinate_pairs
+
 
 def _rotate_linestrings(lines: list[LineString], x: float, y: float, z: float) -> list[LineString]:
     R_x = np.array(
@@ -113,17 +115,6 @@ def load_raster(filename: Path) -> np.ndarray:
         return data
 
 
-def _linestring_to_coordinate_pairs(
-    linestring: LineString,
-) -> list[list[tuple[float, float]]]:
-    pairs = []
-
-    for i in range(len(linestring.coords) - 1):
-        pairs.append([linestring.coords[i], linestring.coords[i + 1]])
-
-    return pairs
-
-
 def visualize(linestrings: list[LineString]) -> pv.Plotter:
     plotter = pv.Plotter()
 
@@ -148,7 +139,7 @@ def visualize(linestrings: list[LineString]) -> pv.Plotter:
     colors = ["red", "green", "blue"]
 
     for li, linestring in enumerate(linestrings):
-        for pair in _linestring_to_coordinate_pairs(linestring):
+        for pair in linestring_to_coordinate_pairs(linestring):
             spline = pv.Spline(np.array(pair, dtype=np.float32)).tube(radius=0.005)
             plotter.add_mesh(spline, color=colors[li % 3])
 

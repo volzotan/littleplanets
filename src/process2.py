@@ -6,6 +6,8 @@ import flowlines_py
 import openexr_numpy
 import shapely.affinity
 
+from src.util.misc import linestring_to_coordinate_pairs
+
 os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
 
 import cv2
@@ -35,20 +37,9 @@ def get_slope(
     return (X, Y, dX, dY, angles, magnitude)
 
 
-def _linestring_to_coordinate_pairs(
-    linestring: LineString,
-) -> list[list[tuple[float, float]]]:
-    pairs = []
-
-    for i in range(len(linestring.coords) - 1):
-        pairs.append([linestring.coords[i], linestring.coords[i + 1]])
-
-    return pairs
-
-
 def draw_line_image(canvas: np.ndarray, lines: LineString) -> np.ndarray:
     for linestring in lines:
-        for pair in _linestring_to_coordinate_pairs(linestring):
+        for pair in linestring_to_coordinate_pairs(linestring):
             pt1 = [int(c) for c in pair[0]]
             pt2 = [int(c) for c in pair[1]]
             cv2.line(canvas, pt1, pt2, (255, 255, 255), 2)

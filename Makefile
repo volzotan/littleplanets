@@ -90,7 +90,7 @@ ROT_Z := 0
 
 $(BUILD_DIR)/mesh.ply: $(SRC_DIR)/mesh.py $(DATA_LOWRES_DIR)/$(DEM_FILE) $(DATA_DIR)/$(COLOR_FILE)
 	@echo "Generating mesh"
-	uv run $^ --output $@ --scale 0.06
+	uv run $^ --output $@ --scale 0.08
 
 $(BLENDER_FILE): $(BUILD_DIR)/mesh.ply
 	@echo "Running blender mesh update"
@@ -119,31 +119,44 @@ $(BUILD_DIR)/overlay.npz: $(SRC_DIR)/project_overlay.py $(BUILD_DIR)/mesh_blende
 	@echo "Projecting overlay POIs"
 	uv run $^ --output $@ --rotZ -90
 
-$(BUILD_DIR)/mapping_angle.png $(BUILD_DIR)/mapping_distance.png $(BUILD_DIR)/mapping_flat.png &: $(SRC_DIR)/process_blender.py $(BUILD_DIR)/normals.exr $(BUILD_DIR)/image.tif $(BUILD_DIR)/raytrace.npy 
+$(BUILD_DIR)/contours.npz: $(SRC_DIR)/contours.py $(BUILD_DIR)/normals.exr $(BUILD_DIR)/raytrace.npy
+	@echo "Computing contours"
+	uv run $^ --output $@
+
+$(BUILD_DIR)/mapping_angle_0.png $(BUILD_DIR)/mapping_distance.png $(BUILD_DIR)/mapping_line_length.png $(BUILD_DIR)/mapping_flat.png &: $(SRC_DIR)/process_blender.py $(BUILD_DIR)/normals.exr $(BUILD_DIR)/image.tif $(BUILD_DIR)/raytrace.npy 
 	@echo "Processing blender mappings: $@"
 	uv run $^ --output $(BUILD_DIR)
 
-run: $(SRC_DIR)/hatch.py $(BUILD_DIR)/mapping_angle.png $(BUILD_DIR)/mapping_distance.png $(BUILD_DIR)/mapping_flat.png $(BUILD_DIR)/overlay.npz $(BUILD_DIR)/projection_matrix.npy 
+run: $(SRC_DIR)/hatch.py $(BUILD_DIR)/mapping_angle_0.png $(BUILD_DIR)/mapping_distance.png $(BUILD_DIR)/mapping_line_length.png $(BUILD_DIR)/mapping_flat.png $(BUILD_DIR)/overlay.npz $(BUILD_DIR)/projection_matrix.npy $(BUILD_DIR)/contours.npz
 	@echo "Processing blender output"
 	uv run $(SRC_DIR)/hatch.py									\
-		$(BUILD_DIR)/mapping_angle.png 							\
+		$(BUILD_DIR)/mapping_angle_0.png 						\
 		$(BUILD_DIR)/mapping_distance.png 						\
+		$(BUILD_DIR)/mapping_line_length.png 					\
 		$(BUILD_DIR)/mapping_flat.png 							\
 		--overlay $(BUILD_DIR)/overlay.npz 						\
 		--projection-matrix $(BUILD_DIR)/projection_matrix.npy  \
+		--contours $(BUILD_DIR)/contours.npz					\
 		--output $(BUILD_DIR)/littleplanets.svg
 	inkscape $(BUILD_DIR)/littleplanets.svg --export-filename=littleplanets.png --export-width=2000 --export-background=#000000
 
-run_no_overlay: $(SRC_DIR)/hatch.py $(BUILD_DIR)/mapping_angle.png $(BUILD_DIR)/mapping_distance.png $(BUILD_DIR)/mapping_flat.png
+run_no_overlay: $(SRC_DIR)/hatch.py $(BUILD_DIR)/mapping_angle_0.png $(BUILD_DIR)/mapping_distance.png $(BUILD_DIR)/mapping_line_length.png $(BUILD_DIR)/mapping_flat.png
 	@echo "Processing blender output"
 	uv run $^ --output $(BUILD_DIR)/littleplanets.svg
 	inkscape $(BUILD_DIR)/littleplanets.svg --export-filename=littleplanets.png --export-width=2000 --export-background=#000000
 
-special: $(SRC_DIR)/hatch.py $(BUILD_DIR)/mapping_angle.png $(BUILD_DIR)/mapping_distance.png $(BUILD_DIR)/mapping_flat.png
+special: $(SRC_DIR)/hatch.py $(BUILD_DIR)/mapping_angle_0.png $(BUILD_DIR)/mapping_distance.png $(BUILD_DIR)/mapping_flat.png
 	@echo "Processing blender output"
-	for i in mapping_angle.png mapping_angle_0.png mapping_angle_1.png mapping_angle_2.png mapping_angle_3.png mapping_angle_4.png ; do \
+	# for i in mapping_angle_0.png mapping_angle_1.png mapping_angle_2.png mapping_angle_3.png mapping_angle_4.png mapping_angle_5.png mapping_angle_6.png mapping_angle_7.png ; do \
+	for i in mapping_angle_4.png mapping_angle_5.png mapping_angle_6.png mapping_angle_7.png ; do \
 		echo "$$i"	; \
-		uv run $(SRC_DIR)/hatch.py $(BUILD_DIR)/$$i $(BUILD_DIR)/mapping_distance.png $(BUILD_DIR)/mapping_flat.png --output $(BUILD_DIR)/littleplanets.svg ; \
+		uv run $(SRC_DIR)/hatch.py 					\
+			$(BUILD_DIR)/$$i 						\
+			$(BUILD_DIR)/mapping_distance.png 		\
+			$(BUILD_DIR)/mapping_line_length.png 	\
+			$(BUILD_DIR)/mapping_flat.png 			\
+			--output $(BUILD_DIR)/littleplanets.svg \
+			--blur-angle 0.50 ; \
 		inkscape $(BUILD_DIR)/littleplanets.svg --export-filename=littleplanets_$$i --export-width=2000 --export-background=#000000 ; \
 	done
 

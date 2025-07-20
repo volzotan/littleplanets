@@ -1,6 +1,7 @@
 import argparse
 import datetime
 from pathlib import Path
+import math
 
 import cv2
 
@@ -11,6 +12,7 @@ import shapely.ops
 from shapely import LineString
 
 import flowlines
+from src.util.misc import linestring_to_coordinate_pairs
 from svgwriter import SvgWriter
 
 BLUR_MAPPING_ANGLE_KERNEL_SIZE = 1
@@ -20,18 +22,7 @@ BLUR_MAPPING_DISTANCE_KERNEL_SIZE = 1
 # CUTOUT_THRESHOLD = 230
 
 INVERT_COLOR = True
-CUTOUT_THRESHOLD = 10
-
-
-def _linestring_to_coordinate_pairs(
-    linestring: LineString,
-) -> list[list[tuple[float, float]]]:
-    pairs = []
-
-    for i in range(len(linestring.coords) - 1):
-        pairs.append([linestring.coords[i], linestring.coords[i + 1]])
-
-    return pairs
+# CUTOUT_THRESHOLD = 10
 
 
 def draw_line_image(canvas: np.ndarray, line_sets: list[list[LineString]], dimensions: list[int, int]) -> np.ndarray:
@@ -50,7 +41,7 @@ def draw_line_image(canvas: np.ndarray, line_sets: list[list[LineString]], dimen
 
     for li, lines in enumerate(line_sets):
         for linestring in lines:
-            for pair in _linestring_to_coordinate_pairs(linestring):
+            for pair in linestring_to_coordinate_pairs(linestring):
                 pt1 = [int(pair[0][0] * scale_x), int(pair[0][1] * scale_y)]
                 pt2 = [int(pair[1][0] * scale_x), int(pair[1][1] * scale_y)]
                 cv2.line(canvas, pt1, pt2, colors[li], 3)
@@ -109,10 +100,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("mapping_angle", type=Path, default="mapping_angle.png", help="Mapping angle (PNG)")
     parser.add_argument("mapping_distance", type=Path, default="mapping_distance.png", help="Mapping distance (PNG)")
-    parser.add_argument("mapping_line_length", type=Path, default="mapping_length.png", help="Mapping line length (PNG)")
+    parser.add_argument(
+        "mapping_line_length", type=Path, default="mapping_length.png", help="Mapping line length (PNG)"
+    )
     parser.add_argument("mapping_flat", type=Path, default="mapping_flat.png", help="Mapping flat (PNG)")
     parser.add_argument("--overlay", type=Path, default=None, help="Overlay linestrings (NPZ)")
     parser.add_argument("--projection-matrix", type=Path, default=None, help="3x4 projection matrix (NPY)")
+    parser.add_argument("--contours", type=Path, default=None, help="Contour linestrings (NPZ)")
     # parser.add_argument("--scaling-factor", type=float, default=1.0, help="Scaling factor of the mapping rasters with regard to the original blender export")
     parser.add_argument(
         "--blur-angle",
@@ -131,7 +125,7 @@ if __name__ == "__main__":
 
     # FILENAME_CONTOURS = Path("..", "assets") / "contours.npz"
 
-    dimensions = [1000, 1000]
+    dimensions = [750, 750]
 
     # uint8 image must be centered around 128 to deal with negative values
     mapping_angle = cv2.imread(args.mapping_angle, cv2.IMREAD_GRAYSCALE)
@@ -152,26 +146,30 @@ if __name__ == "__main__":
         linestrings_overlay = [LineString(arr) for arr in overlay_npz.values()]
         linestrings_overlay = [_project_linestring(l, P, scaling_factor) for l in linestrings_overlay]
 
-    # contours_npz = np.load(FILENAME_CONTOURS)
     # TODO: contours don't need to be projected, but they need to be scaled (currently missing!)
-    # linestrings_contours = [LineString(arr) for arr in contours_npz.values()]
     linestrings_contours = []
+    if args.contours is not None:
+        contours_npz = np.load(args.contours)
+        linestrings_contours = [LineString(arr) for arr in contours_npz.values()]
+        linestrings_contours = [
+            shapely.affinity.scale(ls, xfact=scaling_factor, yfact=scaling_factor, origin=(0, 0))
+            for ls in linestrings_contours
+        ]
 
     exclusion_points = []
-    for ls in linestrings_overlay:
+    for ls in linestrings_overlay + linestrings_contours:
         exclusion_points += shapely.get_coordinates(ls.segmentize(0.01)).tolist()
-
-    contour_points = []
-    for ls in linestrings_contours:
-        contour_points += shapely.get_coordinates(ls.segmentize(0.01)).tolist()
 
     mapping_distance = ((mapping_distance - np.min(mapping_distance)) / np.ptp(mapping_distance) * 255).astype(np.uint8)
 
-    if not INVERT_COLOR:
-        # all areas above a brightness threshold should be kept empty
-        mapping_flat[mapping_distance > CUTOUT_THRESHOLD] = 255
-    else:  # white ink on black paper, invert grayscale image
-        mapping_flat[mapping_distance < CUTOUT_THRESHOLD] = 255
+    # all areas above/below a brightness threshold should be kept empty
+    # if not INVERT_COLOR:
+    #     mapping_flat[mapping_distance > CUTOUT_THRESHOLD] = 255
+    # else:
+    #     mapping_flat[mapping_distance < CUTOUT_THRESHOLD] = 255
+
+    if INVERT_COLOR:
+        # white ink on black paper, invert grayscale image
         mapping_distance = ~mapping_distance
 
     # mapping_distance = np.zeros_like(mapping_angle, dtype=np.uint8)
@@ -193,10 +191,11 @@ if __name__ == "__main__":
     # linestrings = [shapely.simplify(LineString(l), 0.01) for l in lines]
 
     config = flowlines.FlowlineHatcherConfig()
-    config.LINE_DISTANCE = (0.8, 15)
-    config.LINE_MAX_LENGTH = [15, 90]  # [50] * 2 #[10, 200]
-    config.LINE_STEP_DISTANCE = 0.25
+    config.LINE_DISTANCE = (1.0, 10)
+    config.LINE_MAX_LENGTH = [10, 100]  # [10, 50]  # [50] * 2 #[10, 200]
+    config.LINE_STEP_DISTANCE = 0.15
     config.LINE_DISTANCE_END_FACTOR = 0.50
+    config.MAX_ANGLE_DISCONTINUITY = math.pi / 8
     # hatcher = flowlines.FlowlineHatcher(dimensions, *mappings, config, exclusion_points=exclusion_points + contour_points)
     # hatcher = flowlines.FlowlineHatcher(dimensions, *mappings, config, exclusion_points=exclusion_points, initial_seed_points=contour_points)
     hatcher = flowlines.FlowlineHatcher(dimensions, *mappings, config, exclusion_points=exclusion_points)
@@ -239,14 +238,21 @@ if __name__ == "__main__":
     layer_styles["lines"] = {
         "fill": "none",
         "stroke": "white",
-        "stroke-width": "0.40",
+        "stroke-width": "0.30",
+        "fill-opacity": "1.0",
+    }
+
+    layer_styles["contours"] = {
+        "fill": "none",
+        "stroke": "white",
+        "stroke-width": "0.30",
         "fill-opacity": "1.0",
     }
 
     layer_styles["overlay"] = {
         "fill": "none",
         "stroke": "yellow",
-        "stroke-width": "0.40",
+        "stroke-width": "0.30",
         "fill-opacity": "1.0",
     }
 
@@ -255,6 +261,7 @@ if __name__ == "__main__":
 
     svg.add("lines", linestrings)
     svg.add("overlay", linestrings_overlay)
+    svg.add("contours", linestrings_contours)
 
     svg.write()
     # try:
