@@ -1,4 +1,5 @@
 import argparse
+import datetime
 from pathlib import Path
 
 import numpy as np
@@ -42,7 +43,7 @@ def _normalize_vector(v: np.array) -> np.array:
 
 
 def _normalize_vectors(v: np.ndarray) -> np.array:
-    return v / np.linalg.norm(v, axis=1).reshape(-1, 1)
+    return v / np.linalg.norm(v, axis=2)[:, :, np.newaxis]
 
 
 def visualize(centers: np.ndarray, vectors: list[np.ndarray], light_axis: np.array) -> pv.Plotter:
@@ -118,22 +119,25 @@ def apply_clipping(m: np.ndarray, start_percentile: float, end_percentile: float
     maxval = np.percentile(m_no_nan, 100 - end_percentile)
     return np.clip(m, minval, maxval)
 
-def apply_colormap(img: np.ndarray, clip_bottom_percentile: float = 0, clip_top_percentile: float = 0) -> np.ndarray:
 
+def apply_colormap(img: np.ndarray, clip_bottom_percentile: float = 0, clip_top_percentile: float = 0) -> np.ndarray:
     if len(img.shape) > 2 and img.shape[2] > 1:
         raise Exception("Can not apply colormap to multi-dimensional image")
 
     if clip_bottom_percentile > 0 or clip_top_percentile > 0:
         img = apply_clipping(img, clip_bottom_percentile, clip_top_percentile)
 
-    img_norm = cv2.normalize(img.astype('float32'), None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
+    img_norm = cv2.normalize(img.astype("float32"), None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
     colormap = plt.colormaps.get_cmap("viridis")
     img_colored = colormap(img_norm)  # shape: (H, W, 4) with RGBA
     img_rgb = (img_colored[:, :, :3] * 255).astype(np.uint8)  # Remove alpha channel
     img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
     return img_bgr
 
-def apply_linear_slope(m: np.ndarray, slope_start: float, slope_end: float, clipping_start: float = 0, clipping_end: float = 0) -> np.ndarray:
+
+def apply_linear_slope(
+    m: np.ndarray, slope_start: float, slope_end: float, clipping_start: float = 0, clipping_end: float = 0
+) -> np.ndarray:
     """
     Applies a transformation to the ndarray m. M is normalized to [0, 1.0], all values below `slope_start` are
     set to 0, all values above `slope_end` to 1.0.
@@ -155,13 +159,15 @@ def apply_linear_slope(m: np.ndarray, slope_start: float, slope_end: float, clip
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("normals", type=Path, default="Normals.exr", help="Normals (EXR)")
-    parser.add_argument("image", type=Path, default="Image.tif", help="RGB image (TIFF)")
-    parser.add_argument("raytrace", type=Path, default="Raytrace.npy", help="Raytracing distance raster (NPY)")
+    parser.add_argument("normals", type=Path, default="normals.exr", help="Normals (EXR)")
+    parser.add_argument("image", type=Path, default="image.tif", help="RGB image (TIFF)")
+    parser.add_argument("raytrace", type=Path, default="raytrace.npy", help="Raytracing distance raster (NPY)")
     parser.add_argument("--scaling-factor", type=float, default=None, help="Scaling factor (float)")
     parser.add_argument("--output", type=Path, default="temp", help="Output directory")
     parser.add_argument("--debug", action="store_true", default=False, help="Enable debug output")
     args = parser.parse_args()
+
+    timer_start = datetime.datetime.now()
 
     img_normals = openexr_numpy.imread(str(args.normals), "XYZ")
     img_gray = cv2.imread(str(args.image), cv2.IMREAD_GRAYSCALE)
@@ -245,38 +251,10 @@ if __name__ == "__main__":
     opposite_directions[np.dot(img_direction, light_axis) < 0] = -1
     img_direction *= opposite_directions
 
-    img_elevation_direction = np.zeros_like(img_direction)
-    img_elevation_magnitude = np.zeros([img_direction.shape[0], img_direction.shape[1]], dtype=float)
-
-    for x in range(img_direction.shape[1]):
-        for y in range(img_direction.shape[0]):
-            # elevation_vector = _normalize_vector(img_pxpos[y, x])
-            # projected = elevation_vector - (np.dot(elevation_vector, img_normals[y, x])) * img_normals[y, x]
-            # magnitude = np.arccos(np.dot(elevation_vector, img_normals[y, x]))
-
-            elevation_vector = _normalize_vector(img_pxpos[y, x])
-            dot = np.dot(elevation_vector, img_normals[y, x])
-
-            img_elevation_direction[y, x] = elevation_vector - (dot) * img_normals[y, x]
-            img_elevation_magnitude[y, x] = np.arccos(dot)
-
-            # img_field_elevation_vectors_0[y, x] = _normalize_vector(
-            #     img_direction[y, x] * (1 - magnitude) * (1 - ELEVATION_VECTOR_WEIGHT)
-            #     + projected * magnitude * ELEVATION_VECTOR_WEIGHT
-            # )
-            #
-            # img_field_elevation_vectors_1[y, x] = _normalize_vector(
-            #     img_direction[y, x] * (1 - ELEVATION_VECTOR_WEIGHT) + projected * ELEVATION_VECTOR_WEIGHT
-            # )
-            #
-            # img_field_elevation_vectors_2[y, x] = _normalize_vector(
-            #     img_direction[y, x] * (1 - distance_weight[y, x]) + projected * distance_weight[y, x]
-            # )
-            #
-            # img_field_elevation_vectors_3[y, x] = projected
-
-            # img_field_elevation_vectors_4[y, x] = projected if magnitude > MAGNITUDE_THRESHOLD else img_direction[y, x]
-
+    img_elevation_vector = _normalize_vectors(img_pxpos)
+    dot = np.sum(img_elevation_vector * img_normals, axis=2, keepdims=True)  # vectorized dot product
+    img_elevation_direction = img_elevation_vector - (dot) * img_normals
+    img_elevation_magnitude = np.arccos(dot)
 
     # create mixture for elevation and magnitude
     mixture_elevation_magnitude = apply_linear_slope(img_elevation_magnitude, 0.1, 0.15, clipping_end=1.0)
@@ -288,11 +266,10 @@ if __name__ == "__main__":
                 img_elevation_magnitude,
                 # clip_bottom_percentile=0,
                 # clip_top_percentile=0.5
-            )
+            ),
         )
 
         cv2.imwrite(str(DIR_DEBUG / "mixture_elevation_magnitude.png"), apply_colormap(mixture_elevation_magnitude))
-
 
     img_field_elevation_vectors_0 = np.zeros_like(img_direction)
     img_field_elevation_vectors_1 = np.zeros_like(img_direction)
@@ -317,21 +294,25 @@ if __name__ == "__main__":
     img_field_elevation_vectors_1 = img_direction
 
     # fixed weights: the final vector is X% light and 1-X% elevation
-    img_field_elevation_vectors_2 = (img_direction * (1 - ELEVATION_VECTOR_WEIGHT) +
-                                           img_elevation_direction * ELEVATION_VECTOR_WEIGHT)
+    img_field_elevation_vectors_2 = (
+        img_direction * (1 - ELEVATION_VECTOR_WEIGHT) + img_elevation_direction * ELEVATION_VECTOR_WEIGHT
+    )
 
     # dynamic mixture based on magnitude
     mixture_magnitude = cv2.normalize(
-        apply_clipping(img_elevation_magnitude, 0, 1),
-        None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
+        apply_clipping(img_elevation_magnitude, 0, 1), None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX
+    )
     mixture_magnitude = mixture_magnitude[:, :, np.newaxis]
-    img_field_elevation_vectors_3 = (img_direction * (1 - mixture_magnitude) +
-                                     img_elevation_direction * mixture_magnitude)
+    img_field_elevation_vectors_3 = (
+        img_direction * (1 - mixture_magnitude) + img_elevation_direction * mixture_magnitude
+    )
 
     # dynamic mixture based on magnitude with thresholds and a linear slope
     mixture_elevation_magnitude_newaxis = mixture_elevation_magnitude[:, :, np.newaxis]
-    img_field_elevation_vectors_4 = (img_direction * (1 - mixture_elevation_magnitude_newaxis) +
-                                     img_elevation_direction * mixture_elevation_magnitude_newaxis)
+    img_field_elevation_vectors_4 = (
+        img_direction * (1 - mixture_elevation_magnitude_newaxis)
+        + img_elevation_direction * mixture_elevation_magnitude_newaxis
+    )
 
     # hard cut: below MAGNITUDE_THRESHOLD follow the light vector, above the elevation vector
     mask = mixture_elevation_magnitude > MAGNITUDE_THRESHOLD
@@ -358,7 +339,6 @@ if __name__ == "__main__":
         img_direction_crossed * (1 - mixture_elevation_magnitude_newaxis)
         + img_elevation_direction * mixture_elevation_magnitude_newaxis
     )
-
 
     # Mapping Distance
 
@@ -391,8 +371,6 @@ if __name__ == "__main__":
     mapping_flat[np.isnan(img_pxpos)] = 255
 
     mapping_flat[mapping_distance < CUTOUT_THRESHOLD] = 255
-
-
 
     if CROSS_FLOW:
         # img_directions = np.cross(img_directions, img_normals)
@@ -430,7 +408,6 @@ if __name__ == "__main__":
         return cv2.addWeighted(img, contrast, img, 0, brightness)
 
     if EXPORT:
-
         if CONTRAST_ENHANCEMENT:
             # evaluating a good CONTRAST_VALUE:
             # for i in range(1, 10):
@@ -497,7 +474,8 @@ if __name__ == "__main__":
             export_angles(img_field_elevation_vectors_7),
         )
 
-
         cv2.imwrite(str(args.output / "mapping_line_length.png"), mapping_line_length)
 
         cv2.imwrite(str(args.output / "mapping_flat.png"), mapping_flat)
+
+    print(f"total time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
