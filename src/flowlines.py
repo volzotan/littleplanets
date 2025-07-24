@@ -21,6 +21,9 @@ class FlowlineHatcherConfig:
 
     LINE_MAX_LENGTH: tuple[int, int] = (10, 50)
 
+    # lines shorter than LINE_MIN_LENGTH will be discarded
+    LINE_MIN_LENGTH: float = 1.0
+
     # max difference (in radians) in slope between line points
     MAX_ANGLE_DISCONTINUITY: float = math.pi / 2
     MIN_INCLINATION: float = 0.001  # 50.0
@@ -87,9 +90,7 @@ class FlowlineHatcher:
     def _map_line_distance(self, x: float, y: float) -> float:
         return float(
             self.config.LINE_DISTANCE[0]
-            + self.distance[int(y * self.scale_y), int(x * self.scale_x)]
-            / 255
-            * (self.config.LINE_DISTANCE[1] - self.config.LINE_DISTANCE[0])
+            + self.distance[int(y * self.scale_y), int(x * self.scale_x)] / 255 * (self.config.LINE_DISTANCE[1] - self.config.LINE_DISTANCE[0])
         )
 
     def _map_angle(self, x: float, y: float) -> float:
@@ -98,9 +99,7 @@ class FlowlineHatcher:
     def _map_line_max_length(self, x: float, y: float) -> float:
         return float(
             self.config.LINE_MAX_LENGTH[0]
-            + self.max_length[int(y * self.scale_y), int(x * self.scale_x)]
-            / 255
-            * (self.config.LINE_MAX_LENGTH[1] - self.config.LINE_MAX_LENGTH[0])
+            + self.max_length[int(y * self.scale_y), int(x * self.scale_x)] / 255 * (self.config.LINE_MAX_LENGTH[1] - self.config.LINE_MAX_LENGTH[0])
         )
 
     def _map_flat(self, x: float, y: float) -> bool:
@@ -298,7 +297,7 @@ class FlowlineHatcher:
 
                 line_points.appendleft(p)
 
-            if len(line_points) < 2:
+            if len(line_points) * self.config.LINE_STEP_DISTANCE < self.config.LINE_MIN_LENGTH:
                 continue
 
             linestrings.append(LineString(line_points))

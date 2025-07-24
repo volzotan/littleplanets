@@ -12,7 +12,7 @@ from loguru import logger
 from shapely import LineString, Point
 from svgpathtools import parse_path
 
-from src.util.misc import linestring_to_coordinate_pairs
+from util.misc import linestring_to_coordinate_pairs
 
 
 class Align(Enum):
@@ -92,9 +92,7 @@ class HersheyFont:
 
             glyph = self.font_dict[c]
             linestrings = glyph["lines"]
-            linestrings = [
-                shapely.affinity.scale(ls, xfact=font_size, yfact=font_size, origin=(0, 0, 0)) for ls in linestrings
-            ]
+            linestrings = [shapely.affinity.scale(ls, xfact=font_size, yfact=font_size, origin=(0, 0, 0)) for ls in linestrings]
 
             output_dict["char"] = c
             output_dict["lines"] = linestrings
@@ -119,9 +117,7 @@ class HersheyFont:
 
         distance_on_line = np.zeros(len(coords), dtype=float)
         for i in range(1, len(coords)):
-            distance_on_line[i] = distance_on_line[i - 1] + math.sqrt(
-                (coords[i][0] - coords[i - 1][0]) ** 2 + (coords[i][1] - coords[i - 1][1]) ** 2
-            )
+            distance_on_line[i] = distance_on_line[i - 1] + math.sqrt((coords[i][0] - coords[i - 1][0]) ** 2 + (coords[i][1] - coords[i - 1][1]) ** 2)
 
         if distance_on_line.shape[0] < 10:
             logger.warning("line has less than 10 segments, probably missing segmentation")
@@ -276,13 +272,7 @@ if __name__ == "__main__":
     path1 = LineString([[1000, 800], [200, 700]])
 
     path2 = shapely.intersection(
-        LineString(
-            list(
-                Point([CANVAS_DIMENSIONS[0] / 2], [CANVAS_DIMENSIONS[1] * 0.7])
-                .buffer(CANVAS_DIMENSIONS[0] * 0.6)
-                .exterior.coords
-            )
-        ),
+        LineString(list(Point([CANVAS_DIMENSIONS[0] / 2], [CANVAS_DIMENSIONS[1] * 0.7]).buffer(CANVAS_DIMENSIONS[0] * 0.6).exterior.coords)),
         shapely.box(100, 100, CANVAS_DIMENSIONS[0] - 100, CANVAS_DIMENSIONS[1] - 100),
     )
     path2 = path2.segmentize(1)
@@ -304,9 +294,7 @@ if __name__ == "__main__":
             cv2.line(img, pt1, pt2, (0, 0, 0), 4)
 
     path4 = shapely.affinity.translate(path3, yoff=200)
-    linestrings_along_path4 = font.lines_for_text(
-        "quick brown fox", FONT_SIZE, path=path4, align=Align.CENTER, reverse_path=True
-    )
+    linestrings_along_path4 = font.lines_for_text("quick brown fox", FONT_SIZE, path=path4, align=Align.CENTER, reverse_path=True)
 
     for linestring in linestrings_along_path4:
         for pair in linestring_to_coordinate_pairs(linestring):
@@ -330,9 +318,7 @@ if __name__ == "__main__":
             pt2 = [int(c) for c in pair[1]]
             cv2.line(img, pt1, pt2, (0, 0, 0), 4)
 
-    linestrings = [
-        shapely.affinity.translate(l, yoff=+CANVAS_DIMENSIONS[1] * 0.75) for l in font.lines_for_text(TEXT, FONT_SIZE)
-    ]
+    linestrings = [shapely.affinity.translate(l, yoff=+CANVAS_DIMENSIONS[1] * 0.75) for l in font.lines_for_text(TEXT, FONT_SIZE)]
 
     for linestring in linestrings:
         for pair in linestring_to_coordinate_pairs(linestring):

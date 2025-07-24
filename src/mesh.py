@@ -19,6 +19,8 @@ import cv2
 # compared to the light axis direction unit vector
 ELEVATION_VECTOR_WEIGHT = 0.6  # 0.95
 
+DIR_DEBUG = Path("debug")
+
 
 @dataclass
 class Mesh:
@@ -466,8 +468,7 @@ def add_field_vectors(m: Mesh, axis: np.array) -> Mesh:
         magnitude = np.arccos(np.dot(elevation_vectors[i], normals[i]))
 
         combined = _normalize_vector(
-            directions[i] * (1 - magnitude) * (1 - ELEVATION_VECTOR_WEIGHT)
-            + projected * magnitude * ELEVATION_VECTOR_WEIGHT
+            directions[i] * (1 - magnitude) * (1 - ELEVATION_VECTOR_WEIGHT) + projected * magnitude * ELEVATION_VECTOR_WEIGHT
         )
         field_elevation_vectors.append(combined)
 
@@ -688,6 +689,7 @@ if __name__ == "__main__":
     parser.add_argument("--scale", type=float, default=0.10, help="Scaling factor (float)")
     parser.add_argument("--blur", type=int, default=100, help="Elevation raster blurring kernel size (int)")
     parser.add_argument("--subdivision", type=int, default=10, help="Number of subdivision steps (int)")
+    parser.add_argument("--debug", action="store_true", default=False, help="Write debug output")
 
     args = parser.parse_args()
     os.makedirs(args.output if args.output.is_dir() else args.output.parent, exist_ok=True)
@@ -696,13 +698,19 @@ if __name__ == "__main__":
 
     timer_start = datetime.datetime.now()
 
-    # use a partial DEM (lat not from -90 to 90)
-    # color_mapping = load_raster(Path("BasicHapke_wbhs_blend_b137_IOF.55deg_nearcenter_1kmpp_20140925_134515.tif"))
-    # empty = np.zeros([color_mapping.shape[0], int(color_mapping.shape[1] * 25/90), color_mapping.shape[2]], dtype=np.uint8)
-    # color_mapping = np.concatenate([empty, color_mapping, empty], axis=1)
-
-    dem_raster = normalize_elevation(load_raster(args.elevation_raster))[0, :, :]
+    dem_raster = normalize_elevation(load_raster(args.elevation_raster))
+    dem_raster = dem_raster[0, :, :]
     color_raster = load_raster(args.color_raster)[0:3, :, :]
+
+    # use a partial DEM (lat not from -90 to 90)
+    # color_raster2 = load_raster(Path("data", "BasicHapke_wbhs_blend_b137_IOF.55deg_nearcenter_1kmpp_20140925_134515.tif")) # [3, rows, cols]
+    # empty = np.zeros([color_raster2.shape[0], int(color_raster2.shape[1] * 25/90), color_raster2.shape[2]], dtype=np.uint8)
+    # color_raster2 = np.concatenate([empty, color_raster2, empty], axis=1)
+    # color_raster = color_raster2 # TODO
+
+    if args.debug:
+        color_raster_transposed = np.transpose(color_raster, (1, 2, 0))  # from [3, rows, cols] to [rows, cols, 3]
+        cv2.imwrite(str(DIR_DEBUG / "color_raster.png"), color_raster_transposed)
 
     if args.blur is not None and args.blur > 1:
         dem_raster = cv2.blur(dem_raster, (args.blur, args.blur))

@@ -12,8 +12,10 @@ import shapely.ops
 from shapely import LineString
 
 import flowlines
-from src.util.misc import linestring_to_coordinate_pairs
+from util.misc import linestring_to_coordinate_pairs
 from svgwriter import SvgWriter
+
+DIR_DEBUG = Path("debug")
 
 BLUR_MAPPING_ANGLE_KERNEL_SIZE = 1
 BLUR_MAPPING_DISTANCE_KERNEL_SIZE = 1
@@ -90,7 +92,7 @@ def _rotate_linestrings(lines: list[LineString], x: float, y: float, z: float) -
 
 def _blur_raster(raster: np.ndarray, perc: float) -> np.ndarray:
     kernel_size = int(max(*raster.shape) * (perc / 100.0))
-    if kernel_size > 0:
+    if kernel_size > 1:
         return cv2.blur(raster, (kernel_size, kernel_size))
     else:
         return raster
@@ -100,27 +102,20 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("mapping_angle", type=Path, default="mapping_angle.png", help="Mapping angle (PNG)")
     parser.add_argument("mapping_distance", type=Path, default="mapping_distance.png", help="Mapping distance (PNG)")
-    parser.add_argument(
-        "mapping_line_length", type=Path, default="mapping_length.png", help="Mapping line length (PNG)"
-    )
+    parser.add_argument("mapping_line_length", type=Path, default="mapping_length.png", help="Mapping line length (PNG)")
     parser.add_argument("mapping_flat", type=Path, default="mapping_flat.png", help="Mapping flat (PNG)")
     parser.add_argument("--overlay", type=Path, default=None, help="Overlay linestrings (NPZ)")
     parser.add_argument("--projection-matrix", type=Path, default=None, help="3x4 projection matrix (NPY)")
     parser.add_argument("--contours", type=Path, default=None, help="Contour linestrings (NPZ)")
     # parser.add_argument("--scaling-factor", type=float, default=1.0, help="Scaling factor of the mapping rasters with regard to the original blender export")
-    parser.add_argument(
-        "--blur-angle",
-        type=float,
-        default=0,
-        help="Blurring kernel size as a percentage of the input raster size (float)",
-    )
-    parser.add_argument(
-        "--blur-distance",
-        type=float,
-        default=0,
-        help="Blurring kernel size as a percentage of the input raster size (float)",
-    )
+    parser.add_argument("--blur-angle", type=float, default=0, help="Blurring kernel size. Percentage of raster size (float)")
+    parser.add_argument("--blur-distance", type=float, default=0, help="Blurring kernel size. Percentage of raster size (float)")
     parser.add_argument("--output", type=Path, default="littleplanet.svg", help="Output filename")
+    parser.add_argument("--debug", action="store_true", default=False, help="Enable debug output")
+    parser.add_argument("--suffix", type=str, default="", help="Filename suffix to be appended to all (debug) output")
+
+    parser.add_argument("--config-line-distance-end-factor", type=float, default=None)
+
     args = parser.parse_args()
 
     # FILENAME_CONTOURS = Path("..", "assets") / "contours.npz"
@@ -135,6 +130,10 @@ if __name__ == "__main__":
 
     mapping_angle = _blur_raster(mapping_angle, args.blur_angle)
     mapping_distance = _blur_raster(mapping_distance, args.blur_distance)
+
+    if args.debug:
+        cv2.imwrite(str(DIR_DEBUG / f"hatch_mapping_angle{args.suffix}.png"), mapping_angle)
+        cv2.imwrite(str(DIR_DEBUG / f"hatch_mapping_distance{args.suffix}.png"), mapping_distance)
 
     scaling_factor = dimensions[0] / mapping_angle.shape[1]
 
@@ -151,10 +150,7 @@ if __name__ == "__main__":
     if args.contours is not None:
         contours_npz = np.load(args.contours)
         linestrings_contours = [LineString(arr) for arr in contours_npz.values()]
-        linestrings_contours = [
-            shapely.affinity.scale(ls, xfact=scaling_factor, yfact=scaling_factor, origin=(0, 0))
-            for ls in linestrings_contours
-        ]
+        linestrings_contours = [shapely.affinity.scale(ls, xfact=scaling_factor, yfact=scaling_factor, origin=(0, 0)) for ls in linestrings_contours]
 
     exclusion_points = []
     for ls in linestrings_overlay + linestrings_contours:
@@ -191,11 +187,15 @@ if __name__ == "__main__":
     # linestrings = [shapely.simplify(LineString(l), 0.01) for l in lines]
 
     config = flowlines.FlowlineHatcherConfig()
-    config.LINE_DISTANCE = (1.0, 10)
-    config.LINE_MAX_LENGTH = [10, 100]  # [10, 50]  # [50] * 2 #[10, 200]
+    config.LINE_DISTANCE = (0.8, 10)
+    config.LINE_MAX_LENGTH = [10, 40]  # [20, 100]  # [10, 50]  # [50] * 2 #[10, 200]
     config.LINE_STEP_DISTANCE = 0.15
-    config.LINE_DISTANCE_END_FACTOR = 0.50
-    config.MAX_ANGLE_DISCONTINUITY = math.pi / 8
+    config.LINE_DISTANCE_END_FACTOR = 0.25
+    config.MAX_ANGLE_DISCONTINUITY = math.pi / 12
+
+    if args.config_line_distance_end_factor is not None:
+        config.LINE_DISTANCE_END_FACTOR = args.config_line_distance_end_factor
+
     # hatcher = flowlines.FlowlineHatcher(dimensions, *mappings, config, exclusion_points=exclusion_points + contour_points)
     # hatcher = flowlines.FlowlineHatcher(dimensions, *mappings, config, exclusion_points=exclusion_points, initial_seed_points=contour_points)
     hatcher = flowlines.FlowlineHatcher(dimensions, *mappings, config, exclusion_points=exclusion_points)

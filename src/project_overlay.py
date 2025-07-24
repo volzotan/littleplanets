@@ -14,7 +14,7 @@ from hershey import HersheyFont, Align
 
 import rtree
 
-from src.util.misc import linestring_to_coordinate_pairs
+from util.misc import linestring_to_coordinate_pairs
 
 
 def _rotate_linestrings(lines: list[LineString], x: float, y: float, z: float) -> list[LineString]:
