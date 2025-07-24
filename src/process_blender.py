@@ -135,9 +135,7 @@ def apply_colormap(img: np.ndarray, clip_bottom_percentile: float = 0, clip_top_
     return img_bgr
 
 
-def apply_linear_slope(
-    m: np.ndarray, slope_start: float, slope_end: float, clipping_start: float = 0, clipping_end: float = 0
-) -> np.ndarray:
+def apply_linear_slope(m: np.ndarray, slope_start: float, slope_end: float, clipping_start: float = 0, clipping_end: float = 0) -> np.ndarray:
     """
     Applies a transformation to the ndarray m. M is normalized to [0, 1.0], all values below `slope_start` are
     set to 0, all values above `slope_end` to 1.0.
@@ -239,9 +237,7 @@ if __name__ == "__main__":
     intersections = np.zeros_like(img_normals)
     for x in range(img_normals.shape[1]):
         for y in range(img_normals.shape[0]):
-            intersections[y, x, :] = _line_plane_intersection(
-                img_normals[y, x], img_pxpos[y, x], np.array([0.0, 0.0, 0.0]), light_axis
-            )
+            intersections[y, x, :] = _line_plane_intersection(img_normals[y, x], img_pxpos[y, x], np.array([0.0, 0.0, 0.0]), light_axis)
 
     img_direction = intersections - img_pxpos
 
@@ -283,9 +279,7 @@ if __name__ == "__main__":
     ELEVATION_VECTOR_WEIGHT = 0.5
 
     distance_point_to_light_axis = np.linalg.norm(light_axis - img_normals, axis=-1)
-    distance_weight = (distance_point_to_light_axis - np.min(distance_point_to_light_axis)) / np.ptp(
-        distance_point_to_light_axis
-    )
+    distance_weight = (distance_point_to_light_axis - np.min(distance_point_to_light_axis)) / np.ptp(distance_point_to_light_axis)
 
     # 100% elevation
     img_field_elevation_vectors_0 = img_elevation_direction
@@ -294,24 +288,17 @@ if __name__ == "__main__":
     img_field_elevation_vectors_1 = img_direction
 
     # fixed weights: the final vector is X% light and 1-X% elevation
-    img_field_elevation_vectors_2 = (
-        img_direction * (1 - ELEVATION_VECTOR_WEIGHT) + img_elevation_direction * ELEVATION_VECTOR_WEIGHT
-    )
+    img_field_elevation_vectors_2 = img_direction * (1 - ELEVATION_VECTOR_WEIGHT) + img_elevation_direction * ELEVATION_VECTOR_WEIGHT
 
     # dynamic mixture based on magnitude
-    mixture_magnitude = cv2.normalize(
-        apply_clipping(img_elevation_magnitude, 0, 1), None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX
-    )
+    mixture_magnitude = cv2.normalize(apply_clipping(img_elevation_magnitude, 0, 1), None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
     mixture_magnitude = mixture_magnitude[:, :, np.newaxis]
-    img_field_elevation_vectors_3 = (
-        img_direction * (1 - mixture_magnitude) + img_elevation_direction * mixture_magnitude
-    )
+    img_field_elevation_vectors_3 = img_direction * (1 - mixture_magnitude) + img_elevation_direction * mixture_magnitude
 
     # dynamic mixture based on magnitude with thresholds and a linear slope
     mixture_elevation_magnitude_newaxis = mixture_elevation_magnitude[:, :, np.newaxis]
     img_field_elevation_vectors_4 = (
-        img_direction * (1 - mixture_elevation_magnitude_newaxis)
-        + img_elevation_direction * mixture_elevation_magnitude_newaxis
+        img_direction * (1 - mixture_elevation_magnitude_newaxis) + img_elevation_direction * mixture_elevation_magnitude_newaxis
     )
 
     # hard cut: below MAGNITUDE_THRESHOLD follow the light vector, above the elevation vector
@@ -336,8 +323,7 @@ if __name__ == "__main__":
     #     + img_elevation_direction_crossed * mixture_elevation_magnitude_newaxis
     # )
     img_field_elevation_vectors_7 = (
-        img_direction_crossed * (1 - mixture_elevation_magnitude_newaxis)
-        + img_elevation_direction * mixture_elevation_magnitude_newaxis
+        img_direction_crossed * (1 - mixture_elevation_magnitude_newaxis) + img_elevation_direction * mixture_elevation_magnitude_newaxis
     )
 
     # Mapping Distance

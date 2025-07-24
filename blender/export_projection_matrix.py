@@ -106,9 +106,7 @@ def get_3x4_RT_matrix_from_blender(cam):
     T_world2cv = R_bcam2cv @ T_world2bcam
 
     # put into 3x4 matrix
-    RT = Matrix(
-        (R_world2cv[0][:] + (T_world2cv[0],), R_world2cv[1][:] + (T_world2cv[1],), R_world2cv[2][:] + (T_world2cv[2],))
-    )
+    RT = Matrix((R_world2cv[0][:] + (T_world2cv[0],), R_world2cv[1][:] + (T_world2cv[1],), R_world2cv[2][:] + (T_world2cv[2],)))
     return RT
 
 

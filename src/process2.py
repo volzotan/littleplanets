@@ -16,9 +16,7 @@ import numpy as np
 from shapely import LineString
 
 
-def get_slope(
-    data: np.ndarray, sampling_step: int
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def get_slope(data: np.ndarray, sampling_step: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Computes angle (in rad) and magnitude of the given 2D array of values
     """

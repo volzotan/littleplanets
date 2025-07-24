@@ -218,9 +218,7 @@ if __name__ == "__main__":
 
         linestrings_along_path = [shapely.affinity.translate(ls, xoff=x, yoff=y) for ls in linestrings_along_path]
         linestrings_along_path = [
-            shapely.affinity.translate(
-                ls, xoff=dist * math.cos(math.radians(angle)), yoff=dist * math.sin(math.radians(angle))
-            )
+            shapely.affinity.translate(ls, xoff=dist * math.cos(math.radians(angle)), yoff=dist * math.sin(math.radians(angle)))
             for ls in linestrings_along_path
         ]
         text = [LineString(shapely.get_coordinates(l) * np.array([1, -1])) for l in linestrings_along_path]
@@ -268,9 +266,7 @@ if __name__ == "__main__":
     for i, v in enumerate(mesh.vertices.tolist()):
         tree.insert(i, v, obj=v)
 
-    linestrings_projected = [
-        LineString(project_vertices(tree, shapely.get_coordinates(l, include_z=True), 0.1)) for l in linestrings
-    ]
+    linestrings_projected = [LineString(project_vertices(tree, shapely.get_coordinates(l, include_z=True), 0.1)) for l in linestrings]
 
     # EXPORT
 

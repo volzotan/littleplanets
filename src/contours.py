@@ -11,7 +11,7 @@ from skimage.morphology import skeletonize
 
 import random
 
-from src.util.misc import linestring_to_coordinate_pairs
+from util.misc import linestring_to_coordinate_pairs
 
 DIR_DEBUG = Path("debug")
 
@@ -85,9 +85,7 @@ if __name__ == "__main__":
         out = cv2.morphologyEx(out, cv2.MORPH_OPEN, np.ones((OPENING_KERNEL_SIZE, OPENING_KERNEL_SIZE), dtype=np.uint8))
 
     if CLOSING_KERNEL_SIZE is not None:
-        out = cv2.morphologyEx(
-            out, cv2.MORPH_CLOSE, np.ones((CLOSING_KERNEL_SIZE, CLOSING_KERNEL_SIZE), dtype=np.uint8)
-        )
+        out = cv2.morphologyEx(out, cv2.MORPH_CLOSE, np.ones((CLOSING_KERNEL_SIZE, CLOSING_KERNEL_SIZE), dtype=np.uint8))
 
     skeleton = skeletonize(out)
 

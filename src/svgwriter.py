@@ -70,14 +70,10 @@ class SvgWriter:
     def write(self):
         with open(self.filename, "w") as out:
             out.write('<?xml version="1.0" encoding="utf-8" ?>\n')
-            out.write(
-                '<?xml-stylesheet href="style.css" type="text/css" title="main_stylesheet" alternate="no" media="screen" ?>\n'
-            )
+            out.write('<?xml-stylesheet href="style.css" type="text/css" title="main_stylesheet" alternate="no" media="screen" ?>\n')
 
             if self.dimensions is not None:
-                out.write(
-                    f'<svg baseProfile="tiny" version="1.2" width="{self.dimensions[0]}px" height="{self.dimensions[1]}px" '
-                )
+                out.write(f'<svg baseProfile="tiny" version="1.2" width="{self.dimensions[0]}px" height="{self.dimensions[1]}px" ')
             else:
                 out.write('<svg baseProfile="tiny" version="1.2" ')
             out.write('xmlns="http://www.w3.org/2000/svg" ')
@@ -87,13 +83,13 @@ class SvgWriter:
             out.write('xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" ')
             out.write(">\n")
 
-            out.write('<sodipodi:namedview ')
+            out.write("<sodipodi:namedview ")
             out.write('id="namedview1" ')
             out.write(f'pagecolor="{self.background_color}" ')
-            out.write('/>\n')
+            out.write("/>\n")
 
-            out.write('<defs />\n')
-            out.write('\n')
+            out.write("<defs />\n")
+            out.write("\n")
 
             out.write("<style>\n")
             out.write("path, line { stroke-linecap: round; stroke-linejoin: round; }\n")

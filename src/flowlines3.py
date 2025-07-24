@@ -211,13 +211,9 @@ class FlowlineHatcher:
     def _next_point(self, p: Linepoint, forwards: bool) -> Linepoint | None:
         # direction
         nearest_triangle_ind = list(self.tree_triangles.nearest(p, 1))[0]
-        _, new_nearest_triangle_ind = find_point_on_surface(
-            self.m, self.neighbour_map_1[nearest_triangle_ind], np.array(p)
-        )
+        _, new_nearest_triangle_ind = find_point_on_surface(self.m, self.neighbour_map_1[nearest_triangle_ind], np.array(p))
         if new_nearest_triangle_ind is None:
-            _, new_nearest_triangle_ind = find_point_on_surface(
-                self.m, self.neighbour_map_2[nearest_triangle_ind], np.array(p)
-            )
+            _, new_nearest_triangle_ind = find_point_on_surface(self.m, self.neighbour_map_2[nearest_triangle_ind], np.array(p))
             if new_nearest_triangle_ind is None:
                 print("no nearest_triangle_ind found")
         else:
