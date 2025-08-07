@@ -104,21 +104,23 @@ if __name__ == "__main__":
     parser.add_argument("mapping_distance", type=Path, default="mapping_distance.png", help="Mapping distance (PNG)")
     parser.add_argument("mapping_line_length", type=Path, default="mapping_length.png", help="Mapping line length (PNG)")
     parser.add_argument("mapping_flat", type=Path, default="mapping_flat.png", help="Mapping flat (PNG)")
+
     parser.add_argument("--overlay", type=Path, default=None, help="Overlay linestrings (NPZ)")
     parser.add_argument("--projection-matrix", type=Path, default=None, help="3x4 projection matrix (NPY)")
+
     parser.add_argument("--contours", type=Path, default=None, help="Contour linestrings (NPZ)")
     # parser.add_argument("--scaling-factor", type=float, default=1.0, help="Scaling factor of the mapping rasters with regard to the original blender export")
+
     parser.add_argument("--blur-angle", type=float, default=0, help="Blurring kernel size. Percentage of raster size (float)")
     parser.add_argument("--blur-distance", type=float, default=0, help="Blurring kernel size. Percentage of raster size (float)")
-    parser.add_argument("--output", type=Path, default="littleplanet.svg", help="Output filename")
-    parser.add_argument("--debug", action="store_true", default=False, help="Enable debug output")
+
+    parser.add_argument("--output", type=Path, default="littleplanet.svg", help="Output filename (SVG)")
+    parser.add_argument("--debug", action="store_true", default=False, help="Enable debug (image) output")
     parser.add_argument("--suffix", type=str, default="", help="Filename suffix to be appended to all (debug) output")
 
     parser.add_argument("--config-line-distance-end-factor", type=float, default=None)
 
     args = parser.parse_args()
-
-    # FILENAME_CONTOURS = Path("..", "assets") / "contours.npz"
 
     dimensions = [750, 750]
 

@@ -6,6 +6,8 @@ DIR_BLENDER := blender
 BLENDER_BIN := /Applications/Blender.app/Contents/MacOS/Blender
 BLENDER_FILE := moon_Z.blend
 
+INKSCAPE_BIN := /Applications/Inkscape.app/Contents/MacOS/inkscape
+
 PYPROJECT_FILE := pyproject.toml
 
 DIR_SRC := src
@@ -84,18 +86,18 @@ ROT_X := -90
 ROT_Y := 90
 ROT_Z := 0
 
-# DEM_FILE := $(DIR_DATA_LOWRES)/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif
-# COLOR_FILE := $(DIR_DATA)/Mars_Viking_ClrMosaic_global_925m.tif
+DEM_FILE := $(DIR_DATA_LOWRES)/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif
+COLOR_FILE := $(DIR_DATA)/Mars_Viking_ClrMosaic_global_925m.tif
 
-# ROT_X := -90
-# ROT_Y := 150
-# ROT_Z := 0 
+ROT_X := -90
+ROT_Y := 150
+ROT_Z := 0 
 
 # ----------
 
 $(DIR_BUILD)/mesh.ply: $(DIR_SRC)/mesh.py $(DEM_FILE) $(COLOR_FILE)
 	@echo "Generating mesh"
-	uv run $^ --output $@ --scale 0.04 --subdivision 11
+	uv run $^ --output $@ --scale 0.04 --subdivision 10
 
 $(DIR_BUILD)/$(BLENDER_FILE): $(DIR_BLENDER)/$(BLENDER_FILE) $(DIR_BUILD)/mesh.ply
 	@echo "Running blender mesh update"
@@ -123,7 +125,7 @@ $(DIR_BUILD)/mesh_blender.ply: $(DIR_BUILD)/$(BLENDER_FILE) $(DIR_BLENDER)/expor
 
 $(DIR_BUILD)/overlay.npz: $(DIR_SRC)/project_overlay.py $(DIR_BUILD)/mesh_blender.ply $(DIR_DATA)/Moon_apollo_landing_sites.json
 	@echo "Projecting overlay POIs"
-	uv run $^ --output $@ --rotZ -90
+	uv run $^ --output $@ --rotZ $(ROT_X) --circle-radius 0.015 --font-size 0.025
 
 $(DIR_BUILD)/contours.npz: $(DIR_SRC)/contours.py $(DIR_BUILD)/normals.exr $(DIR_BUILD)/raytrace.npy
 	@echo "Computing contours"
@@ -144,16 +146,21 @@ run: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_d
 		--projection-matrix $(DIR_BUILD)/projection_matrix.npy  \
 		--contours $(DIR_BUILD)/contours.npz					\
 		--output $(DIR_BUILD)/littleplanets.svg
-	inkscape $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets.png --export-width=2000 --export-background=#000000
+	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets.png --export-width=2000 --export-background=#000000
 
-run_no_overlay: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png
+run_no_overlay: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/contours.npz
 	@echo "Processing blender output"
-	uv run $^ 										\
+	uv run $(DIR_SRC)/hatch.py 						\
+		$(DIR_BUILD)/mapping_angle_5.png 			\
+		$(DIR_BUILD)/mapping_distance.png 			\
+		$(DIR_BUILD)/mapping_line_length.png 		\
+		$(DIR_BUILD)/mapping_flat.png 				\
+		--contours $(DIR_BUILD)/contours.npz		\
 		--output $(DIR_BUILD)/littleplanets.svg 	\
 		--blur-angle 0.20 							\
 		--blur-distance 0.40						\
 		--config-line-distance-end-factor 0.5 ;		\
-	inkscape $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets.png --export-width=2000 --export-background=#000000
+	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets.png --export-width=2000 --export-background=#000000
 
 gcode: $(DIR_BUILD)/littleplanets.svg
 	uv run svgtogcode.py $^
@@ -174,7 +181,7 @@ test_angle: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_angle_0.png $(DIR_BUILD)/ma
 			--contours $(DIR_BUILD)/contours.npz	\
 			--output $(DIR_BUILD)/littleplanets.svg \
 			--blur-angle 0.20 ; \
-		inkscape $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets_$$i --export-width=2000 --export-background=#000000 ; \
+		$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets_$$i --export-width=2000 --export-background=#000000 ; \
 	done
 
 test_blur: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/contours.npz
@@ -191,7 +198,7 @@ test_blur: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/map
 			--config-line-distance-end-factor 0.5 	\
 			--debug									\
 			--suffix _$$i ; \
-		inkscape $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets_$$i.png --export-width=2000 --export-background=#000000 ; \
+		$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets_$$i.png --export-width=2000 --export-background=#000000 ; \
 	done
 
 test_end_factor: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/contours.npz
@@ -206,20 +213,5 @@ test_end_factor: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUIL
 			--output $(DIR_BUILD)/littleplanets.svg \
 			--blur-angle 0.10 						\
 			--config-line-distance-end-factor $$i ; \
-		inkscape $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets_$$i.png --export-width=2000 --export-background=#000000 ; \
-	done
-
-test_end_factor: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/contours.npz
-	for i in 0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 ; do \
-		echo "$$i"	; \
-		uv run $(DIR_SRC)/hatch.py 					\
-			$(DIR_BUILD)/mapping_angle_5.png 		\
-			$(DIR_BUILD)/mapping_distance.png 		\
-			$(DIR_BUILD)/mapping_line_length.png 	\
-			$(DIR_BUILD)/mapping_flat.png 			\
-			--contours $(DIR_BUILD)/contours.npz	\
-			--output $(DIR_BUILD)/littleplanets.svg \
-			--blur-angle 0.10 						\
-			--config-line-distance-end-factor $$i ; \
-		inkscape $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets_$$i.png --export-width=2000 --export-background=#000000 ; \
+		$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets_$$i.png --export-width=2000 --export-background=#000000 ; \
 	done

@@ -25,7 +25,7 @@ LIGHT_POS = [1, 1, 0]
 LIGHT_POS = [1, 0, 1]
 
 CONTRAST_ENHANCEMENT = True
-CONTRAST_VALUE = 1.60
+CONTRAST_VALUE = 1.0
 
 CLIPPING = True
 CLIPPING_CUTOFF_PERCENTILE = 1.00
@@ -400,7 +400,11 @@ if __name__ == "__main__":
             #     contrast = 1.0+i/10
             #     cv2.imwrite(str(args.output / f"mapping_distance_{contrast:5.2f}.png"), adjust_contrast_brightness(mapping_distance, contrast=contrast))
 
-            mapping_distance = adjust_contrast_brightness(mapping_distance, contrast=CONTRAST_VALUE)
+            # mapping_distance = adjust_contrast_brightness(mapping_distance, contrast=CONTRAST_VALUE)
+
+            clahe = cv2.createCLAHE(clipLimit=1.0, tileGridSize=(8, 8))
+            mapping_distance = cv2.addWeighted(clahe.apply(mapping_distance), CONTRAST_VALUE, mapping_distance, 1 - CONTRAST_VALUE, 0.0)
+
 
         if CLIPPING:
             minval = np.percentile(mapping_distance, CLIPPING_CUTOFF_PERCENTILE)

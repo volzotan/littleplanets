@@ -16,6 +16,8 @@ import rtree
 
 from util.misc import linestring_to_coordinate_pairs
 
+VISUALIZE = False
+
 
 def _rotate_linestrings(lines: list[LineString], x: float, y: float, z: float) -> list[LineString]:
     R_x = np.array(
@@ -168,7 +170,7 @@ if __name__ == "__main__":
     parser.add_argument("--rotZ", type=float, default=0, help="rotation Z in degrees [float]")
     parser.add_argument("--output", type=Path, default="overlay.npz", help="Output filename [NPZ]")
     parser.add_argument("--circle-radius", type=float, default=0.02, help="POI circle radius (float)")
-    parser.add_argument("--font-size", type=int, default=0.03, help="Label font size (float)")
+    parser.add_argument("--font-size", type=float, default=0.03, help="Label font size (float)")
     parser.add_argument("--subdivision", type=int, default=10, help="Number of subdivision steps (int)")
     args = parser.parse_args()
 
@@ -244,19 +246,11 @@ if __name__ == "__main__":
 
     # VISUALIZE
 
-    # visualize(linestrings).show()
-    # exit()
+    if VISUALIZE:
+        visualize(linestrings).show()
+        exit()
 
     # PROJECT ONTO SURFACE
-
-    # TODO: Caveat: height data derived from the DEM raster is missing blender mesh rotation info
-    # dem_raster = normalize_elevation(load_raster(ASSETS_LOWRES_DIR / "Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"))
-    # dem_raster = dem_raster[0, :, :]
-    # size = (np.array([dem_raster.shape[1], dem_raster.shape[0]]) * 0.25).astype(int).tolist()
-    # dem_raster = cv2.resize(dem_raster, size)
-    # linestrings_projected = [
-    #     LineString(project(dem_raster, shapely.get_coordinates(l, include_z=True), 0.1)) for l in linestrings
-    # ]
 
     mesh = trimesh.load(args.mesh)
     index = rtree.index

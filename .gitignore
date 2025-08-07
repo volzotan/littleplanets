@@ -9,8 +9,11 @@ wheels/
 # Virtual environments
 .venv
 
+# PyCharm
 .idea/**
 
-# Added by cargo
-
-/target
+# Makefile
+data/
+data_lowres/
+build/
+debug/
