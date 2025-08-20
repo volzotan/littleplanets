@@ -117,7 +117,7 @@ def apply_clipping(m: np.ndarray, start_percentile: float, end_percentile: float
     m_no_nan = np.nan_to_num(m)
     minval = np.percentile(m_no_nan, start_percentile)
     maxval = np.percentile(m_no_nan, 100 - end_percentile)
-    return np.clip(m, minval, maxval)
+    return np.clip(m_no_nan, minval, maxval)
 
 
 def apply_colormap(img: np.ndarray, clip_bottom_percentile: float = 0, clip_top_percentile: float = 0) -> np.ndarray:
@@ -127,7 +127,8 @@ def apply_colormap(img: np.ndarray, clip_bottom_percentile: float = 0, clip_top_
     if clip_bottom_percentile > 0 or clip_top_percentile > 0:
         img = apply_clipping(img, clip_bottom_percentile, clip_top_percentile)
 
-    img_norm = cv2.normalize(img.astype("float32"), None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
+    img_no_nan = np.nan_to_num(img)
+    img_norm = cv2.normalize(img_no_nan.astype("float32"), None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
     colormap = plt.colormaps.get_cmap("viridis")
     img_colored = colormap(img_norm)  # shape: (H, W, 4) with RGBA
     img_rgb = (img_colored[:, :, :3] * 255).astype(np.uint8)  # Remove alpha channel
@@ -145,7 +146,8 @@ def apply_linear_slope(m: np.ndarray, slope_start: float, slope_end: float, clip
     if clipping_start > 0 or clipping_end > 0:
         m = apply_clipping(m, clipping_start, clipping_end)
 
-    m_norm = cv2.normalize(m, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
+    m_no_nan = np.nan_to_num(m)
+    m_norm = cv2.normalize(m_no_nan, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
 
     m_norm[m_norm < slope_start] = 0
     mask = (m_norm >= slope_start) & (m_norm <= slope_end)
@@ -249,7 +251,7 @@ if __name__ == "__main__":
 
     img_elevation_vector = _normalize_vectors(img_pxpos)
     dot = np.sum(img_elevation_vector * img_normals, axis=2, keepdims=True)  # vectorized dot product
-    img_elevation_direction = img_elevation_vector - (dot) * img_normals
+    img_elevation_direction = img_elevation_vector - dot * img_normals
     img_elevation_magnitude = np.arccos(dot)
 
     # create mixture for elevation and magnitude
