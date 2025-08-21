@@ -170,6 +170,7 @@ if __name__ == "__main__":
     timer_start = datetime.datetime.now()
 
     img_normals = openexr_numpy.imread(str(args.normals), "XYZ")
+    img_color = cv2.imread(str(args.image))
     img_gray = cv2.imread(str(args.image), cv2.IMREAD_GRAYSCALE)
     img_pxpos = np.load(args.raytrace)
 
@@ -178,12 +179,14 @@ if __name__ == "__main__":
     if args.scaling_factor is not None:
         resize_size = (int(img_normals.shape[1] * args.scaling_factor), int(img_normals.shape[0] * args.scaling_factor))
         img_normals = cv2.resize(img_normals, resize_size)
+        img_color = cv2.resize(img_color, resize_size)
         img_gray = cv2.resize(img_gray, resize_size)
         img_pxpos = cv2.resize(img_pxpos, resize_size)
 
     if VISUALIZE:
         resize_size = [50, 50]
         img_normals = cv2.resize(img_normals, resize_size)
+        img_color = cv2.resize(img_color, resize_size)
         img_gray = cv2.resize(img_gray, resize_size)
         img_pxpos = cv2.resize(img_pxpos, resize_size)
 
@@ -233,6 +236,10 @@ if __name__ == "__main__":
     # visualize(centers, [normals, directions], light_axis).show()
     # visualize(centers, [directions, field_elevation_vectors], light_axis).show()
     # visualize(centers, [directions], light_axis).show()
+
+    # Mapping Color
+
+    mapping_color = img_color
 
     # Mapping Angle
 
@@ -407,6 +414,7 @@ if __name__ == "__main__":
             clahe = cv2.createCLAHE(clipLimit=1.0, tileGridSize=(8, 8))
             mapping_distance = cv2.addWeighted(clahe.apply(mapping_distance), CONTRAST_VALUE, mapping_distance, 1 - CONTRAST_VALUE, 0.0)
 
+        cv2.imwrite(str(args.output / "mapping_color.png"), mapping_color)
 
         if CLIPPING:
             minval = np.percentile(mapping_distance, CLIPPING_CUTOFF_PERCENTILE)

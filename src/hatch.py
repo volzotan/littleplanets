@@ -2,6 +2,7 @@ import argparse
 import datetime
 from pathlib import Path
 import math
+from typing import Any
 
 import cv2
 
@@ -10,6 +11,7 @@ import numpy as np
 import shapely
 import shapely.ops
 from shapely import LineString
+from skimage.color import rgb2lab, deltaE_cie76, deltaE_ciede2000, deltaE_ciede94
 
 import flowlines
 from util.misc import linestring_to_coordinate_pairs
@@ -100,6 +102,7 @@ def _blur_raster(raster: np.ndarray, perc: float) -> np.ndarray:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("mapping_color", type=Path, default="mapping_color.png", help="Mapping color (PNG)")
     parser.add_argument("mapping_angle", type=Path, default="mapping_angle.png", help="Mapping angle (PNG)")
     parser.add_argument("mapping_distance", type=Path, default="mapping_distance.png", help="Mapping distance (PNG)")
     parser.add_argument("mapping_line_length", type=Path, default="mapping_length.png", help="Mapping line length (PNG)")
@@ -111,6 +114,7 @@ if __name__ == "__main__":
     parser.add_argument("--contours", type=Path, default=None, help="Contour linestrings (NPZ)")
     # parser.add_argument("--scaling-factor", type=float, default=1.0, help="Scaling factor of the mapping rasters with regard to the original blender export")
 
+    parser.add_argument("--blur-color", type=float, default=0, help="Blurring kernel size. Percentage of raster size (float)")
     parser.add_argument("--blur-angle", type=float, default=0, help="Blurring kernel size. Percentage of raster size (float)")
     parser.add_argument("--blur-distance", type=float, default=0, help="Blurring kernel size. Percentage of raster size (float)")
 
@@ -124,16 +128,18 @@ if __name__ == "__main__":
 
     dimensions = [750, 750]
 
-    # uint8 image must be centered around 128 to deal with negative values
-    mapping_angle = cv2.imread(args.mapping_angle, cv2.IMREAD_GRAYSCALE)
+    mapping_color = cv2.imread(args.mapping_color)
+    mapping_angle = cv2.imread(args.mapping_angle, cv2.IMREAD_GRAYSCALE)  # uint8 image must be centered around 128 to deal with negative values
     mapping_distance = cv2.imread(args.mapping_distance, cv2.IMREAD_GRAYSCALE)
     mapping_line_length = cv2.imread(args.mapping_line_length, cv2.IMREAD_GRAYSCALE)
     mapping_flat = cv2.imread(args.mapping_flat, cv2.IMREAD_GRAYSCALE)
 
+    mapping_color = _blur_raster(mapping_color, args.blur_color)
     mapping_angle = _blur_raster(mapping_angle, args.blur_angle)
     mapping_distance = _blur_raster(mapping_distance, args.blur_distance)
 
     if args.debug:
+        cv2.imwrite(str(DIR_DEBUG / f"hatch_mapping_color{args.suffix}.png"), mapping_color)
         cv2.imwrite(str(DIR_DEBUG / f"hatch_mapping_angle{args.suffix}.png"), mapping_angle)
         cv2.imwrite(str(DIR_DEBUG / f"hatch_mapping_distance{args.suffix}.png"), mapping_distance)
 
@@ -221,6 +227,36 @@ if __name__ == "__main__":
     for g in stencil.boundary.geoms:
         linestrings_stencil.append(g)
 
+    # Coloring
+
+    palette = [
+        [255, 0, 0],
+        [0, 255, 0],
+        [0, 0, 255],
+    ]
+
+    linestrings_split_by_palette = [[] for _ in range(len(palette))]
+
+    if len(palette) > 0:
+        palette_labColor = [rgb2lab(np.array(c) / 255.0) for c in palette]
+
+        mapping_color_rgb = cv2.cvtColor(mapping_color, cv2.COLOR_BGR2RGB)
+
+        for ls in linestrings:
+            all_pixels = np.array([mapping_color_rgb[int(p[1] * 1 / scaling_factor), int(p[0] * 1 / scaling_factor)] for p in ls.coords])
+            mean = np.mean(all_pixels, axis=0)
+            # diffs = [deltaE_cie76(rgb2lab(mean/255.0), c) for c in palette_labColor]
+            diffs = [deltaE_ciede2000(rgb2lab(mean / 255.0), c) for c in palette_labColor]
+            # diffs = [deltaE_ciede94(rgb2lab(mean/255.0), c) for c in palette_labColor]
+
+            # print(diffs)
+            # print(np.argmin(diffs))
+
+            palette_color_index = np.argmin(diffs)
+            linestrings_split_by_palette[palette_color_index].append(ls)
+    else:
+        linestrings_split_by_palette[0] = linestrings
+
     # canvas = np.full([int(dimensions[0] * 10), int(dimensions[1] * 10), 3], 0 if INVERT_COLOR else 255, dtype=np.uint8)
     #
     # cv2.imwrite(
@@ -235,14 +271,15 @@ if __name__ == "__main__":
     svg = SvgWriter(args.output, dimensions)
     svg.background_color = "#000000"
 
-    layer_styles = {}
+    layer_styles: dict[str, dict[str, str]] = {}
 
-    layer_styles["lines"] = {
-        "fill": "none",
-        "stroke": "white",
-        "stroke-width": "0.30",
-        "fill-opacity": "1.0",
-    }
+    for i, color in enumerate(palette):
+        layer_styles[f"lines_{i}"] = {
+            "fill": "none",
+            "stroke": f"rgb({color[0]},{color[1]},{color[2]})",
+            "stroke-width": "0.30",
+            "fill-opacity": "1.0",
+        }
 
     layer_styles["contours"] = {
         "fill": "none",
@@ -261,9 +298,11 @@ if __name__ == "__main__":
     for k, v in layer_styles.items():
         svg.add_style(k, v)
 
-    svg.add("lines", linestrings)
     svg.add("overlay", linestrings_overlay)
     svg.add("contours", linestrings_contours)
+
+    for i, colored_linestrings in enumerate(linestrings_split_by_palette):
+        svg.add(f"lines_{i}", colored_linestrings)
 
     svg.write()
     # try:
