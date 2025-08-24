@@ -2,6 +2,7 @@ import argparse
 import datetime
 from pathlib import Path
 import math
+import random
 from typing import Any
 
 import cv2
@@ -102,7 +103,7 @@ def _blur_raster(raster: np.ndarray, perc: float) -> np.ndarray:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("mapping_color", type=Path, default="mapping_color.png", help="Mapping color (PNG)")
+    parser.add_argument("mapping_color", type=Path, default="mapping_color.npy", help="Mapping color (NPY)")
     parser.add_argument("mapping_angle", type=Path, default="mapping_angle.png", help="Mapping angle (PNG)")
     parser.add_argument("mapping_distance", type=Path, default="mapping_distance.png", help="Mapping distance (PNG)")
     parser.add_argument("mapping_line_length", type=Path, default="mapping_length.png", help="Mapping line length (PNG)")
@@ -128,7 +129,12 @@ if __name__ == "__main__":
 
     dimensions = [750, 750]
 
-    mapping_color = cv2.imread(args.mapping_color)
+    mapping_color = None
+    if args.mapping_color.suffix == ".npy":
+        mapping_color = np.load(args.mapping_color)
+    else:
+        mapping_color = cv2.imread(args.mapping_color)
+
     mapping_angle = cv2.imread(args.mapping_angle, cv2.IMREAD_GRAYSCALE)  # uint8 image must be centered around 128 to deal with negative values
     mapping_distance = cv2.imread(args.mapping_distance, cv2.IMREAD_GRAYSCALE)
     mapping_line_length = cv2.imread(args.mapping_line_length, cv2.IMREAD_GRAYSCALE)
@@ -196,7 +202,7 @@ if __name__ == "__main__":
 
     config = flowlines.FlowlineHatcherConfig()
     config.LINE_DISTANCE = (0.8, 10)
-    config.LINE_MAX_LENGTH = [10, 40]  # [20, 100]  # [10, 50]  # [50] * 2 #[10, 200]
+    config.LINE_MAX_LENGTH = [10, 25]  # [20, 100]  # [10, 50]  # [50] * 2 #[10, 200]
     config.LINE_STEP_DISTANCE = 0.15
     config.LINE_DISTANCE_END_FACTOR = 0.25
     config.MAX_ANGLE_DISCONTINUITY = math.pi / 12
@@ -229,33 +235,35 @@ if __name__ == "__main__":
 
     # Coloring
 
-    palette = [
-        [255, 0, 0],
-        [0, 255, 0],
-        [0, 0, 255],
-    ]
+    # Coloring Attempt 1
+    # palette = [
+    #     [255, 0, 0],
+    #     [0, 255, 0],
+    #     [0, 0, 255],
+    # ]
+    #
+    # linestrings_split_by_palette = [[] for _ in range(len(palette))]
+    #
+    # if len(palette) > 0:
+    #     palette_labColor = [rgb2lab(np.array(c) / 255.0) for c in palette]
+    #
+    #     mapping_color_rgb = cv2.cvtColor(mapping_color, cv2.COLOR_BGR2RGB)
+    #
+    #     for ls in linestrings:
+    #         all_pixels = np.array([mapping_color_rgb[int(p[1] * 1 / scaling_factor), int(p[0] * 1 / scaling_factor)] for p in ls.coords])
+    #         mean = np.mean(all_pixels, axis=0)
+    #         # diffs = [deltaE_cie76(rgb2lab(mean/255.0), c) for c in palette_labColor]
+    #         diffs = [deltaE_ciede2000(rgb2lab(mean / 255.0), c) for c in palette_labColor]
+    #         # diffs = [deltaE_ciede94(rgb2lab(mean/255.0), c) for c in palette_labColor]
+    #
+    #         # print(diffs)
+    #         # print(np.argmin(diffs))
+    #
+    #         palette_color_index = np.argmin(diffs)
+    #         linestrings_split_by_palette[palette_color_index].append(ls)
+    # else:
+    #     linestrings_split_by_palette[0] = linestrings
 
-    linestrings_split_by_palette = [[] for _ in range(len(palette))]
-
-    if len(palette) > 0:
-        palette_labColor = [rgb2lab(np.array(c) / 255.0) for c in palette]
-
-        mapping_color_rgb = cv2.cvtColor(mapping_color, cv2.COLOR_BGR2RGB)
-
-        for ls in linestrings:
-            all_pixels = np.array([mapping_color_rgb[int(p[1] * 1 / scaling_factor), int(p[0] * 1 / scaling_factor)] for p in ls.coords])
-            mean = np.mean(all_pixels, axis=0)
-            # diffs = [deltaE_cie76(rgb2lab(mean/255.0), c) for c in palette_labColor]
-            diffs = [deltaE_ciede2000(rgb2lab(mean / 255.0), c) for c in palette_labColor]
-            # diffs = [deltaE_ciede94(rgb2lab(mean/255.0), c) for c in palette_labColor]
-
-            # print(diffs)
-            # print(np.argmin(diffs))
-
-            palette_color_index = np.argmin(diffs)
-            linestrings_split_by_palette[palette_color_index].append(ls)
-    else:
-        linestrings_split_by_palette[0] = linestrings
 
     # canvas = np.full([int(dimensions[0] * 10), int(dimensions[1] * 10), 3], 0 if INVERT_COLOR else 255, dtype=np.uint8)
     #
@@ -267,6 +275,44 @@ if __name__ == "__main__":
     #     # draw_line_image(canvas, [linestrings_stencil], dimensions),
     #     # draw_line_image(canvas, [linestrings], dimensions),
     # )
+
+
+    palette = [
+        [255, 255, 255]
+    ]
+
+    palette = [
+        [240, 126, 50],
+        [0, 154, 194],
+    ]
+
+    linestrings_split_by_palette = [[] for _ in range(len(palette))]
+
+    if len(palette) > 1:
+
+        if len(palette) != mapping_color.shape[2]:
+            raise Exception(f"Palette size mismatch: {args.mapping_color} has {mapping_color.shape[2]} color(s), palette has {len(palette)}")
+
+        for ls in linestrings:
+            all_pixels = np.array([mapping_color[int(p[1] * 1 / scaling_factor), int(p[0] * 1 / scaling_factor)] for p in ls.coords])
+
+            mean = np.mean(all_pixels, axis=0)
+
+            # closest
+            # palette_color_index = np.argmax(mean)
+
+            # weighted random selection
+            palette_color_index = random.choices(range(len(palette)), mean)[0]
+
+            linestrings_split_by_palette[palette_color_index].append(ls)
+    else:
+        linestrings_split_by_palette[0] = linestrings
+
+
+
+
+
+
 
     svg = SvgWriter(args.output, dimensions)
     svg.background_color = "#000000"
@@ -283,7 +329,7 @@ if __name__ == "__main__":
 
     layer_styles["contours"] = {
         "fill": "none",
-        "stroke": "white",
+        "stroke": f"rgb({palette[0][0]},{palette[0][1]},{palette[0][2]})",
         "stroke-width": "0.30",
         "fill-opacity": "1.0",
     }
