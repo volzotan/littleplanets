@@ -90,8 +90,11 @@ DEM_FILE := $(DIR_DATA_LOWRES)/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif
 COLOR_FILE := $(DIR_DATA)/Mars_Viking_ClrMosaic_global_925m.tif
 
 ROT_X := -90
-ROT_Y := 150
-ROT_Z := 0 
+ROT_Y := 160
+ROT_Z := -22.5
+
+LIGHT_ANGLE_XY := 67.5
+LIGHT_ANGLE_Z := 60
 
 # ----------
 
@@ -133,7 +136,7 @@ $(DIR_BUILD)/contours.npz: $(DIR_SRC)/contours.py $(DIR_BUILD)/normals.exr $(DIR
 
 $(DIR_BUILD)/mapping_color.png $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png &: $(DIR_SRC)/process_blender.py $(DIR_BUILD)/normals.exr $(DIR_BUILD)/image.tif $(DIR_BUILD)/raytrace.npy
 	@echo "Processing blender mappings: $@"
-	uv run $^ --output $(DIR_BUILD)
+	uv run $^ --light-angle $(LIGHT_ANGLE_XY) $(LIGHT_ANGLE_Z) --output $(DIR_BUILD)
 
 $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_brightness_difference.png &: $(DIR_SRC)/palette.py $(DIR_BUILD)/image.tif
 	@echo "Processing palette colors"

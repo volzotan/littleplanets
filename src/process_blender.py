@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import math
 from pathlib import Path
 
 import numpy as np
@@ -16,13 +17,6 @@ CROSS_FLOW = True
 
 VISUALIZE = False
 EXPORT = True
-
-# coordinate system: Y-UP
-LIGHT_POS = [1.5, 0.3, 2]
-LIGHT_POS = [0.22, 0.22, 1]
-LIGHT_POS = [1, 1, 1]
-LIGHT_POS = [1, 1, 0]
-LIGHT_POS = [1, 0, 1]
 
 CONTRAST_ENHANCEMENT = True
 CONTRAST_VALUE = 1.0
@@ -162,6 +156,7 @@ if __name__ == "__main__":
     parser.add_argument("normals", type=Path, default="normals.exr", help="Normals (EXR)")
     parser.add_argument("image", type=Path, default="image.tif", help="RGB image (TIFF)")
     parser.add_argument("raytrace", type=Path, default="raytrace.npy", help="Raytracing distance raster (NPY)")
+    parser.add_argument("--light-angle", type=float, nargs=2, default=[22.5, 90], help="[azimuthal angle φ (around Z-axis), polar angle θ (to Z-axis)] of the lighting vector in degrees")
     parser.add_argument("--scaling-factor", type=float, default=None, help="Scaling factor (float)")
     parser.add_argument("--output", type=Path, default="temp", help="Output directory")
     parser.add_argument("--debug", action="store_true", default=False, help="Enable debug output")
@@ -174,7 +169,13 @@ if __name__ == "__main__":
     img_gray = cv2.imread(str(args.image), cv2.IMREAD_GRAYSCALE)
     img_pxpos = np.load(args.raytrace)
 
-    light_axis = _normalize_vector(np.array(LIGHT_POS))
+    azimuthal_angle, polar_angle = args.light_angle
+    light_pos = [
+        math.sin(math.radians(polar_angle)) * math.cos(math.radians(azimuthal_angle)),
+        math.sin(math.radians(polar_angle)) * math.sin(math.radians(azimuthal_angle)),
+        math.cos(math.radians(polar_angle))
+    ]
+    light_axis = _normalize_vector(np.array(light_pos))
 
     if args.scaling_factor is not None:
         resize_size = (int(img_normals.shape[1] * args.scaling_factor), int(img_normals.shape[0] * args.scaling_factor))
