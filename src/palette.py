@@ -134,9 +134,9 @@ if __name__ == "__main__":
     # HSV CLOSEST
 
     mapping_palette_closest = palette[np.argmin(color_distance_error, axis=2)]
-    mapping_palette_closest[mapping_flat > 0] = [0, 0, 0]
 
     if args.debug:
+        mapping_palette_closest[mapping_flat > 0] = [0, 0, 0]
         cv2.imwrite(str(DIR_DEBUG / "palette_mapping_hsv_closest.png"), cv2.cvtColor(mapping_palette_closest, cv2.COLOR_RGB2BGR))
 
 
@@ -183,9 +183,9 @@ if __name__ == "__main__":
     # LAB CLOSEST
 
     mapping_palette_closest = palette[np.argmin(color_distance_error, axis=2)]
-    mapping_palette_closest[mapping_flat > 0] = [0, 0, 0]
 
     if args.debug:
+        mapping_palette_closest[mapping_flat > 0] = [0, 0, 0]
         cv2.imwrite(str(DIR_DEBUG / "palette_mapping_lab_closest.png"), cv2.cvtColor(mapping_palette_closest, cv2.COLOR_RGB2BGR))
 
 
