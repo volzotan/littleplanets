@@ -156,7 +156,13 @@ if __name__ == "__main__":
     parser.add_argument("normals", type=Path, default="normals.exr", help="Normals (EXR)")
     parser.add_argument("image", type=Path, default="image.tif", help="RGB image (TIFF)")
     parser.add_argument("raytrace", type=Path, default="raytrace.npy", help="Raytracing distance raster (NPY)")
-    parser.add_argument("--light-angle", type=float, nargs=2, default=[22.5, 90], help="[azimuthal angle φ (around Z-axis), polar angle θ (to Z-axis)] of the lighting vector in degrees")
+    parser.add_argument(
+        "--light-angle",
+        type=float,
+        nargs=2,
+        default=[22.5, 90],
+        help="[azimuthal angle φ (around Z-axis), polar angle θ (to Z-axis)] of the lighting vector in degrees",
+    )
     parser.add_argument("--scaling-factor", type=float, default=None, help="Scaling factor (float)")
     parser.add_argument("--output", type=Path, default="temp", help="Output directory")
     parser.add_argument("--debug", action="store_true", default=False, help="Enable debug output")
@@ -173,7 +179,7 @@ if __name__ == "__main__":
     light_pos = [
         math.sin(math.radians(polar_angle)) * math.cos(math.radians(azimuthal_angle)),
         math.sin(math.radians(polar_angle)) * math.sin(math.radians(azimuthal_angle)),
-        math.cos(math.radians(polar_angle))
+        math.cos(math.radians(polar_angle)),
     ]
     light_axis = _normalize_vector(np.array(light_pos))
 
