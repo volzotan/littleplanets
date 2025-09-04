@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import openexr_numpy
 import shapely
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Polygon
 from skimage.morphology import skeletonize
 
 import random
@@ -19,8 +19,13 @@ TOLERANCE: float = 1.0
 OPENING_KERNEL_SIZE: int | None = 3
 CLOSING_KERNEL_SIZE: int | None = 3
 
+SILHOUETTE_SHRINKING = 2.0
+SILHOUETTE_SIMPLIFY = 0.1
+
 # RESIZE_SIZE = [2000, 2000]
 # OUTPUT_SIZE = RESIZE_SIZE # [1000, 1000]
+
+random.seed("littleplanets")
 
 
 def write_npz(filename: Path, linestrings: list[LineString], include_z: bool = False) -> None:
@@ -50,23 +55,30 @@ if __name__ == "__main__":
     img_non_nan[mask_nan] = 0
     contours, hierarchy = cv2.findContours(img_non_nan, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
-    linestrings_silhouette = []
+    polygons_silhouette = []
     for contour in contours:
-        linestrings_silhouette.append(LineString(contour[:, 0, :].tolist()))
+        p = Polygon(contour[:, 0, :].tolist())
+        if p.area > 10.0:
+            polygons_silhouette.append(p)
+
+    polygons_silhouette = [p.buffer(-SILHOUETTE_SHRINKING).simplify(SILHOUETTE_SIMPLIFY) for p in polygons_silhouette]
+    linestrings_silhouette = [LineString(p.exterior.coords) for p in polygons_silhouette]
 
     if args.debug:
         cv2.imwrite(str(DIR_DEBUG / "mask_nan.png"), img_non_nan)
 
         img_silhouette = np.zeros([img_non_nan.shape[0], img_non_nan.shape[1], 3], dtype=np.uint8)
         for ls in linestrings_silhouette:
+            color = random.choices(range(256), k=3)
             for pair in linestring_to_coordinate_pairs(ls):
                 pt1 = [int(c) for c in pair[0]]
                 pt2 = [int(c) for c in pair[1]]
-                cv2.line(img_silhouette, pt1, pt2, (255, 255, 255), 2)
+                cv2.line(img_silhouette, pt1, pt2, color, 2)
         cv2.imwrite(str(DIR_DEBUG / "silhouette.png"), img_silhouette)
 
     write_npz(args.output, linestrings_silhouette)
-    exit()
+
+    exit()  # TODO
 
     camera_axis = np.array([0, 0, 7])
     camera_pos = np.array([0, 0, 7])

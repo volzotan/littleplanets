@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import itertools
 from pathlib import Path
 import math
 import random
@@ -22,6 +23,8 @@ DIR_DEBUG = Path("debug")
 
 BLUR_MAPPING_ANGLE_KERNEL_SIZE = 1
 BLUR_MAPPING_DISTANCE_KERNEL_SIZE = 1
+
+PSEUDO_RANDOM_SEED = "littleplanets"
 
 # INVERT_COLOR = False
 # CUTOUT_THRESHOLD = 230
@@ -101,6 +104,37 @@ def _blur_raster(raster: np.ndarray, perc: float) -> np.ndarray:
         return raster
 
 
+def split_linestring(ls: LineString, max_length: float) -> list[LineString]:
+    ls = shapely.segmentize(ls, max_length)
+    coords = list(ls.coords)
+
+    split_ls = []
+
+    if len(coords) < 2:
+        return []
+
+    candidate = [coords[0]]
+    candidate_length = 0
+
+    for i in range(1, len(coords)):
+        p1 = coords[i - 1]
+        p2 = coords[i]
+        p1_p2_length = math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
+
+        if candidate_length + p1_p2_length > max_length:
+            split_ls.append(LineString(candidate))
+            candidate = [coords[i - 1], coords[i]]
+            candidate_length = p1_p2_length
+        else:
+            candidate.append(coords[i])
+            candidate_length += p1_p2_length
+
+        if i == len(coords) - 1:
+            split_ls.append(LineString(candidate))
+
+    return split_ls
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("mapping_color", type=Path, default="mapping_color.npy", help="Mapping color (NPY)")
@@ -108,6 +142,8 @@ if __name__ == "__main__":
     parser.add_argument("mapping_distance", type=Path, default="mapping_distance.png", help="Mapping distance (PNG)")
     parser.add_argument("mapping_line_length", type=Path, default="mapping_length.png", help="Mapping line length (PNG)")
     parser.add_argument("mapping_flat", type=Path, default="mapping_flat.png", help="Mapping flat (PNG)")
+
+    parser.add_argument("--palette-color", action="append", type=float, nargs=3, help="Palette color item [R, G, B], append once per color")
 
     parser.add_argument("--overlay", type=Path, default=None, help="Overlay linestrings (NPZ)")
     parser.add_argument("--projection-matrix", type=Path, default=None, help="3x4 projection matrix (NPY)")
@@ -127,7 +163,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    dimensions = [750, 750]
+    dimensions = (750, 750)
+    random.seed(PSEUDO_RANDOM_SEED)
 
     mapping_color = None
     if args.mapping_color.suffix == ".npy":
@@ -202,7 +239,7 @@ if __name__ == "__main__":
 
     config = flowlines.FlowlineHatcherConfig()
     config.LINE_DISTANCE = (0.8, 10)
-    config.LINE_MAX_LENGTH = [10, 25]  # [20, 100]  # [10, 50]  # [50] * 2 #[10, 200]
+    config.LINE_MAX_LENGTH = (5, 25)  # [20, 100]  # [10, 50]  # [50] * 2 #[10, 200]
     config.LINE_STEP_DISTANCE = 0.15
     config.LINE_DISTANCE_END_FACTOR = 0.25
     config.MAX_ANGLE_DISCONTINUITY = math.pi / 12
@@ -210,11 +247,19 @@ if __name__ == "__main__":
     if args.config_line_distance_end_factor is not None:
         config.LINE_DISTANCE_END_FACTOR = args.config_line_distance_end_factor
 
+    contour_points = list(itertools.chain.from_iterable([ls.coords for ls in linestrings_contours]))
+
     # hatcher = flowlines.FlowlineHatcher(dimensions, *mappings, config, exclusion_points=exclusion_points + contour_points)
     # hatcher = flowlines.FlowlineHatcher(dimensions, *mappings, config, exclusion_points=exclusion_points, initial_seed_points=contour_points)
     hatcher = flowlines.FlowlineHatcher(dimensions, *mappings, config, exclusion_points=exclusion_points)
     linestrings: list[LineString] = hatcher.hatch()
     linestrings = [shapely.simplify(l, 0.01) for l in linestrings]
+
+    # merge contours with hatchlines
+    linestrings_contours_split = itertools.chain.from_iterable(
+        [split_linestring(ls, (config.LINE_MAX_LENGTH[0] + config.LINE_MAX_LENGTH[1]) / 2) for ls in linestrings_contours]
+    )
+    linestrings += linestrings_contours_split
 
     print(f"num linestrings: {len(linestrings)}")
 
@@ -235,61 +280,17 @@ if __name__ == "__main__":
 
     # Coloring
 
-    # Coloring Attempt 1
-    # palette = [
-    #     [255, 0, 0],
-    #     [0, 255, 0],
-    #     [0, 0, 255],
-    # ]
-    #
-    # linestrings_split_by_palette = [[] for _ in range(len(palette))]
-    #
-    # if len(palette) > 0:
-    #     palette_labColor = [rgb2lab(np.array(c) / 255.0) for c in palette]
-    #
-    #     mapping_color_rgb = cv2.cvtColor(mapping_color, cv2.COLOR_BGR2RGB)
-    #
-    #     for ls in linestrings:
-    #         all_pixels = np.array([mapping_color_rgb[int(p[1] * 1 / scaling_factor), int(p[0] * 1 / scaling_factor)] for p in ls.coords])
-    #         mean = np.mean(all_pixels, axis=0)
-    #         # diffs = [deltaE_cie76(rgb2lab(mean/255.0), c) for c in palette_labColor]
-    #         diffs = [deltaE_ciede2000(rgb2lab(mean / 255.0), c) for c in palette_labColor]
-    #         # diffs = [deltaE_ciede94(rgb2lab(mean/255.0), c) for c in palette_labColor]
-    #
-    #         # print(diffs)
-    #         # print(np.argmin(diffs))
-    #
-    #         palette_color_index = np.argmin(diffs)
-    #         linestrings_split_by_palette[palette_color_index].append(ls)
-    # else:
-    #     linestrings_split_by_palette[0] = linestrings
-
-
-    # canvas = np.full([int(dimensions[0] * 10), int(dimensions[1] * 10), 3], 0 if INVERT_COLOR else 255, dtype=np.uint8)
-    #
-    # cv2.imwrite(
-    #     # str(".." / Path("foo_" + Path(FILENAME_MAPPING_ANGLE).name)),
-    #     str(args.output),
-    #     # draw_line_image(canvas, [linestrings, linestrings_overlay, linestrings_contours], dimensions),
-    #     draw_line_image(canvas, [linestrings, linestrings_overlay], dimensions),
-    #     # draw_line_image(canvas, [linestrings_stencil], dimensions),
-    #     # draw_line_image(canvas, [linestrings], dimensions),
-    # )
-
-
-    palette = [
-        [255, 255, 255]
-    ]
-
+    palette = [[255, 255, 255]]
     palette = [
         [240, 126, 50],
         [0, 154, 194],
     ]
 
+    palette = np.array(args.palette_color, dtype=np.uint8)
+
     linestrings_split_by_palette = [[] for _ in range(len(palette))]
 
     if len(palette) > 1:
-
         if len(palette) != mapping_color.shape[2]:
             raise Exception(f"Palette size mismatch: {args.mapping_color} has {mapping_color.shape[2]} color(s), palette has {len(palette)}")
 
@@ -308,12 +309,6 @@ if __name__ == "__main__":
     else:
         linestrings_split_by_palette[0] = linestrings
 
-
-
-
-
-
-
     svg = SvgWriter(args.output, dimensions)
     svg.background_color = "#000000"
 
@@ -327,12 +322,12 @@ if __name__ == "__main__":
             "fill-opacity": "1.0",
         }
 
-    layer_styles["contours"] = {
-        "fill": "none",
-        "stroke": f"rgb({palette[0][0]},{palette[0][1]},{palette[0][2]})",
-        "stroke-width": "0.30",
-        "fill-opacity": "1.0",
-    }
+    # layer_styles["contours"] = {
+    #     "fill": "none",
+    #     "stroke": f"rgb({palette[0][0]},{palette[0][1]},{palette[0][2]})",
+    #     "stroke-width": "0.30",
+    #     "fill-opacity": "1.0",
+    # }
 
     layer_styles["overlay"] = {
         "fill": "none",
@@ -345,7 +340,7 @@ if __name__ == "__main__":
         svg.add_style(k, v)
 
     svg.add("overlay", linestrings_overlay)
-    svg.add("contours", linestrings_contours)
+    # svg.add("contours", linestrings_contours)
 
     for i, colored_linestrings in enumerate(linestrings_split_by_palette):
         svg.add(f"lines_{i}", colored_linestrings)
