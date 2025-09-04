@@ -286,7 +286,9 @@ if __name__ == "__main__":
         [0, 154, 194],
     ]
 
-    palette = np.array(args.palette_color, dtype=np.uint8)
+    palette = np.array(args.palette_color, dtype=int)
+    palette = np.delete(palette, np.where(np.min(palette, axis=1) < 0), axis=0) # remove invalid palette colors
+    palette = palette.astype(np.uint8)
 
     linestrings_split_by_palette = [[] for _ in range(len(palette))]
 

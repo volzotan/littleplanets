@@ -79,22 +79,35 @@ $(DIR_DATA_LOWRES)/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif: $(DIR_SRC)/resiz
 
 # ----------
 
+# Moon
+
 DEM_FILE := $(DIR_DATA_LOWRES)/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif
-COLOR_FILE := $(DIR_BUILD)/lroc_color_poles_imagemagick_contrast.tif 
+COLOR_FILE := $(DIR_BUILD)/lroc_color_poles_imagemagick_contrast.tif
 
 ROT_X := -90
 ROT_Y := 90
-ROT_Z := 0
+ROT_Z := -6.68
 
-DEM_FILE := $(DIR_DATA_LOWRES)/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif
-COLOR_FILE := $(DIR_DATA)/Mars_Viking_ClrMosaic_global_925m.tif
-
-ROT_X := -90
-ROT_Y := 160
-ROT_Z := -22.5
-
-LIGHT_ANGLE_XY := 67.5
+LIGHT_ANGLE_XY := 83.32
 LIGHT_ANGLE_Z := 60
+
+COLOR_1 := 255 255 255
+COLOR_2 := 111 115 122
+
+# Mars
+
+#DEM_FILE := $(DIR_DATA_LOWRES)/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif
+#COLOR_FILE := $(DIR_DATA)/Mars_Viking_ClrMosaic_global_925m.tif
+#
+#ROT_X := -90
+#ROT_Y := 160
+#ROT_Z := -22.5
+#
+#LIGHT_ANGLE_XY := 67.5
+#LIGHT_ANGLE_Z := 60
+#
+#COLOR_1 := 240 126 50
+#COLOR_2 := 65 102 174
 
 # ----------
 
@@ -140,12 +153,16 @@ $(DIR_BUILD)/mapping_color.png $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/map
 
 $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_brightness_difference.png &: $(DIR_SRC)/palette.py $(DIR_BUILD)/image.tif
 	@echo "Processing palette colors"
-	uv run $^ --palette-mixture $(DIR_BUILD)/mapping_color.npy --palette-brightness-difference $(DIR_BUILD)/mapping_brightness_difference.png
+	uv run $^ 													\
+		--palette-mixture $(DIR_BUILD)/mapping_color.npy 		\
+		--palette-brightness-difference $(DIR_BUILD)/mapping_brightness_difference.png \
+		--palette-color $(COLOR_1)								\
+		--palette-color $(COLOR_2)								\
 
-run: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.png $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/overlay.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz
+run: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/overlay.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz
 	@echo "Processing blender output"
 	uv run $(DIR_SRC)/hatch.py									\
-		$(DIR_BUILD)/mapping_color.png 							\
+		$(DIR_BUILD)/mapping_color.npy 							\
 		$(DIR_BUILD)/mapping_angle_5.png 						\
 		$(DIR_BUILD)/mapping_distance.png 						\
 		$(DIR_BUILD)/mapping_line_length.png 					\
@@ -159,7 +176,7 @@ run: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.png $(DIR_BUILD)/mapping_ang
 		--output $(DIR_BUILD)/littleplanets.svg
 	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets.png --export-width=2000 --export-background=#000000
 
-run_palette: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_brightness_difference.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png
+run_palette: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_brightness_difference.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/contours.npz
 	@echo "Processing blender output"
 	uv run $(DIR_SRC)/hatch.py									\
 		$(DIR_BUILD)/mapping_color.npy 							\
@@ -167,6 +184,9 @@ run_palette: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/map
 		$(DIR_BUILD)/mapping_brightness_difference.png			\
 		$(DIR_BUILD)/mapping_line_length.png 					\
 		$(DIR_BUILD)/mapping_flat.png 							\
+		--palette-color $(COLOR_1)								\
+		--palette-color $(COLOR_2)								\
+		--contours $(DIR_BUILD)/contours.npz					\
 		--blur-color 0 											\
 		--blur-angle 0.20 										\
 		--blur-distance 0.40									\
@@ -174,10 +194,10 @@ run_palette: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/map
 	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets.png --export-width=2000 --export-background=#000000
 
 
-run_no_overlay: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.png $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/contours.npz
+run_no_overlay: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/contours.npz
 	@echo "Processing blender output"
 	uv run $(DIR_SRC)/hatch.py 						\
-		$(DIR_BUILD)/mapping_color.png 				\
+		$(DIR_BUILD)/mapping_color.npy 				\
 		$(DIR_BUILD)/mapping_angle_5.png 			\
 		$(DIR_BUILD)/mapping_distance.png 			\
 		$(DIR_BUILD)/mapping_line_length.png 		\
@@ -223,7 +243,7 @@ test_blur: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.png $(DIR_BUILD)/mappi
 			$(DIR_BUILD)/mapping_flat.png 			\
 			--contours $(DIR_BUILD)/contours.npz	\
 			--output $(DIR_BUILD)/littleplanets.svg \
-			--blur-angle $$i 					\
+			--blur-angle $$i 						\
 			--config-line-distance-end-factor 0.5 	\
 			--debug									\
 			--suffix _$$i ; \
