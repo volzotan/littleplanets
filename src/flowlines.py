@@ -19,7 +19,7 @@ class FlowlineHatcherConfig:
     # distance between points constituting a line in mm
     LINE_STEP_DISTANCE: float = 0.3
 
-    LINE_MAX_LENGTH: tuple[int, int] = (10, 50)
+    LINE_MAX_LENGTH: tuple[float, float] = (10, 50)
 
     # lines shorter than LINE_MIN_LENGTH will be discarded
     LINE_MIN_LENGTH: float = 1.0
