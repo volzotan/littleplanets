@@ -159,22 +159,22 @@ $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_brightness_difference.png &:
 		--palette-color $(COLOR_1)								\
 		--palette-color $(COLOR_2)								\
 
-run: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/overlay.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz
-	@echo "Processing blender output"
-	uv run $(DIR_SRC)/hatch.py									\
-		$(DIR_BUILD)/mapping_color.npy 							\
-		$(DIR_BUILD)/mapping_angle_5.png 						\
-		$(DIR_BUILD)/mapping_distance.png 						\
-		$(DIR_BUILD)/mapping_line_length.png 					\
-		$(DIR_BUILD)/mapping_flat.png 							\
-		--overlay $(DIR_BUILD)/overlay.npz 						\
-		--projection-matrix $(DIR_BUILD)/projection_matrix.npy  \
-		--contours $(DIR_BUILD)/contours.npz					\
-		--blur-color 1.00 										\
-		--blur-angle 0.20 										\
-		--blur-distance 0.40									\
-		--output $(DIR_BUILD)/littleplanets.svg
-	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets.png --export-width=2000 --export-background=#000000
+#run: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/overlay.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz
+#	@echo "Processing blender output"
+#	uv run $(DIR_SRC)/hatch.py									\
+#		$(DIR_BUILD)/mapping_color.npy 							\
+#		$(DIR_BUILD)/mapping_angle_5.png 						\
+#		$(DIR_BUILD)/mapping_distance.png 						\
+#		$(DIR_BUILD)/mapping_line_length.png 					\
+#		$(DIR_BUILD)/mapping_flat.png 							\
+#		--overlay $(DIR_BUILD)/overlay.npz 						\
+#		--projection-matrix $(DIR_BUILD)/projection_matrix.npy  \
+#		--contours $(DIR_BUILD)/contours.npz					\
+#		--blur-color 1.00 										\
+#		--blur-angle 0.20 										\
+#		--blur-distance 0.40									\
+#		--output $(DIR_BUILD)/littleplanets.svg
+#	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets.png --export-width=2000 --export-background=#000000
 
 run_palette: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_brightness_difference.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png config_hatch.toml $(DIR_BUILD)/contours.npz
 	@echo "Processing blender output"
@@ -192,21 +192,21 @@ run_palette: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/map
 	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets.png --export-width=2000 --export-background=#000000
 
 
-run_no_overlay: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png config_hatch.toml $(DIR_BUILD)/contours.npz
-	@echo "Processing blender output"
-	uv run $(DIR_SRC)/hatch.py 						\
-		$(DIR_BUILD)/mapping_color.npy 				\
-		$(DIR_BUILD)/mapping_angle_5.png 			\
-		$(DIR_BUILD)/mapping_distance.png 			\
-		$(DIR_BUILD)/mapping_line_length.png 		\
-		$(DIR_BUILD)/mapping_flat.png 				\
-		--config config_hatch.toml 					\
-		--contours $(DIR_BUILD)/contours.npz		\
-		--output $(DIR_BUILD)/littleplanets.svg 	\
-		--blur-angle 0.20 							\
-		--blur-distance 0.40						\
-		--config-line-distance-end-factor 0.5 ;		\
-	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets.png --export-width=2000 --export-background=#000000
+#run_no_overlay: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png config_hatch.toml $(DIR_BUILD)/contours.npz
+#	@echo "Processing blender output"
+#	uv run $(DIR_SRC)/hatch.py 						\
+#		$(DIR_BUILD)/mapping_color.npy 				\
+#		$(DIR_BUILD)/mapping_angle_5.png 			\
+#		$(DIR_BUILD)/mapping_distance.png 			\
+#		$(DIR_BUILD)/mapping_line_length.png 		\
+#		$(DIR_BUILD)/mapping_flat.png 				\
+#		--config config_hatch.toml 					\
+#		--contours $(DIR_BUILD)/contours.npz		\
+#		--output $(DIR_BUILD)/littleplanets.svg 	\
+#		--blur-angle 0.20 							\
+#		--blur-distance 0.40						\
+#		--config-line-distance-end-factor 0.5 ;		\
+#	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets.png --export-width=2000 --export-background=#000000
 
 gcode: $(DIR_BUILD)/littleplanets.svg
 	uv run svgtogcode.py $^
@@ -234,16 +234,17 @@ test_angle: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.png $(DIR_BUILD)/mapp
 test_blur: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.png $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/contours.npz
 	for i in 0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.5 2.0 ; do \
 		echo "$$i"	; \
+		cp config_hatch.toml config_hatch_overwrite.toml ; \
+		echo "blur_angle_kernel_size_perc=$$i" > config_hatch_overwrite.toml ;\
 		uv run $(DIR_SRC)/hatch.py 					\
 			$(DIR_BUILD)/mapping_color.png 			\
 			$(DIR_BUILD)/mapping_angle_5.png 		\
 			$(DIR_BUILD)/mapping_distance.png 		\
 			$(DIR_BUILD)/mapping_line_length.png 	\
 			$(DIR_BUILD)/mapping_flat.png 			\
+			--config config_hatch_overwrite.toml	\
 			--contours $(DIR_BUILD)/contours.npz	\
 			--output $(DIR_BUILD)/littleplanets.svg \
-			--blur-angle $$i 						\
-			--config-line-distance-end-factor 0.5 	\
 			--debug									\
 			--suffix _$$i ; \
 		$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets_$$i.png --export-width=2000 --export-background=#000000 ; \
@@ -252,15 +253,16 @@ test_blur: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.png $(DIR_BUILD)/mappi
 test_end_factor: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.png $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/contours.npz
 	for i in 0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 ; do \
 		echo "$$i"	; \
+		cp config_hatch.toml config_hatch_overwrite.toml ; \
+		echo "flowlines_line_distance_end_factor=$$i" > config_hatch_overwrite.toml ;\
 		uv run $(DIR_SRC)/hatch.py 					\
 			$(DIR_BUILD)/mapping_color.png 			\
 			$(DIR_BUILD)/mapping_angle_5.png 		\
 			$(DIR_BUILD)/mapping_distance.png 		\
 			$(DIR_BUILD)/mapping_line_length.png 	\
 			$(DIR_BUILD)/mapping_flat.png 			\
+			--config config_hatch_overwrite.toml	\
 			--contours $(DIR_BUILD)/contours.npz	\
-			--output $(DIR_BUILD)/littleplanets.svg \
-			--blur-angle 0.10 						\
-			--config-line-distance-end-factor $$i ; \
+			--output $(DIR_BUILD)/littleplanets.svg ; \
 		$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets_$$i.png --export-width=2000 --export-background=#000000 ; \
 	done

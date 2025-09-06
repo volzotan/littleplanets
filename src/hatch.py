@@ -34,7 +34,7 @@ class HatchConfig(BaseModel):
 
     flowlines_line_distance: tuple[float, float] = (0.8, 10)
     flowlines_line_max_length: tuple[float, float] = (5, 25)
-    flowlines_line_distance_end_factor: float = Field(0.25, gt=0, le=1.0)
+    flowlines_line_distance_end_factor: float = Field(0.25, ge=0, le=1.0)
     flowlines_max_angle_discontinuity: float = Field(math.pi / 12, gt=0, lt=math.tau)
 
 
@@ -220,11 +220,10 @@ if __name__ == "__main__":
     # linestrings = [shapely.simplify(LineString(l), 0.01) for l in lines]
 
     flowlines_config = flowlines.FlowlineHatcherConfig()
-    flowlines_config.LINE_DISTANCE = (0.8, 10)
-    flowlines_config.LINE_MAX_LENGTH = (5, 25)  # [20, 100]  # [10, 50]  # [50] * 2 #[10, 200]
-    flowlines_config.LINE_STEP_DISTANCE = 0.15
-    flowlines_config.LINE_DISTANCE_END_FACTOR = 0.25
-    flowlines_config.MAX_ANGLE_DISCONTINUITY = math.pi / 12
+    flowlines_config.LINE_DISTANCE = config.flowlines_line_distance
+    flowlines_config.LINE_MAX_LENGTH = config.flowlines_line_max_length
+    flowlines_config.LINE_DISTANCE_END_FACTOR = config.flowlines_line_distance_end_factor
+    flowlines_config.MAX_ANGLE_DISCONTINUITY = config.flowlines_max_angle_discontinuity
 
     contour_points = list(itertools.chain.from_iterable([ls.coords for ls in linestrings_contours]))
 
