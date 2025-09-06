@@ -1,10 +1,10 @@
 import argparse
 import datetime
 import itertools
+import tomllib
 from pathlib import Path
 import math
 import random
-from typing import Any
 
 import cv2
 
@@ -12,52 +12,33 @@ import cv2
 import numpy as np
 import shapely
 import shapely.ops
+from pydantic import BaseModel, Field
 from shapely import LineString
-from skimage.color import rgb2lab, deltaE_cie76, deltaE_ciede2000, deltaE_ciede94
 
 import flowlines
-from util.misc import linestring_to_coordinate_pairs
 from svgwriter import SvgWriter
 
 DIR_DEBUG = Path("debug")
 
-BLUR_MAPPING_ANGLE_KERNEL_SIZE = 1
-BLUR_MAPPING_DISTANCE_KERNEL_SIZE = 1
-
 PSEUDO_RANDOM_SEED = "littleplanets"
 
-# INVERT_COLOR = False
-# CUTOUT_THRESHOLD = 230
 
-INVERT_COLOR = True
-# CUTOUT_THRESHOLD = 10
+class HatchConfig(BaseModel):
+    dimensions: tuple[int, int] = (750, 750)
+    invert_color: bool = True
 
+    # Blurring kernel size, percentage of raster size(float)
+    blur_color_kernel_size_perc: float = Field(0, ge=0)
+    blur_angle_kernel_size_perc: float = Field(0, ge=0)
+    blur_distance_kernel_size_perc: float = Field(0, ge=0)
 
-def draw_line_image(canvas: np.ndarray, line_sets: list[list[LineString]], dimensions: list[int, int]) -> np.ndarray:
-    scale_x = canvas.shape[1] / dimensions[0]
-    scale_y = canvas.shape[0] / dimensions[1]
-
-    # colors = [(0, 0, 0), (255, 0, 0), (0, 255, 0), (0, 0, 255)]
-    colors = [(0, 0, 0)]
-    # colors = [(255, 255, 255), (0, 255, 255), (0, 0, 255)]
-    # colors = [(255, 255, 255)] * 10
-
-    if INVERT_COLOR:
-        colors = [(255, 255, 255)]
-
-    colors *= 10
-
-    for li, lines in enumerate(line_sets):
-        for linestring in lines:
-            for pair in linestring_to_coordinate_pairs(linestring):
-                pt1 = [int(pair[0][0] * scale_x), int(pair[0][1] * scale_y)]
-                pt2 = [int(pair[1][0] * scale_x), int(pair[1][1] * scale_y)]
-                cv2.line(canvas, pt1, pt2, colors[li], 3)
-
-    return canvas
+    flowlines_line_distance: tuple[float, float] = (0.8, 10)
+    flowlines_line_max_length: tuple[float, float] = (5, 25)
+    flowlines_line_distance_end_factor: float = Field(0.25, gt=0, le=1.0)
+    flowlines_max_angle_discontinuity: float = Field(math.pi / 12, gt=0, lt=math.tau)
 
 
-def _project_linestring(ls: LineString, P: np.ndarray, scaling_factor: float) -> np.ndarray:
+def _project_linestring(ls: LineString, P: np.ndarray, scaling_factor: float) -> LineString:
     xyz = shapely.get_coordinates(ls, include_z=True)
     coordinates = np.hstack([xyz, np.full([xyz.shape[0], 1], 1)])  # [x, y, z, w=1]
     coordinates = (P @ coordinates.T).T
@@ -104,7 +85,7 @@ def _blur_raster(raster: np.ndarray, perc: float) -> np.ndarray:
         return raster
 
 
-def split_linestring(ls: LineString, max_length: float) -> list[LineString]:
+def _split_linestring(ls: LineString, max_length: float) -> list[LineString]:
     ls = shapely.segmentize(ls, max_length)
     coords = list(ls.coords)
 
@@ -151,19 +132,20 @@ if __name__ == "__main__":
     parser.add_argument("--contours", type=Path, default=None, help="Contour linestrings (NPZ)")
     # parser.add_argument("--scaling-factor", type=float, default=1.0, help="Scaling factor of the mapping rasters with regard to the original blender export")
 
-    parser.add_argument("--blur-color", type=float, default=0, help="Blurring kernel size. Percentage of raster size (float)")
-    parser.add_argument("--blur-angle", type=float, default=0, help="Blurring kernel size. Percentage of raster size (float)")
-    parser.add_argument("--blur-distance", type=float, default=0, help="Blurring kernel size. Percentage of raster size (float)")
+    parser.add_argument("--config", type=Path, default=None, help="Config file (TOML)")
 
     parser.add_argument("--output", type=Path, default="littleplanet.svg", help="Output filename (SVG)")
     parser.add_argument("--debug", action="store_true", default=False, help="Enable debug (image) output")
     parser.add_argument("--suffix", type=str, default="", help="Filename suffix to be appended to all (debug) output")
 
-    parser.add_argument("--config-line-distance-end-factor", type=float, default=None)
-
     args = parser.parse_args()
 
-    dimensions = (750, 750)
+    config = HatchConfig()
+    if args.config is not None:
+        with open(args.config, "rb") as f:
+            data = tomllib.load(f)
+            config = HatchConfig.model_validate(data)
+
     random.seed(PSEUDO_RANDOM_SEED)
 
     mapping_color = None
@@ -177,16 +159,16 @@ if __name__ == "__main__":
     mapping_line_length = cv2.imread(args.mapping_line_length, cv2.IMREAD_GRAYSCALE)
     mapping_flat = cv2.imread(args.mapping_flat, cv2.IMREAD_GRAYSCALE)
 
-    mapping_color = _blur_raster(mapping_color, args.blur_color)
-    mapping_angle = _blur_raster(mapping_angle, args.blur_angle)
-    mapping_distance = _blur_raster(mapping_distance, args.blur_distance)
+    mapping_color = _blur_raster(mapping_color, config.blur_color_kernel_size_perc)
+    mapping_angle = _blur_raster(mapping_angle, config.blur_angle_kernel_size_perc)
+    mapping_distance = _blur_raster(mapping_distance, config.blur_distance_kernel_size_perc)
 
     if args.debug:
         cv2.imwrite(str(DIR_DEBUG / f"hatch_mapping_color{args.suffix}.png"), mapping_color)
         cv2.imwrite(str(DIR_DEBUG / f"hatch_mapping_angle{args.suffix}.png"), mapping_angle)
         cv2.imwrite(str(DIR_DEBUG / f"hatch_mapping_distance{args.suffix}.png"), mapping_distance)
 
-    scaling_factor = dimensions[0] / mapping_angle.shape[1]
+    scaling_factor = config.dimensions[0] / mapping_angle.shape[1]
 
     linestrings_overlay = []
     if args.overlay is not None:
@@ -215,7 +197,7 @@ if __name__ == "__main__":
     # else:
     #     mapping_flat[mapping_distance < CUTOUT_THRESHOLD] = 255
 
-    if INVERT_COLOR:
+    if config.invert_color:
         # white ink on black paper, invert grayscale image
         mapping_distance = ~mapping_distance
 
@@ -237,27 +219,24 @@ if __name__ == "__main__":
     # lines: list[list[tuple[float, float]]] = flowlines_py.hatch(dimensions, config, *mappings)
     # linestrings = [shapely.simplify(LineString(l), 0.01) for l in lines]
 
-    config = flowlines.FlowlineHatcherConfig()
-    config.LINE_DISTANCE = (0.8, 10)
-    config.LINE_MAX_LENGTH = (5, 25)  # [20, 100]  # [10, 50]  # [50] * 2 #[10, 200]
-    config.LINE_STEP_DISTANCE = 0.15
-    config.LINE_DISTANCE_END_FACTOR = 0.25
-    config.MAX_ANGLE_DISCONTINUITY = math.pi / 12
-
-    if args.config_line_distance_end_factor is not None:
-        config.LINE_DISTANCE_END_FACTOR = args.config_line_distance_end_factor
+    flowlines_config = flowlines.FlowlineHatcherConfig()
+    flowlines_config.LINE_DISTANCE = (0.8, 10)
+    flowlines_config.LINE_MAX_LENGTH = (5, 25)  # [20, 100]  # [10, 50]  # [50] * 2 #[10, 200]
+    flowlines_config.LINE_STEP_DISTANCE = 0.15
+    flowlines_config.LINE_DISTANCE_END_FACTOR = 0.25
+    flowlines_config.MAX_ANGLE_DISCONTINUITY = math.pi / 12
 
     contour_points = list(itertools.chain.from_iterable([ls.coords for ls in linestrings_contours]))
 
     # hatcher = flowlines.FlowlineHatcher(dimensions, *mappings, config, exclusion_points=exclusion_points + contour_points)
     # hatcher = flowlines.FlowlineHatcher(dimensions, *mappings, config, exclusion_points=exclusion_points, initial_seed_points=contour_points)
-    hatcher = flowlines.FlowlineHatcher(dimensions, *mappings, config, exclusion_points=exclusion_points)
+    hatcher = flowlines.FlowlineHatcher(config.dimensions, *mappings, flowlines_config, exclusion_points=exclusion_points)
     linestrings: list[LineString] = hatcher.hatch()
     linestrings = [shapely.simplify(l, 0.01) for l in linestrings]
 
     # merge contours with hatchlines
     linestrings_contours_split = itertools.chain.from_iterable(
-        [split_linestring(ls, (config.LINE_MAX_LENGTH[0] + config.LINE_MAX_LENGTH[1]) / 2) for ls in linestrings_contours]
+        [_split_linestring(ls, (flowlines_config.LINE_MAX_LENGTH[0] + flowlines_config.LINE_MAX_LENGTH[1]) / 2) for ls in linestrings_contours]
     )
     linestrings += linestrings_contours_split
 
@@ -280,14 +259,12 @@ if __name__ == "__main__":
 
     # Coloring
 
-    palette = [[255, 255, 255]]
-    palette = [
-        [240, 126, 50],
-        [0, 154, 194],
-    ]
+    colors = [[255, 255, 255]]
+    if args.palette_color is not None and len(args.palette_color) > 0:
+        colors = args.palette_color
 
-    palette = np.array(args.palette_color, dtype=int)
-    palette = np.delete(palette, np.where(np.min(palette, axis=1) < 0), axis=0) # remove invalid palette colors
+    palette = np.array(colors, dtype=int)
+    palette = np.delete(palette, np.where(np.min(palette, axis=1) < 0), axis=0)  # remove invalid palette colors
     palette = palette.astype(np.uint8)
 
     linestrings_split_by_palette = [[] for _ in range(len(palette))]
@@ -298,21 +275,15 @@ if __name__ == "__main__":
 
         for ls in linestrings:
             all_pixels = np.array([mapping_color[int(p[1] * 1 / scaling_factor), int(p[0] * 1 / scaling_factor)] for p in ls.coords])
-
             mean = np.mean(all_pixels, axis=0)
-
-            # closest
-            # palette_color_index = np.argmax(mean)
-
-            # weighted random selection
             palette_color_index = random.choices(range(len(palette)), mean)[0]
-
             linestrings_split_by_palette[palette_color_index].append(ls)
     else:
         linestrings_split_by_palette[0] = linestrings
 
-    svg = SvgWriter(args.output, dimensions)
-    svg.background_color = "#000000"
+    svg = SvgWriter(args.output, config.dimensions)
+    if config.invert_color:
+        svg.background_color = "#000000"
 
     layer_styles: dict[str, dict[str, str]] = {}
 

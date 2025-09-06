@@ -176,7 +176,7 @@ run: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_ang
 		--output $(DIR_BUILD)/littleplanets.svg
 	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets.png --export-width=2000 --export-background=#000000
 
-run_palette: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_brightness_difference.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/contours.npz
+run_palette: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_brightness_difference.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png config_hatch.toml $(DIR_BUILD)/contours.npz
 	@echo "Processing blender output"
 	uv run $(DIR_SRC)/hatch.py									\
 		$(DIR_BUILD)/mapping_color.npy 							\
@@ -184,17 +184,15 @@ run_palette: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/map
 		$(DIR_BUILD)/mapping_brightness_difference.png			\
 		$(DIR_BUILD)/mapping_line_length.png 					\
 		$(DIR_BUILD)/mapping_flat.png 							\
+		--config config_hatch.toml 								\
 		--palette-color $(COLOR_1)								\
 		--palette-color $(COLOR_2)								\
 		--contours $(DIR_BUILD)/contours.npz					\
-		--blur-color 0 											\
-		--blur-angle 0.20 										\
-		--blur-distance 0.40									\
 		--output $(DIR_BUILD)/littleplanets.svg
 	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets.png --export-width=2000 --export-background=#000000
 
 
-run_no_overlay: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/contours.npz
+run_no_overlay: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png config_hatch.toml $(DIR_BUILD)/contours.npz
 	@echo "Processing blender output"
 	uv run $(DIR_SRC)/hatch.py 						\
 		$(DIR_BUILD)/mapping_color.npy 				\
@@ -202,6 +200,7 @@ run_no_overlay: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/
 		$(DIR_BUILD)/mapping_distance.png 			\
 		$(DIR_BUILD)/mapping_line_length.png 		\
 		$(DIR_BUILD)/mapping_flat.png 				\
+		--config config_hatch.toml 					\
 		--contours $(DIR_BUILD)/contours.npz		\
 		--output $(DIR_BUILD)/littleplanets.svg 	\
 		--blur-angle 0.20 							\
