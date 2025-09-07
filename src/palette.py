@@ -78,7 +78,7 @@ if __name__ == "__main__":
     # )
 
     palette = np.array(args.palette_color, dtype=int)
-    palette = np.delete(palette, np.where(np.min(palette, axis=1) < 0), axis=0) # remove invalid palette colors
+    palette = np.delete(palette, np.where(np.min(palette, axis=1) < 0), axis=0)  # remove invalid palette colors
     palette = palette.astype(np.uint8)
 
     # HSV H-ONLY
