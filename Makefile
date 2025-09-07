@@ -81,33 +81,33 @@ $(DIR_DATA_LOWRES)/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif: $(DIR_SRC)/resiz
 
 # Moon
 
-DEM_FILE := $(DIR_DATA_LOWRES)/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif
-COLOR_FILE := $(DIR_BUILD)/lroc_color_poles_imagemagick_contrast.tif
-
-ROT_X := -90
-ROT_Y := 90
-ROT_Z := -6.68
-
-LIGHT_ANGLE_XY := 83.32
-LIGHT_ANGLE_Z := 60
-
-COLOR_1 := 255 255 255
-COLOR_2 := 111 115 122
+#DEM_FILE := $(DIR_DATA_LOWRES)/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif
+#COLOR_FILE := $(DIR_BUILD)/lroc_color_poles_imagemagick_contrast.tif
+#
+#ROT_X := -90
+#ROT_Y := 90
+#ROT_Z := -6.68
+#
+#LIGHT_ANGLE_XY := 83.32
+#LIGHT_ANGLE_Z := 60
+#
+#COLOR_1 := 255 255 255
+#COLOR_2 := 111 115 122
 
 # Mars
 
-#DEM_FILE := $(DIR_DATA_LOWRES)/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif
-#COLOR_FILE := $(DIR_DATA)/Mars_Viking_ClrMosaic_global_925m.tif
-#
-#ROT_X := -90
-#ROT_Y := 160
-#ROT_Z := -22.5
-#
-#LIGHT_ANGLE_XY := 67.5
-#LIGHT_ANGLE_Z := 60
-#
-#COLOR_1 := 240 126 50
-#COLOR_2 := 65 102 174
+DEM_FILE := $(DIR_DATA_LOWRES)/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif
+COLOR_FILE := $(DIR_DATA)/Mars_Viking_ClrMosaic_global_925m.tif
+
+ROT_X := -90
+ROT_Y := 160
+ROT_Z := -22.5
+
+LIGHT_ANGLE_XY := 67.5
+LIGHT_ANGLE_Z := 60
+
+COLOR_1 := 240 126 50
+COLOR_2 := 65 102 174
 
 # ----------
 
@@ -225,28 +225,29 @@ test_angle: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.png $(DIR_BUILD)/mapp
 			$(DIR_BUILD)/mapping_distance.png 		\
 			$(DIR_BUILD)/mapping_line_length.png 	\
 			$(DIR_BUILD)/mapping_flat.png 			\
+			--config config_hatch.toml				\
 			--contours $(DIR_BUILD)/contours.npz	\
-			--output $(DIR_BUILD)/littleplanets.svg \
-			--blur-angle 0.20 ; \
+			--output $(DIR_BUILD)/littleplanets.svg ; \
 		$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets_$$i --export-width=2000 --export-background=#000000 ; \
 	done
 
 test_blur: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.png $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/contours.npz
 	for i in 0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.5 2.0 ; do \
 		echo "$$i"	; \
-		cp config_hatch.toml config_hatch_overwrite.toml ; \
-		echo "blur_angle_kernel_size_perc=$$i" > config_hatch_overwrite.toml ;\
+		cp config_hatch.toml config_hatch_override.toml ; \
+		echo "blur_angle_kernel_size_perc=$$i" > config_hatch_override.toml ;\
 		uv run $(DIR_SRC)/hatch.py 					\
 			$(DIR_BUILD)/mapping_color.png 			\
 			$(DIR_BUILD)/mapping_angle_5.png 		\
 			$(DIR_BUILD)/mapping_distance.png 		\
 			$(DIR_BUILD)/mapping_line_length.png 	\
 			$(DIR_BUILD)/mapping_flat.png 			\
-			--config config_hatch_overwrite.toml	\
+			--config config_hatch_override.toml	\
 			--contours $(DIR_BUILD)/contours.npz	\
 			--output $(DIR_BUILD)/littleplanets.svg \
 			--debug									\
 			--suffix _$$i ; \
+		echo "blur_angle_kernel_size_perc=$$i" > littleplanets_$$i.toml
 		$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets_$$i.png --export-width=2000 --export-background=#000000 ; \
 	done
 
@@ -254,14 +255,14 @@ test_end_factor: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.png $(DIR_BUILD)
 	for i in 0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 ; do \
 		echo "$$i"	; \
 		cp config_hatch.toml config_hatch_overwrite.toml ; \
-		echo "flowlines_line_distance_end_factor=$$i" > config_hatch_overwrite.toml ;\
+		echo "flowlines_line_distance_end_factor=$$i" > config_hatch_override.toml ;\
 		uv run $(DIR_SRC)/hatch.py 					\
 			$(DIR_BUILD)/mapping_color.png 			\
 			$(DIR_BUILD)/mapping_angle_5.png 		\
 			$(DIR_BUILD)/mapping_distance.png 		\
 			$(DIR_BUILD)/mapping_line_length.png 	\
 			$(DIR_BUILD)/mapping_flat.png 			\
-			--config config_hatch_overwrite.toml	\
+			--config config_hatch_override.toml	\
 			--contours $(DIR_BUILD)/contours.npz	\
 			--output $(DIR_BUILD)/littleplanets.svg ; \
 		$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets_$$i.png --export-width=2000 --export-background=#000000 ; \
