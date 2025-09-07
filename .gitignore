@@ -17,3 +17,6 @@ data/
 data_lowres/
 build/
 debug/
+
+experiment_output/
+REFERENCE_ART/
