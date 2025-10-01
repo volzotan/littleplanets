@@ -46,11 +46,11 @@ class FlowlineHatcher:
     def __init__(
         self,
         dimensions: list[int] | tuple[int, int],
+        config: FlowlineHatcherConfig,
         mapping_distance: np.ndarray,
         mapping_angles: np.ndarray,
         mapping_max_length: np.ndarray,
         mapping_flat: np.ndarray,
-        config: FlowlineHatcherConfig,
         initial_seed_points: list[tuple[float, float]] = [],
         exclusion_points: list[tuple[float, float]] = [],
     ):

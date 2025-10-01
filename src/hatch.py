@@ -227,9 +227,9 @@ if __name__ == "__main__":
 
     contour_points = list(itertools.chain.from_iterable([ls.coords for ls in linestrings_contours]))
 
-    # hatcher = flowlines.FlowlineHatcher(dimensions, *mappings, config, exclusion_points=exclusion_points + contour_points)
-    # hatcher = flowlines.FlowlineHatcher(dimensions, *mappings, config, exclusion_points=exclusion_points, initial_seed_points=contour_points)
-    hatcher = flowlines.FlowlineHatcher(config.dimensions, *mappings, flowlines_config, exclusion_points=exclusion_points)
+    # hatcher = flowlines.FlowlineHatcher(dimensions, config, *mappings, exclusion_points=exclusion_points + contour_points)
+    # hatcher = flowlines.FlowlineHatcher(dimensions, config, *mappings, exclusion_points=exclusion_points, initial_seed_points=contour_points)
+    hatcher = flowlines.FlowlineHatcher(config.dimensions, flowlines_config, *mappings, exclusion_points=exclusion_points)
     linestrings: list[LineString] = hatcher.hatch()
     linestrings = [shapely.simplify(l, 0.01) for l in linestrings]
 

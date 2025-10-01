@@ -1,7 +1,7 @@
 [project]
 name = "littleplanets"
 version = "0.1.0"
-description = "Add your description here"
+description = "Data to mesh to non-photorealistic rendering to line drawing pipeline of celestial bodies for pen plotters"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

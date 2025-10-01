@@ -187,7 +187,6 @@ run_palette: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/map
 		--config config_hatch.toml 								\
 		--palette-color $(COLOR_1)								\
 		--palette-color $(COLOR_2)								\
-		--contours $(DIR_BUILD)/contours.npz					\
 		--output $(DIR_BUILD)/littleplanets.svg
 	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets.png --export-width=2000 --export-background=#000000
 
