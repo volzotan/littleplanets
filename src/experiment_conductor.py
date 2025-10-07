@@ -6,11 +6,13 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
+import tomllib
 import toml
 from loguru import logger
 
 NUM_WORKERS = 4
 
+CONFIG_BASE_FILE = Path("config_hatch.toml")
 CONFIG_OVERRIDE_FILE = Path("config_hatch_override.toml")
 
 PY_FILE = "src/hatch.py"
@@ -27,12 +29,18 @@ ARGUMENTS = [
 ]
 
 VARIABLES = {
-    # "blur_angle_kernel_size_perc": [0.1, 0.4, 0.8, 1.2, 2.4],
-    # "blur_distance_kernel_size_perc": [0.1, 0.4, 0.8, 1.2, 2.4],
-    # "flowlines_line_distance_end_factor": [0.1, 0.25, 0.5, 0.75, 1.0],
-    # "flowlines_line_distance": [(0.6, 5), (0.6, 10), (0.6, 15), (0.6, 20)],
-    "flowlines_line_max_length": [(3, 10), (3, 20), (3, 30), (3, 40), (3, 50)],
-    "flowlines_max_angle_discontinuity": [math.pi / 12, math.pi / 6, math.pi / 3, math.pi / 1]
+#     "blur_angle_kernel_size_perc": [0.1, 0.2, 0.3, 0.4, 0.5],
+#     # "blur_color_kernel_size_perc": [0.1, 0.2, 0.3, 0.4, 0.5],
+#     # "blur_distance_kernel_size_perc": [0.1, 0.2, 0.3, 0.4, 0.5],
+
+#     "flowlines_line_distance_end_factor": [0.25, 0.5, 0.75, 1.0],
+#     # "flowlines_line_distance": [(0.8, 5), (0.8, 10), (0.8, 15)],
+#     # "flowlines_line_max_length": [(3, 9), (3, 12), (3, 16), (3, 20)],
+#     "flowlines_line_max_length": [(3, 3), (6, 6), (12, 12), (16, 16), (20, 20), (30, 30), (40, 40)],
+#     # "flowlines_line_max_length": [(1, 16), (2, 16), (3, 16), (4, 16), (5, 16), (6, 16), (7, 16), (8, 16), (10, 16), (12, 16), (14, 16), (16, 16)],
+#     "flowlines_max_angle_discontinuity": [math.pi / 16, math.pi / 8, math.pi / 4, math.pi / 2]
+
+    "flowlines_line_distance": [(0.8, 5), (0.8, 10), (0.8, 15), (0.8, 20)],
 }
 
 def process(num_experiment: int, config_override: dict[str, Any]) -> None:
@@ -114,6 +122,11 @@ def main() -> None:
 
     total_experiments = math.prod([len(values) for values in VARIABLES.values()])
     overrides = rec_looping(VARIABLES)
+
+    with open(CONFIG_BASE_FILE, "rb") as f:
+        base_config = tomllib.load(f)
+
+    overrides = [{**base_config, **override} for override in overrides]
 
     # [process(i, config_override) for i, config_override in enumerate(overrides)]
 
