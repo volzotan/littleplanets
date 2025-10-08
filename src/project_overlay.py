@@ -17,6 +17,9 @@ import rtree
 from util.misc import linestring_to_coordinate_pairs
 
 VISUALIZE = False
+PROJECT_ONTO_SURFACE = True
+
+GRID_NUM_SEGMENTS = 100
 
 
 def _rotate_linestrings(lines: list[LineString], x: float, y: float, z: float) -> list[LineString]:
@@ -168,6 +171,8 @@ if __name__ == "__main__":
     parser.add_argument("--rotX", type=float, default=0, help="rotation X in degrees [float]")
     parser.add_argument("--rotY", type=float, default=0, help="rotation Y in degrees [float]")
     parser.add_argument("--rotZ", type=float, default=0, help="rotation Z in degrees [float]")
+    parser.add_argument("--grid-num-lat", type=int, default=0, help="number of latitude grid lines")
+    parser.add_argument("--grid-num-lon", type=int, default=0, help="number of longitude grid lines")
     parser.add_argument("--output", type=Path, default="overlay.npz", help="Output filename [NPZ]")
     parser.add_argument("--circle-radius", type=float, default=0.02, help="POI circle radius (float)")
     parser.add_argument("--font-size", type=float, default=0.03, help="Label font size (float)")
@@ -233,16 +238,41 @@ if __name__ == "__main__":
             coords_with_z = np.concatenate((coords, new_col), axis=1)
             ls_poi[i] = LineString(coords_with_z)
 
-        rot_x = (poi["lat"] * -1 + 90.0) / 180 * math.pi
-        rot_z = (poi["lon"]) / 360 * math.tau
+        poi_rot_x = (poi["lat"] * -1 + 90.0) / 180 * math.pi
+        poi_rot_z = (poi["lon"]) / 360 * math.tau
 
         ls_rotated = ls_poi
-        ls_rotated = _rotate_linestrings(ls_rotated, *[0, 0, -BLENDER_ROTATION[2]])
-        ls_rotated = _rotate_linestrings(ls_rotated, *[rot_x, 0, rot_z])
-        ls_rotated = _rotate_linestrings(ls_rotated, *DEFAULT_ROTATION)
-        ls_rotated = _rotate_linestrings(ls_rotated, *BLENDER_ROTATION)
+        ls_rotated = _rotate_linestrings(ls_poi, *[poi_rot_x, 0, poi_rot_z])
 
         linestrings += ls_rotated
+
+    #  GRID
+
+    grid_linestrings = []
+
+    grid_num_lat_lines = args.grid_num_lat
+    grid_num_lon_lines = args.grid_num_lon
+
+    points = [math.tau * i / GRID_NUM_SEGMENTS for i in range(GRID_NUM_SEGMENTS)]
+    points = [[0, math.cos(angle), math.sin(angle)] for angle in points]
+    points = points + [points[0]]
+    for i in range(grid_num_lat_lines):
+        grid_linestrings += _rotate_linestrings([LineString(points)], 0, 0, math.pi * i / grid_num_lat_lines)
+
+    lons = [1.0 / (grid_num_lon_lines + 1) * (i + 1) for i in range(grid_num_lon_lines)]
+    for lon in lons:
+        z = lon * 2 - 1
+        y = math.sqrt(1 - z**2)
+        points = [math.tau * i / GRID_NUM_SEGMENTS for i in range(GRID_NUM_SEGMENTS)]
+        points = [[math.cos(angle) * y, math.sin(angle) * y, z] for angle in points]
+        points = points + [points[0]]
+        grid_linestrings.append(LineString(points))
+
+    linestrings += grid_linestrings
+
+    # ROTATE
+
+    linestrings = _rotate_linestrings(linestrings, *BLENDER_ROTATION)
 
     # VISUALIZE
 
@@ -252,18 +282,21 @@ if __name__ == "__main__":
 
     # PROJECT ONTO SURFACE
 
-    mesh = trimesh.load(args.mesh)
-    index = rtree.index
-    p = index.Property()
-    p.dimension = 3
-    tree = index.Index(properties=p)
-    for i, v in enumerate(mesh.vertices.tolist()):
-        tree.insert(i, v, obj=v)
+    # TODO: PLY mesh should already be correctly rotated. Does this work as expected?
 
-    linestrings_projected = [LineString(project_vertices(tree, shapely.get_coordinates(l, include_z=True), 0.1)) for l in linestrings]
+    if PROJECT_ONTO_SURFACE:
+        mesh = trimesh.load(args.mesh)
+        index = rtree.index
+        p = index.Property()
+        p.dimension = 3
+        tree = index.Index(properties=p)
+        for i, v in enumerate(mesh.vertices.tolist()):
+            tree.insert(i, v, obj=v)
+
+        linestrings = [LineString(project_vertices(tree, shapely.get_coordinates(l, include_z=True), 0.1)) for l in linestrings]
+
+    # TODO: occlusion check
 
     # EXPORT
 
-    write_npz(args.output, linestrings_projected)
-    # write_npz(args.output, linestrings)
-    # write_npz(args.output, linestrings)
+    write_npz(args.output, linestrings)
