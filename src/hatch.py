@@ -13,7 +13,7 @@ import numpy as np
 import shapely
 import shapely.ops
 from pydantic import BaseModel, Field
-from shapely import LineString
+from shapely import LineString, MultiLineString
 
 import flowlines
 from svgwriter import SvgWriter
@@ -21,7 +21,7 @@ from svgwriter import SvgWriter
 DIR_DEBUG = Path("debug")
 
 PSEUDO_RANDOM_SEED = "littleplanets"
-
+OVERLAY_STENCIL_CUT_DISTANCE = 1.0
 
 class HatchConfig(BaseModel):
     dimensions: tuple[int, int] = (750, 750)
@@ -229,7 +229,8 @@ if __name__ == "__main__":
 
     # hatcher = flowlines.FlowlineHatcher(dimensions, config, *mappings, exclusion_points=exclusion_points + contour_points)
     # hatcher = flowlines.FlowlineHatcher(dimensions, config, *mappings, exclusion_points=exclusion_points, initial_seed_points=contour_points)
-    hatcher = flowlines.FlowlineHatcher(config.dimensions, flowlines_config, *mappings, exclusion_points=exclusion_points)
+    # hatcher = flowlines.FlowlineHatcher(config.dimensions, flowlines_config, *mappings, exclusion_points=exclusion_points)
+    hatcher = flowlines.FlowlineHatcher(config.dimensions, flowlines_config, *mappings)
     linestrings: list[LineString] = hatcher.hatch()
     linestrings = [shapely.simplify(l, 0.01) for l in linestrings]
 
@@ -243,14 +244,21 @@ if __name__ == "__main__":
 
     # cut buffered overlay from hatched linestrings
     timer_start = datetime.datetime.now()
-    stencil = shapely.ops.unary_union(linestrings_overlay).buffer(2.5)
+    stencil = shapely.ops.unary_union(linestrings_overlay).buffer(OVERLAY_STENCIL_CUT_DISTANCE / 2)
     linestrings_cut = []
     for ls in linestrings:
         cut = shapely.difference(ls, stencil)
-        if not cut.is_empty and type(cut) is LineString:
-            linestrings_cut.append(cut)
+
+        match cut:
+            case LineString():
+                linestrings_cut.append(cut)
+            case MultiLineString():
+                for g in cut.geoms:
+                    linestrings_cut.append(g)
+            case _:
+                print(f"unexpected geometry: {g}")
     linestrings = linestrings_cut
-    print(f"time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}")
+    print(f"stencil time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
 
     # linestrings_stencil = []
     # for g in stencil.boundary.geoms:
