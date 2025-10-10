@@ -99,13 +99,14 @@ $(DIR_DATA_LOWRES)/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif: $(DIR_SRC)/resiz
 
 DEM_FILE := $(DIR_DATA_LOWRES)/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif
 COLOR_FILE := $(DIR_DATA)/Mars_Viking_ClrMosaic_global_925m.tif
+POI_FILE := $(DIR_DATA)/Mars_poi.json
 
 ROT_X := -90
-ROT_Y := 160
+ROT_Y := 70
 ROT_Z := -22.5
 
 LIGHT_ANGLE_XY := 67.5
-LIGHT_ANGLE_Z := 60
+LIGHT_ANGLE_Z := 50
 
 COLOR_1 := 240 126 50
 COLOR_2 := 65 102 174
