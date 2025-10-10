@@ -8,6 +8,7 @@ import numpy as np
 
 COLLECTION_NAME = "Overlay"
 
+DEBUG = False
 
 # src: https://blender.stackexchange.com/a/134596/118415
 class ArgumentParserForBlender(argparse.ArgumentParser):
@@ -42,9 +43,6 @@ if collection is not None:
 
 # import
 
-args.input = Path("/Users/volzotan/GIT/littleplanets/build/overlay.npz")  # TODO
-args.output = Path("/Users/volzotan/GIT/littleplanets/build/overlay_visible.npz")  # TODO
-
 overlay_collection = bpy.data.collections.new(COLLECTION_NAME)
 scene.collection.children.link(overlay_collection)
 
@@ -68,26 +66,26 @@ for lines in overlay_npz.values():
 # Ray casting
 
 cam = scene.camera
-
 if cam.data.type != "PERSP":
     raise ValueError("Non-perspective cameras not supported")
 
+debug_collection = bpy.data.collections.get("debug")
+if DEBUG:
+    if debug_collection is not None:
+        for obj in debug_collection.objects:
+            bpy.data.objects.remove(obj, do_unlink=True)
+        bpy.data.collections.remove(debug_collection)
+    debug_collection = bpy.data.collections.new("debug")
+    scene.collection.children.link(debug_collection)
+
 visibility_list = []
-
-# debug_collection = bpy.data.collections.get("debug")
-# if debug_collection is not None:
-#     for obj in debug_collection.objects:
-#         bpy.data.objects.remove(obj, do_unlink=True)
-#     bpy.data.collections.remove(debug_collection)
-# debug_collection = bpy.data.collections.new("debug")
-# scene.collection.children.link(debug_collection)
-
 bpy.context.view_layer.depsgraph.update()
 depsgraph = bpy.context.evaluated_depsgraph_get()
-
 origin = cam.matrix_world.translation
+
 for lines in overlay_npz.values():
     visible_points = np.zeros([lines.shape[0]], dtype=bool)
+
     for i, point_coords in enumerate(lines):
         destination = Vector(point_coords)
         direction = (destination - origin).normalized()
@@ -96,23 +94,25 @@ for lines in overlay_npz.values():
         if obj is not None and obj.name.startswith("overlay_curve"):
             visible_points[i] = True
 
-    #            curve_data = bpy.data.curves.new("debug_curve", "CURVE")
-    #            curve_data.dimensions = "3D"
+            if DEBUG:
+               curve_data = bpy.data.curves.new("debug_curve", "CURVE")
+               curve_data.dimensions = "3D"
 
-    #            polyline = curve_data.splines.new("POLY")
-    #            polyline.points.add(1)
-    #
-    #            polyline.points[0].co = (*origin, 1)
-    #            polyline.points[1].co = (*destination, 1)
-    #
-    #            curve_obj = bpy.data.objects.new("debug_curve", curve_data)
-    #            curve_data.bevel_depth = 0.002
-    #            debug_collection.objects.link(curve_obj)
+               polyline = curve_data.splines.new("POLY")
+               polyline.points.add(1)
+
+               polyline.points[0].co = (*origin, 1)
+               polyline.points[1].co = (*destination, 1)
+
+               curve_obj = bpy.data.objects.new("debug_curve", curve_data)
+               curve_data.bevel_depth = 0.002
+               debug_collection.objects.link(curve_obj)
 
     visibility_list.append(visible_points)
 
 # Save & Quit
 
 np.savez(args.output, *visibility_list)
-# bpy.ops.wm.save_as_mainfile()
-# bpy.ops.wm.quit_blender()
+
+if not DEBUG:
+    bpy.ops.wm.quit_blender()
