@@ -69,7 +69,7 @@ def project(raster: np.ndarray, points: np.ndarray, scale: float) -> np.ndarray:
     lons = np.atan2(points[:, 1], points[:, 0])
 
     for i in range(proj.shape[0]):
-        dist = 1 + _map(raster, lats[i], lons[i]) * scale
+        dist = (1 + _map(raster, lats[i], lons[i])) * scale
 
         x = dist * math.sin(lats[i]) * math.cos(lons[i])
         y = dist * math.sin(lats[i]) * math.sin(lons[i])
@@ -102,7 +102,7 @@ def project_vertices(tree: rtree.Index, points: np.ndarray, scale: float) -> np.
 
         x = dist * math.sin(lats[i]) * math.cos(lons[i])
         y = dist * math.sin(lats[i]) * math.sin(lons[i])
-        z = dist * math.cos(lats[i])
+        z = dist * math.cos(lats[i]) * scale
 
         proj[i, :] = [x, y, z]
 
@@ -241,7 +241,6 @@ if __name__ == "__main__":
         poi_rot_x = (poi["lat"] * -1 + 90.0) / 180 * math.pi
         poi_rot_z = (poi["lon"]) / 360 * math.tau
 
-        ls_rotated = ls_poi
         ls_rotated = _rotate_linestrings(ls_poi, *[poi_rot_x, 0, poi_rot_z])
 
         linestrings += ls_rotated
@@ -282,8 +281,6 @@ if __name__ == "__main__":
 
     # PROJECT ONTO SURFACE
 
-    # TODO: PLY mesh should already be correctly rotated. Does this work as expected?
-
     if PROJECT_ONTO_SURFACE:
         mesh = trimesh.load(args.mesh)
         index = rtree.index
@@ -293,9 +290,7 @@ if __name__ == "__main__":
         for i, v in enumerate(mesh.vertices.tolist()):
             tree.insert(i, v, obj=v)
 
-        linestrings = [LineString(project_vertices(tree, shapely.get_coordinates(l, include_z=True), 0.1)) for l in linestrings]
-
-    # TODO: occlusion check
+        linestrings = [LineString(project_vertices(tree, shapely.get_coordinates(l, include_z=True), 1.05)) for l in linestrings]
 
     # EXPORT
 

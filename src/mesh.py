@@ -308,9 +308,9 @@ def add_color(m: Mesh, raster: np.ndarray, color_vertices=False) -> Mesh:
         lon = math.atan2(p[1], p[0])
 
         c = [
-            _map(raster[0, :, :], lat, lon).astype(np.uint8),
-            _map(raster[1, :, :], lat, lon).astype(np.uint8),
-            _map(raster[2, :, :], lat, lon).astype(np.uint8),
+            _map(raster[:, :, 0], lat, lon).astype(np.uint8),
+            _map(raster[:, :, 1], lat, lon).astype(np.uint8),
+            _map(raster[:, :, 2], lat, lon).astype(np.uint8),
         ]
         m.colors.append(c)
 
@@ -519,6 +519,10 @@ def field_vectors_to_image(m: Mesh, num: int = 360) -> np.ndarray:
     return image
 
 
+def shift_center_to_origin(raster: np.ndarray) -> np.ndarray:
+    return np.roll(raster, int(raster.shape[0]/2), axis=1)
+
+
 def display(m: Mesh) -> None:
     import pyvista as pv
 
@@ -700,7 +704,11 @@ if __name__ == "__main__":
 
     dem_raster = normalize_elevation(load_raster(args.elevation_raster))
     dem_raster = dem_raster[0, :, :]
-    color_raster = load_raster(args.color_raster)[0:3, :, :]
+    color_raster = load_raster(args.color_raster)
+    color_raster = np.transpose(color_raster[0:3, :, :], (1, 2, 0)) # from [3, rows, cols] to [rows, cols, 3]
+
+    dem_raster = shift_center_to_origin(dem_raster)
+    color_raster = shift_center_to_origin(color_raster)
 
     # use a partial DEM (lat not from -90 to 90)
     # color_raster2 = load_raster(Path("data", "BasicHapke_wbhs_blend_b137_IOF.55deg_nearcenter_1kmpp_20140925_134515.tif")) # [3, rows, cols]
@@ -709,8 +717,7 @@ if __name__ == "__main__":
     # color_raster = color_raster2 # TODO
 
     if args.debug:
-        color_raster_transposed = np.transpose(color_raster, (1, 2, 0))  # from [3, rows, cols] to [rows, cols, 3]
-        cv2.imwrite(str(DIR_DEBUG / "color_raster.png"), color_raster_transposed)
+        cv2.imwrite(str(DIR_DEBUG / "color_raster.png"), color_raster)
 
     if args.blur is not None and args.blur > 1:
         dem_raster = cv2.blur(dem_raster, (args.blur, args.blur))
@@ -727,46 +734,46 @@ if __name__ == "__main__":
 
     # 3D HATCHING / TODO: remove
 
-    poly = subdivide(tetrahedron(), n=args.subdivision)
-
-    dem_raster = normalize_elevation(load_raster(args.elevation_raster))[0, :, :]
-    size = (np.array([dem_raster.shape[1], dem_raster.shape[0]]) * 0.25).astype(int).tolist()
-    dem_raster = cv2.resize(dem_raster, size)
-
-    poly = project(poly, dem_raster, scale=args.scale)
-    poly = add_field_vectors(poly, _normalize_vector(np.array([0, 1, 1])))
-
-    color_raster = load_raster(args.color_raster)[0:3, :, :]
-    add_color(poly, color_raster)
-    write_ply(poly, args.output)
-
-    import flowlines3
-
-    config = flowlines3.FlowlineHatcherConfig()
-    # mapping_line_distance = np.mean(color_raster[0:3, :, :], axis=0)
-    lines = flowlines3.FlowlineHatcher(
-        poly,
-        1 + dem_raster * SCALE,
-        np.zeros([1, 1], dtype=np.uint8),  # mapping_line_distance,
-        np.zeros([1, 1], dtype=np.uint8),
-        np.zeros([1, 1], dtype=np.uint8),
-        config,
-        initial_seed_points=poly.centers,
-    ).hatch()
-
-    print(f"lines: {len(lines)}")
-    print("Completed in: {:.3f}s".format((datetime.datetime.now() - timer_start).total_seconds()))
-
-    # points = []
-    # for line in lines:
-    #     points += [np.array(p) for p in line.coords]
-    # pointcloud = Mesh(points, [])
-    # write_ply_pointcloud(pointcloud, Path("pointcloud.ply"))
-
-    # plotter = visualize(poly, lines)
-    # write_obj(plotter, Path("scene.obj"))
-    # plotter.show()
-
-    # visualize(poly, []).show()
-
-    visualize_lines(poly, lines).show()
+    # poly = subdivide(tetrahedron(), n=args.subdivision)
+    #
+    # dem_raster = normalize_elevation(load_raster(args.elevation_raster))[0, :, :]
+    # size = (np.array([dem_raster.shape[1], dem_raster.shape[0]]) * 0.25).astype(int).tolist()
+    # dem_raster = cv2.resize(dem_raster, size)
+    #
+    # poly = project(poly, dem_raster, scale=args.scale)
+    # poly = add_field_vectors(poly, _normalize_vector(np.array([0, 1, 1])))
+    #
+    # color_raster = load_raster(args.color_raster)[0:3, :, :]
+    # add_color(poly, color_raster)
+    # write_ply(poly, args.output)
+    #
+    # import flowlines3
+    #
+    # config = flowlines3.FlowlineHatcherConfig()
+    # # mapping_line_distance = np.mean(color_raster[0:3, :, :], axis=0)
+    # lines = flowlines3.FlowlineHatcher(
+    #     poly,
+    #     1 + dem_raster * SCALE,
+    #     np.zeros([1, 1], dtype=np.uint8),  # mapping_line_distance,
+    #     np.zeros([1, 1], dtype=np.uint8),
+    #     np.zeros([1, 1], dtype=np.uint8),
+    #     config,
+    #     initial_seed_points=poly.centers,
+    # ).hatch()
+    #
+    # print(f"lines: {len(lines)}")
+    # print("Completed in: {:.3f}s".format((datetime.datetime.now() - timer_start).total_seconds()))
+    #
+    # # points = []
+    # # for line in lines:
+    # #     points += [np.array(p) for p in line.coords]
+    # # pointcloud = Mesh(points, [])
+    # # write_ply_pointcloud(pointcloud, Path("pointcloud.ply"))
+    #
+    # # plotter = visualize(poly, lines)
+    # # write_obj(plotter, Path("scene.obj"))
+    # # plotter.show()
+    #
+    # # visualize(poly, []).show()
+    #
+    # visualize_lines(poly, lines).show()
