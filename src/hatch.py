@@ -252,9 +252,9 @@ if __name__ == "__main__":
     linestrings = linestrings_cut
     print(f"time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}")
 
-    linestrings_stencil = []
-    for g in stencil.boundary.geoms:
-        linestrings_stencil.append(g)
+    # linestrings_stencil = []
+    # for g in stencil.boundary.geoms:
+    #     linestrings_stencil.append(g)
 
     # Coloring
 

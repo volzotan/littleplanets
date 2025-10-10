@@ -166,17 +166,17 @@ def write_npz(filename: Path, linestrings: list[LineString]) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("mesh", type=Path, help="Input mesh path (PLY)")
-    parser.add_argument("pois", type=Path, help="Position of interest data (JSON)")
+    parser.add_argument("mesh", type=Path, help="Input mesh path [PLY]")
+    parser.add_argument("pois", type=Path, help="Position of interest data [JSON]")
     parser.add_argument("--rotX", type=float, default=0, help="rotation X in degrees [float]")
     parser.add_argument("--rotY", type=float, default=0, help="rotation Y in degrees [float]")
     parser.add_argument("--rotZ", type=float, default=0, help="rotation Z in degrees [float]")
     parser.add_argument("--grid-num-lat", type=int, default=0, help="number of latitude grid lines")
     parser.add_argument("--grid-num-lon", type=int, default=0, help="number of longitude grid lines")
     parser.add_argument("--output", type=Path, default="overlay.npz", help="Output filename [NPZ]")
-    parser.add_argument("--circle-radius", type=float, default=0.02, help="POI circle radius (float)")
-    parser.add_argument("--font-size", type=float, default=0.03, help="Label font size (float)")
-    parser.add_argument("--subdivision", type=int, default=10, help="Number of subdivision steps (int)")
+    parser.add_argument("--circle-radius", type=float, default=0.02, help="POI circle radius [float]")
+    parser.add_argument("--font-size", type=float, default=0.03, help="Label font size [float]")
+    parser.add_argument("--subdivision", type=int, default=10, help="Number of subdivision steps [int]")
     args = parser.parse_args()
 
     DEFAULT_ROTATION = np.array([-math.pi / 2, 0, 0])  # Blender Camera is aligned with the Z axis

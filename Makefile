@@ -83,6 +83,7 @@ $(DIR_DATA_LOWRES)/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif: $(DIR_SRC)/resiz
 
 #DEM_FILE := $(DIR_DATA_LOWRES)/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif
 #COLOR_FILE := $(DIR_BUILD)/lroc_color_poles_imagemagick_contrast.tif
+#POI_FILE := $(DIR_DATA)/Moon_apollo_landing_sites.json
 #
 #ROT_X := -90
 #ROT_Y := 90
@@ -139,9 +140,17 @@ $(DIR_BUILD)/mesh_blender.ply: $(DIR_BUILD)/$(BLENDER_FILE) $(DIR_BLENDER)/expor
 	@echo "Running blender mesh export"
 	$(BLENDER_BIN) $(DIR_BUILD)/$(BLENDER_FILE) --background --python $(DIR_BLENDER)/export_ply.py -- --output $@
 
-$(DIR_BUILD)/overlay.npz: $(DIR_SRC)/project_overlay.py $(DIR_BUILD)/mesh_blender.ply $(DIR_DATA)/Moon_apollo_landing_sites.json
+$(DIR_BUILD)/overlay.npz: $(DIR_SRC)/project_overlay.py $(DIR_BUILD)/mesh_blender.ply $(POI_FILE)
 	@echo "Projecting overlay POIs"
-	uv run $^ --output $@ --rotZ $(ROT_X) --circle-radius 0.015 --font-size 0.025
+	uv run $^ --output $@ --rotX $(ROT_X) --rotY $(ROT_Y) --rotZ $(ROT_Z) --grid-num-lat 8 --grid-num-lon 5 --circle-radius 0.015 --font-size 0.025
+
+$(DIR_BUILD)/overlay_visible.npz: $(DIR_BUILD)/$(BLENDER_FILE) $(DIR_BLENDER)/export_overlay_lines.py $(DIR_BUILD)/overlay.npz
+	@echo "Running blender overlay visibility detection"
+	$(BLENDER_BIN) $(DIR_BUILD)/$(BLENDER_FILE) --background --python $(DIR_BLENDER)/export_overlay_lines.py -- --input $(DIR_BUILD)/overlay.npz --output $@
+
+$(DIR_BUILD)/overlay_cropped.npz: $(DIR_SRC)/crop_overlay.py $(DIR_BUILD)/overlay.npz $(DIR_BUILD)/overlay_visible.npz
+	@echo "Cropping visible overlay lines"
+	uv run $^ --output $@
 
 $(DIR_BUILD)/contours.npz: $(DIR_SRC)/contours.py $(DIR_BUILD)/normals.exr $(DIR_BUILD)/raytrace.npy
 	@echo "Computing contours"
@@ -159,22 +168,20 @@ $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_brightness_difference.png &:
 		--palette-color $(COLOR_1)								\
 		--palette-color $(COLOR_2)								\
 
-#run: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/overlay.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz
-#	@echo "Processing blender output"
-#	uv run $(DIR_SRC)/hatch.py									\
-#		$(DIR_BUILD)/mapping_color.npy 							\
-#		$(DIR_BUILD)/mapping_angle_5.png 						\
-#		$(DIR_BUILD)/mapping_distance.png 						\
-#		$(DIR_BUILD)/mapping_line_length.png 					\
-#		$(DIR_BUILD)/mapping_flat.png 							\
-#		--overlay $(DIR_BUILD)/overlay.npz 						\
-#		--projection-matrix $(DIR_BUILD)/projection_matrix.npy  \
-#		--contours $(DIR_BUILD)/contours.npz					\
-#		--blur-color 1.00 										\
-#		--blur-angle 0.20 										\
-#		--blur-distance 0.40									\
-#		--output $(DIR_BUILD)/littleplanets.svg
-#	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets.png --export-width=2000 --export-background=#000000
+run: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/overlay_cropped.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz
+	@echo "Processing blender output"
+	uv run $(DIR_SRC)/hatch.py									\
+		$(DIR_BUILD)/mapping_color.npy 							\
+		$(DIR_BUILD)/mapping_angle_5.png 						\
+		$(DIR_BUILD)/mapping_distance.png 						\
+		$(DIR_BUILD)/mapping_line_length.png 					\
+		$(DIR_BUILD)/mapping_flat.png 							\
+		--overlay $(DIR_BUILD)/overlay_cropped.npz 				\
+		--projection-matrix $(DIR_BUILD)/projection_matrix.npy  \
+		--contours $(DIR_BUILD)/contours.npz					\
+		--config config_hatch.toml 								\
+		--output $(DIR_BUILD)/littleplanets.svg
+	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets.png --export-width=2000 --export-background=#000000
 
 run_palette: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_brightness_difference.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png config_hatch.toml $(DIR_BUILD)/contours.npz
 	@echo "Processing blender output"
