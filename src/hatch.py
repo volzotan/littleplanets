@@ -47,36 +47,6 @@ def _project_linestring(ls: LineString, P: np.ndarray, scaling_factor: float) ->
     return LineString(coordinates)
 
 
-def _rotate_linestrings(lines: list[LineString], x: float, y: float, z: float) -> list[LineString]:
-    R_x = np.array(
-        [
-            [1, 0, 0],
-            [0, np.cos(x), -np.sin(x)],
-            [0, np.sin(x), np.cos(x)],
-        ]
-    )
-    R_y = np.array(
-        [
-            [np.cos(y), 0, np.sin(y)],
-            [0, 1, 0],
-            [-np.sin(y), 0, np.cos(y)],
-        ]
-    )
-    R_z = np.array(
-        [
-            [np.cos(z), -np.sin(z), 0],
-            [np.sin(z), np.cos(z), 0],
-            [0, 0, 1],
-        ]
-    )
-
-    lines_rotated = []
-    for line in lines:
-        lines_rotated.append(shapely.ops.transform(lambda x, y, z: R_z @ R_y @ R_x @ np.array([x, y, z]), line))
-
-    return lines_rotated
-
-
 def _blur_raster(raster: np.ndarray, perc: float) -> np.ndarray:
     kernel_size = int(max(*raster.shape) * (perc / 100.0))
     if kernel_size > 1:
@@ -126,7 +96,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--palette-color", action="append", type=float, nargs=3, help="Palette color item [R, G, B], append once per color")
 
-    parser.add_argument("--overlay", type=Path, default=None, help="Overlay linestrings (NPZ)")
+    parser.add_argument("--overlay", type=Path, nargs="*", default=[], help="Overlay linestrings, multiple filenames possible (NPZ)")
     parser.add_argument("--projection-matrix", type=Path, default=None, help="3x4 projection matrix (NPY)")
 
     parser.add_argument("--contours", type=Path, default=None, help="Contour linestrings (NPZ)")
@@ -170,13 +140,15 @@ if __name__ == "__main__":
 
     scaling_factor = config.dimensions[0] / mapping_angle.shape[1]
 
-    linestrings_overlay = []
-    if args.overlay is not None:
+    linestrings_overlays = []
+    if len(args.overlay) > 0:
         P = np.load(args.projection_matrix)
+        for overlay_path in args.overlay:
 
-        overlay_npz = np.load(args.overlay)
-        linestrings_overlay = [LineString(arr) for arr in overlay_npz.values()]
-        linestrings_overlay = [_project_linestring(l, P, scaling_factor) for l in linestrings_overlay]
+            overlay_npz = np.load(overlay_path)
+            overlay_ls = [LineString(arr) for arr in overlay_npz.values()]
+            overlay_ls = [_project_linestring(l, P, scaling_factor) for l in overlay_ls]
+            linestrings_overlays += overlay_ls
 
     # TODO: contours don't need to be projected, but they need to be scaled (currently missing!)
     linestrings_contours = []
@@ -186,7 +158,7 @@ if __name__ == "__main__":
         linestrings_contours = [shapely.affinity.scale(ls, xfact=scaling_factor, yfact=scaling_factor, origin=(0, 0)) for ls in linestrings_contours]
 
     exclusion_points = []
-    for ls in linestrings_overlay + linestrings_contours:
+    for ls in linestrings_overlays + linestrings_contours:
         exclusion_points += shapely.get_coordinates(ls.segmentize(0.01)).tolist()
 
     mapping_distance = ((mapping_distance - np.min(mapping_distance)) / np.ptp(mapping_distance) * 255).astype(np.uint8)
@@ -244,7 +216,7 @@ if __name__ == "__main__":
 
     # cut buffered overlay from hatched linestrings
     timer_start = datetime.datetime.now()
-    stencil = shapely.ops.unary_union(linestrings_overlay).buffer(OVERLAY_STENCIL_CUT_DISTANCE / 2)
+    stencil = shapely.ops.unary_union(linestrings_overlays).buffer(OVERLAY_STENCIL_CUT_DISTANCE / 2)
     linestrings_cut = []
     for ls in linestrings:
         cut = shapely.difference(ls, stencil)
@@ -319,7 +291,7 @@ if __name__ == "__main__":
     for k, v in layer_styles.items():
         svg.add_style(k, v)
 
-    svg.add("overlay", linestrings_overlay)
+    svg.add("overlay", linestrings_overlays)
     # svg.add("contours", linestrings_contours)
 
     for i, colored_linestrings in enumerate(linestrings_split_by_palette):

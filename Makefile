@@ -18,6 +18,8 @@ DIR_DEBUG := debug
 
 SCALING_FACTOR := 0.5
 
+# ----------
+
 all: setup run
 
 setup: $(PYPROJECT_FILE)
@@ -102,7 +104,7 @@ COLOR_FILE := $(DIR_DATA)/Mars_Viking_ClrMosaic_global_925m.tif
 POI_FILE := $(DIR_DATA)/Mars_poi.json
 
 ROT_X := -90
-ROT_Y := 70
+ROT_Y := 80
 ROT_Z := -22.5
 
 LIGHT_ANGLE_XY := 67.5
@@ -110,6 +112,8 @@ LIGHT_ANGLE_Z := 50
 
 COLOR_1 := 240 126 50
 COLOR_2 := 65 102 174
+
+OVERLAYS := grid pois
 
 # ----------
 
@@ -141,17 +145,40 @@ $(DIR_BUILD)/mesh_blender.ply: $(DIR_BUILD)/$(BLENDER_FILE) $(DIR_BLENDER)/expor
 	@echo "Running blender mesh export"
 	$(BLENDER_BIN) $(DIR_BUILD)/$(BLENDER_FILE) --background --python $(DIR_BLENDER)/export_ply.py -- --output $@
 
-$(DIR_BUILD)/overlay.npz: $(DIR_SRC)/project_overlay.py $(DIR_BUILD)/mesh_blender.ply $(POI_FILE)
-	@echo "Projecting overlay POIs"
-	uv run $^ --output $@ --rotX $(ROT_X) --rotY $(ROT_Y) --rotZ $(ROT_Z) --grid-num-lat 8 --grid-num-lon 5 --circle-radius 0.015 --font-size 0.025
+# Overlays
 
-$(DIR_BUILD)/overlay_visible.npz: $(DIR_BUILD)/$(BLENDER_FILE) $(DIR_BLENDER)/export_overlay_lines.py $(DIR_BUILD)/overlay.npz
-	@echo "Running blender overlay visibility detection"
-	$(BLENDER_BIN) $(DIR_BUILD)/$(BLENDER_FILE) --background --python $(DIR_BLENDER)/export_overlay_lines.py -- --input $(DIR_BUILD)/overlay.npz --output $@
+$(DIR_BUILD)/overlay_pois.npz: $(DIR_SRC)/overlay_pois.py $(POI_FILE)
+	@echo "Create POI overlay"
+	uv run $^ --output $@ --rotX $(ROT_X) --rotY $(ROT_Y) --rotZ $(ROT_Z) --circle-radius 0.015 --font-size 0.025
 
-$(DIR_BUILD)/overlay_cropped.npz: $(DIR_SRC)/crop_overlay.py $(DIR_BUILD)/overlay.npz $(DIR_BUILD)/overlay_visible.npz
-	@echo "Cropping visible overlay lines"
-	uv run $^ --output $@
+$(DIR_BUILD)/overlay_grid.npz: $(DIR_SRC)/overlay_grid.py
+	@echo "Create grid overlay"
+	uv run $^ --output $@ --rotX $(ROT_X) --rotY $(ROT_Y) --rotZ $(ROT_Z) --grid-num-lat 8 --grid-num-lon 16
+
+
+#$(DIR_BUILD)/overlay_visible_%.npz: $(DIR_BUILD)/$(BLENDER_FILE) $(DIR_BLENDER)/export_overlay_lines.py $(DIR_BUILD)/overlay_%.npz
+#	@echo "Running blender overlay visibility detection"
+#	$(BLENDER_BIN) $(DIR_BUILD)/$(BLENDER_FILE) --background --python $(DIR_BLENDER)/export_overlay_lines.py -- --input $(DIR_BUILD)/overlay.npz --output $@
+#
+#$(DIR_BUILD)/overlay_%_cropped.npz: $(DIR_SRC)/overlay_crop.py $(DIR_BUILD)/overlay_%.npz $(DIR_BUILD)/overlay_visible_%.npz
+#	@echo "Cropping visible overlay lines"
+#	uv run $^ --output $@
+
+
+$(DIR_BUILD)/overlay_pois_cropped.npz: $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_pois.npz
+	@echo "Cropping visible overlay lines: POIs"
+	uv run $(DIR_SRC)/overlay_project.py $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_pois.npz --output $(DIR_BUILD)/overlay_pois_projected.npz
+	$(BLENDER_BIN) $(DIR_BUILD)/$(BLENDER_FILE) --background --python $(DIR_BLENDER)/export_overlay_lines.py -- --input $(DIR_BUILD)/overlay_pois_projected.npz --output $(DIR_BUILD)/overlay_pois_visible.npz
+	uv run $(DIR_SRC)/overlay_crop.py $(DIR_BUILD)/overlay_pois_projected.npz $(DIR_BUILD)/overlay_pois_visible.npz --output $@
+
+$(DIR_BUILD)/overlay_grid_cropped.npz: $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_grid.npz
+	@echo "Cropping visible overlay lines: GRID"
+	uv run $(DIR_SRC)/overlay_project.py $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_grid.npz --output $(DIR_BUILD)/overlay_grid_projected.npz
+	$(BLENDER_BIN) $(DIR_BUILD)/$(BLENDER_FILE) --background --python $(DIR_BLENDER)/export_overlay_lines.py -- --input $(DIR_BUILD)/overlay_grid_projected.npz --output $(DIR_BUILD)/overlay_grid_visible.npz
+	uv run $(DIR_SRC)/overlay_crop.py $(DIR_BUILD)/overlay_grid_projected.npz $(DIR_BUILD)/overlay_grid_visible.npz --output $@
+
+
+
 
 $(DIR_BUILD)/contours.npz: $(DIR_SRC)/contours.py $(DIR_BUILD)/normals.exr $(DIR_BUILD)/raytrace.npy
 	@echo "Computing contours"
@@ -169,7 +196,7 @@ $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_brightness_difference.png &:
 		--palette-color $(COLOR_1)								\
 		--palette-color $(COLOR_2)								\
 
-run: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/overlay_cropped.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz
+run: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle_5.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_grid_cropped.npz  $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz
 	@echo "Processing blender output"
 	uv run $(DIR_SRC)/hatch.py									\
 		$(DIR_BUILD)/mapping_color.npy 							\
@@ -177,7 +204,7 @@ run: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_ang
 		$(DIR_BUILD)/mapping_distance.png 						\
 		$(DIR_BUILD)/mapping_line_length.png 					\
 		$(DIR_BUILD)/mapping_flat.png 							\
-		--overlay $(DIR_BUILD)/overlay_cropped.npz 				\
+		--overlay $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_grid_cropped.npz 		\
 		--projection-matrix $(DIR_BUILD)/projection_matrix.npy  \
 		--contours $(DIR_BUILD)/contours.npz					\
 		--config config_hatch.toml 								\

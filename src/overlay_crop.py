@@ -2,13 +2,9 @@ import argparse
 from pathlib import Path
 
 import numpy as np
-import shapely
 from shapely import LineString
 
-def write_npz(filename: Path, linestrings: list[LineString]) -> None:
-    arrays = [shapely.get_coordinates(l, include_z=True) for l in linestrings]
-    np.savez(filename, *arrays)
-
+from util.misc import write_linestrings_to_npz
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -37,8 +33,7 @@ if __name__ == "__main__":
         if len(line) >= 2:
             linestrings.append(LineString(line))
 
-
     print(f"Input Linestrings: {len(overlay_npz)}")
     print(f"Output Linestrings: {len(linestrings)}")
 
-    write_npz(args.output, linestrings)
+    write_linestrings_to_npz(args.output, linestrings)
