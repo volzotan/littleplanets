@@ -8,14 +8,13 @@ import random
 
 import cv2
 
-# import flowlines_py
 import numpy as np
 import shapely
 import shapely.ops
 from pydantic import BaseModel, Field
 from shapely import LineString, MultiLineString
 
-import flowlines
+from util import flowlines
 from svgwriter import SvgWriter
 
 DIR_DEBUG = Path("debug")

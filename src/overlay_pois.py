@@ -5,8 +5,7 @@ import shapely
 from shapely.geometry import LineString, Point, MultiLineString
 import numpy as np
 import math
-from hershey import HersheyFont
-
+from util.hershey import HersheyFont
 from util.misc import write_linestrings_to_npz, visualize_linestrings, _rotate_linestrings
 
 VISUALIZE = False
