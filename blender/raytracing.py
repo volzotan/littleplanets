@@ -12,6 +12,8 @@ from mathutils import Vector
 # https://blender.stackexchange.com/a/177530
 # https://blender.stackexchange.com/a/120063
 
+DEBUG = False
+
 
 # src: https://blender.stackexchange.com/a/134596/118415
 class ArgumentParserForBlender(argparse.ArgumentParser):
@@ -19,7 +21,7 @@ class ArgumentParserForBlender(argparse.ArgumentParser):
         try:
             idx = sys.argv.index("--")
             return sys.argv[idx + 1 :]  # the list after '--'
-        except ValueError as e:  # '--' not in the list:
+        except ValueError:  # '--' not in the list:
             return []
 
     # overrides superclass
@@ -34,6 +36,15 @@ args = parser.parse_args()
 context = bpy.context
 scene = context.scene
 vl = context.view_layer
+
+debug_collection = bpy.data.collections.get("debug")
+if DEBUG:
+    if debug_collection is not None:
+        for obj in debug_collection.objects:
+            bpy.data.objects.remove(obj, do_unlink=True)
+        bpy.data.collections.remove(debug_collection)
+    debug_collection = bpy.data.collections.new("debug")
+    scene.collection.children.link(debug_collection)
 
 cam = scene.camera
 camd = cam.data
@@ -59,18 +70,34 @@ origin = cam.matrix_world.translation
 
 for x in range(resolution_x):
     for y in range(resolution_y):
-        pixel_vector = Vector((x_range[x], y_range[y], top_left[2]))
-        pixel_vector.rotate(cam.matrix_world.to_quaternion())
-        hit, location, norm, idx, obj, mw = scene.ray_cast(vl.depsgraph, origin, pixel_vector)
+        direction = Vector((x_range[x], y_range[y], top_left[2]))
+        direction.rotate(cam.matrix_world.to_quaternion())
+        hit, location, norm, idx, obj, mw = scene.ray_cast(vl.depsgraph, origin, direction.normalized())
 
         print(f"> progress: {x / resolution_x * 100:5.2f} %", end="\r")
 
         if hit:
             values[y, x, :] = location
 
+        if DEBUG:
+            curve_data = bpy.data.curves.new("debug_curve", "CURVE")
+            curve_data.dimensions = "3D"
+
+            polyline = curve_data.splines.new("POLY")
+            polyline.points.add(1)
+
+            polyline.points[0].co = (*origin, 1)
+            polyline.points[1].co = (*location, 1)
+
+            curve_obj = bpy.data.objects.new("debug_curve", curve_data)
+            curve_data.bevel_depth = 0.002
+            debug_collection.objects.link(curve_obj)
+
+
 with open(args.output, "wb") as f:
     np.save(f, values)
 
 print(f"Raytracing complete. Data written to file {args.output}")
 
-bpy.ops.wm.quit_blender()
+if not DEBUG:
+    bpy.ops.wm.quit_blender()
