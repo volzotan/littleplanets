@@ -29,19 +29,18 @@ ARGUMENTS = [
 ]
 
 VARIABLES = {
-#     "blur_angle_kernel_size_perc": [0.1, 0.2, 0.3, 0.4, 0.5],
-#     # "blur_color_kernel_size_perc": [0.1, 0.2, 0.3, 0.4, 0.5],
-#     # "blur_distance_kernel_size_perc": [0.1, 0.2, 0.3, 0.4, 0.5],
-
-#     "flowlines_line_distance_end_factor": [0.25, 0.5, 0.75, 1.0],
-#     # "flowlines_line_distance": [(0.8, 5), (0.8, 10), (0.8, 15)],
-#     # "flowlines_line_max_length": [(3, 9), (3, 12), (3, 16), (3, 20)],
-#     "flowlines_line_max_length": [(3, 3), (6, 6), (12, 12), (16, 16), (20, 20), (30, 30), (40, 40)],
-#     # "flowlines_line_max_length": [(1, 16), (2, 16), (3, 16), (4, 16), (5, 16), (6, 16), (7, 16), (8, 16), (10, 16), (12, 16), (14, 16), (16, 16)],
-#     "flowlines_max_angle_discontinuity": [math.pi / 16, math.pi / 8, math.pi / 4, math.pi / 2]
-
+    #     "blur_angle_kernel_size_perc": [0.1, 0.2, 0.3, 0.4, 0.5],
+    #     # "blur_color_kernel_size_perc": [0.1, 0.2, 0.3, 0.4, 0.5],
+    #     # "blur_distance_kernel_size_perc": [0.1, 0.2, 0.3, 0.4, 0.5],
+    #     "flowlines_line_distance_end_factor": [0.25, 0.5, 0.75, 1.0],
+    #     # "flowlines_line_distance": [(0.8, 5), (0.8, 10), (0.8, 15)],
+    #     # "flowlines_line_max_length": [(3, 9), (3, 12), (3, 16), (3, 20)],
+    #     "flowlines_line_max_length": [(3, 3), (6, 6), (12, 12), (16, 16), (20, 20), (30, 30), (40, 40)],
+    #     # "flowlines_line_max_length": [(1, 16), (2, 16), (3, 16), (4, 16), (5, 16), (6, 16), (7, 16), (8, 16), (10, 16), (12, 16), (14, 16), (16, 16)],
+    #     "flowlines_max_angle_discontinuity": [math.pi / 16, math.pi / 8, math.pi / 4, math.pi / 2]
     "flowlines_line_distance": [(0.8, 5), (0.8, 10), (0.8, 15), (0.8, 20)],
 }
+
 
 def process(num_experiment: int, config_override: dict[str, Any]) -> None:
     # logger.info(f"Executing experiment {num_experiment:> 5}")
@@ -68,8 +67,14 @@ def process(num_experiment: int, config_override: dict[str, Any]) -> None:
                 # "build/contours.npz",
                 "--output",
                 svg_path,
-                "--palette-color", "240", "126", "50",
-                "--palette-color", "65", "102", "174",
+                "--palette-color",
+                "240",
+                "126",
+                "50",
+                "--palette-color",
+                "65",
+                "102",
+                "174",
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -77,16 +82,10 @@ def process(num_experiment: int, config_override: dict[str, Any]) -> None:
         )
 
         subprocess.run(
-            [
-                INKSCAPE_BIN,
-                svg_path,
-                f"--export-filename={image_file}",
-                "--export-width=2000",
-                "--export-background=#000000"
-            ],
+            [INKSCAPE_BIN, svg_path, f"--export-filename={image_file}", "--export-width=2000", "--export-background=#000000"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            check=True
+            check=True,
         )
 
         os.remove(svg_path)
@@ -114,7 +113,6 @@ def rec_looping(variables: dict[str, list[Any]], config_override: dict[str, Any]
 
 
 def main() -> None:
-
     shutil.rmtree(TEMP_DIR)
     shutil.rmtree(OUTPUT_DIR)
     os.makedirs(TEMP_DIR, exist_ok=True)
@@ -136,8 +134,8 @@ def main() -> None:
 
         for future in as_completed(futures):
             completed_experiments += 1
-            logger.info(f"processed {completed_experiments}/{total_experiments} | {(completed_experiments/total_experiments):5.2%}")
+            logger.info(f"processed {completed_experiments}/{total_experiments} | {(completed_experiments / total_experiments):5.2%}")
+
 
 if __name__ == "__main__":
     main()
-

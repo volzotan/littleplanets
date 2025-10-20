@@ -246,52 +246,6 @@ if __name__ == "__main__":
         img_gray = cv2.resize(img_gray, resize_size)
         img_pxpos = cv2.resize(img_pxpos, resize_size)
 
-    # EXPERIMENTS
-
-    # centers = []
-    # normals = []
-    #
-    # for x in range(img_normals.shape[1]):
-    #     for y in range(img_normals.shape[0]):
-    #         if abs(np.linalg.norm(img_normals[y, x, :])) < 0.01:
-    #             continue
-    #
-    #         # centers.append(np.array([
-    #         #     (x / img_normals.shape[1] - 0.5) * 2,
-    #         #     (y / img_normals.shape[0] - 0.5) * 2 * -1, # Y axis coordinate flip: numpy origin top-left, blender bottom-left
-    #         #     img_pxpos[y, x, 2]
-    #         # ]))
-    #
-    #         centers.append(np.nan_to_num(img_pxpos[y, x, :]))
-    #         normals.append(img_normals[y, x, :])
-    #
-    # centers = np.array(centers)
-    # normals = np.array(normals)
-    #
-    # intersections = _compute_intersections(centers, normals, light_axis)
-    # directions = _normalize_vectors(intersections - centers)
-    #
-    # # flip direction if intersection point is on the opposite end of the axis
-    # # necessary to avoid a flipping of direction signs when moving from one face to the next one
-    # opposite_directions = np.full_like(directions, 1, dtype=np.float32)
-    # opposite_directions[np.dot(intersections, light_axis) < 0] = -1
-    # directions *= opposite_directions
-    #
-    # ELEVATION_VECTOR_WEIGHT = 0.6
-    # elevation_vectors = _normalize_vectors(centers)
-    # field_elevation_vectors = []
-    # for i in range(len(elevation_vectors)):
-    #     projected = elevation_vectors[i] - (np.dot(elevation_vectors[i], normals[i])) * normals[i]
-    #     magnitude = np.arccos(np.dot(elevation_vectors[i], normals[i]))
-    #     combined = _normalize_vector(
-    #         directions[i] * (1 - magnitude) * (1 - ELEVATION_VECTOR_WEIGHT)
-    #         + projected * magnitude * ELEVATION_VECTOR_WEIGHT
-    #     )
-    #     field_elevation_vectors.append(combined)
-    #
-    # visualize(centers, [normals, directions], light_axis).show()
-    # visualize(centers, [directions, field_elevation_vectors], light_axis).show()
-    # visualize(centers, [directions], light_axis).show()
 
     # Mapping Color
 
@@ -343,7 +297,7 @@ if __name__ == "__main__":
     img_elevation_direction_ws = img_elevation_direction
 
     if CROSS_FLOW:
-        # cross product needs happend on the vectors in world space before projecting to image space
+        # cross product must be applied on the vectors in world space before projecting to image space
         img_direction_ws = np.cross(img_direction_ws, img_normals)
         img_elevation_direction_ws = np.cross(img_elevation_direction_ws, img_normals)
 
