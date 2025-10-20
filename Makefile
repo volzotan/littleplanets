@@ -4,7 +4,7 @@
 
 DIR_BLENDER := blender
 BLENDER_BIN := /Applications/Blender.app/Contents/MacOS/Blender
-BLENDER_FILE := moon_Z.blend
+BLENDER_FILE := template.blend
 
 INKSCAPE_BIN := /Applications/Inkscape.app/Contents/MacOS/inkscape
 

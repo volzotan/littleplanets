@@ -7,6 +7,9 @@ from pathlib import Path
 import math
 
 
+PLY_IMPORT_SCALE = 1.0  # 10.0
+
+
 # src: https://blender.stackexchange.com/a/134596/118415
 class ArgumentParserForBlender(argparse.ArgumentParser):
     def _get_argv_after_doubledash(self):
@@ -42,7 +45,7 @@ if obj is not None:
 
 # import
 
-bpy.ops.wm.ply_import(filepath="build/mesh.ply")
+bpy.ops.wm.ply_import(filepath="build/mesh.ply", global_scale=PLY_IMPORT_SCALE)
 
 obj = bpy.context.selected_objects[0]
 obj.rotation_euler = (

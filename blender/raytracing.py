@@ -64,7 +64,7 @@ resolution_y = int(bpy.context.scene.render.resolution_y * (bpy.context.scene.re
 x_range = np.linspace(top_left[0], top_right[0], resolution_x)
 y_range = np.linspace(top_left[1], bottom_left[1], resolution_y)
 
-values = np.full([resolution_y, resolution_x, 3], np.nan, dtype=np.float32)
+values = np.full([resolution_y, resolution_x, 3], np.nan, dtype=float)
 
 origin = cam.matrix_world.translation
 

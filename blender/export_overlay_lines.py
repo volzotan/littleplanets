@@ -10,6 +10,7 @@ COLLECTION_NAME = "Overlay"
 
 DEBUG = False
 
+
 # src: https://blender.stackexchange.com/a/134596/118415
 class ArgumentParserForBlender(argparse.ArgumentParser):
     def _get_argv_after_doubledash(self):
@@ -95,18 +96,18 @@ for lines in overlay_npz.values():
             visible_points[i] = True
 
             if DEBUG:
-               curve_data = bpy.data.curves.new("debug_curve", "CURVE")
-               curve_data.dimensions = "3D"
+                curve_data = bpy.data.curves.new("debug_curve", "CURVE")
+                curve_data.dimensions = "3D"
 
-               polyline = curve_data.splines.new("POLY")
-               polyline.points.add(1)
+                polyline = curve_data.splines.new("POLY")
+                polyline.points.add(1)
 
-               polyline.points[0].co = (*origin, 1)
-               polyline.points[1].co = (*destination, 1)
+                polyline.points[0].co = (*origin, 1)
+                polyline.points[1].co = (*destination, 1)
 
-               curve_obj = bpy.data.objects.new("debug_curve", curve_data)
-               curve_data.bevel_depth = 0.002
-               debug_collection.objects.link(curve_obj)
+                curve_obj = bpy.data.objects.new("debug_curve", curve_data)
+                curve_data.bevel_depth = 0.002
+                debug_collection.objects.link(curve_obj)
 
     visibility_list.append(visible_points)
 
