@@ -28,7 +28,8 @@ MAGNITUDE_THRESHOLD = 0.1
 
 CUTOUT_THRESHOLD = 10
 
-# VISUALIZE = True
+IMAGE_SPACE_DIRECTION_STEP_DISTANCE = 0.01
+
 # EXPORT = False
 
 
@@ -40,7 +41,20 @@ def _normalize_vectors(v: np.ndarray) -> np.array:
     return v / np.linalg.norm(v, axis=2)[:, :, np.newaxis]
 
 
-def visualize(centers: np.ndarray, vectors: list[np.ndarray], light_axis: np.array) -> pv.Plotter:
+def _project_to_image_space(points: np.ndarray, projection_matrix: np.ndarray) -> np.ndarray:
+    """
+    Project an array of 3d points [n, 3] to 2d image space [n, 2] using a projection matrix [3, 4].
+    """
+
+    points_is = points.reshape([-1, 3])
+    points_is = np.hstack([points_is, np.full([points_is.shape[0], 1], 1)])  # [n, XYZW]
+    points_is = (projection_matrix @ points_is.T).T
+    points_is = points_is[:, 0:2] / points_is[:, 2][:, np.newaxis]  # divide by w
+
+    return points_is
+
+
+def visualize(centers: np.ndarray, vectors: list[np.ndarray], points: list[np.ndarray], light_axis: np.array) -> pv.Plotter:
     plotter = pv.Plotter()
 
     plotter.camera.position = (0.0, 0.0, 5.0)
@@ -69,12 +83,25 @@ def visualize(centers: np.ndarray, vectors: list[np.ndarray], light_axis: np.arr
 
     for vi, vector in enumerate(vectors):
         for i in range(len(vector)):
+            if np.isnan(np.sum(centers[i])):
+                continue
+
             if np.isnan(np.sum(vector[i])):
                 continue
+
             if np.sum(np.abs(vector[i])) == 0.0:
                 continue
+
             arrow = pv.Arrow(centers[i], vector[i], scale=0.05)
             plotter.add_mesh(arrow, color=colors[vi])
+
+            # line = pv.Line(centers[i], centers[i] + vector[i])
+            # plotter.add_mesh(line)
+
+    for pi, point_set in enumerate(points):
+        for point in point_set:
+            sphere = pv.Sphere(0.005, point)
+            plotter.add_mesh(sphere, color=colors[pi])
 
     return plotter
 
@@ -107,19 +134,39 @@ def _compute_intersections(centers: np.ndarray, normals: np.ndarray, axis: np.ar
     return intersections
 
 
-def apply_clipping(m: np.ndarray, start_percentile: float, end_percentile: float) -> np.ndarray:
+def _export_angles(arr: np.ndarray, adjust_y_axis: bool = False) -> np.ndarray:
+    if adjust_y_axis:  # blender Y up / numpy Y down
+        arr[:, :, 1] *= -1
+
+    mapping_angle = np.atan2(arr[:, :, 1], arr[:, :, 0])
+    mapping_angle = (mapping_angle + np.pi) / (np.pi * 2)
+    mapping_angle = (mapping_angle * 255).astype(np.uint8)
+    return mapping_angle
+
+
+def _adjust_contrast_brightness(img, contrast: float = 1.0, brightness: int = 0) -> np.ndarray:
+    """
+    Adjusts contrast and brightness of an uint8 image.
+    contrast:   (0.0,  inf) with 1.0 leaving the contrast as is
+    brightness: [-255, 255] with 0 leaving the brightness as is
+    """
+    brightness += int(round(255 * (1 - contrast) / 2))
+    return cv2.addWeighted(img, contrast, img, 0, brightness)
+
+
+def _apply_clipping(m: np.ndarray, start_percentile: float, end_percentile: float) -> np.ndarray:
     m_no_nan = np.nan_to_num(m)
     minval = np.percentile(m_no_nan, start_percentile)
     maxval = np.percentile(m_no_nan, 100 - end_percentile)
     return np.clip(m_no_nan, minval, maxval)
 
 
-def apply_colormap(img: np.ndarray, clip_bottom_percentile: float = 0, clip_top_percentile: float = 0) -> np.ndarray:
+def _apply_colormap(img: np.ndarray, clip_bottom_percentile: float = 0, clip_top_percentile: float = 0) -> np.ndarray:
     if len(img.shape) > 2 and img.shape[2] > 1:
         raise Exception("Can not apply colormap to multi-dimensional image")
 
     if clip_bottom_percentile > 0 or clip_top_percentile > 0:
-        img = apply_clipping(img, clip_bottom_percentile, clip_top_percentile)
+        img = _apply_clipping(img, clip_bottom_percentile, clip_top_percentile)
 
     img_no_nan = np.nan_to_num(img)
     img_norm = cv2.normalize(img_no_nan.astype("float32"), None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
@@ -130,7 +177,7 @@ def apply_colormap(img: np.ndarray, clip_bottom_percentile: float = 0, clip_top_
     return img_bgr
 
 
-def apply_linear_slope(m: np.ndarray, slope_start: float, slope_end: float, clipping_start: float = 0, clipping_end: float = 0) -> np.ndarray:
+def _apply_linear_slope(m: np.ndarray, slope_start: float, slope_end: float, clipping_start: float = 0, clipping_end: float = 0) -> np.ndarray:
     """
     Applies a transformation to the ndarray m. M is normalized to [0, 1.0], all values below `slope_start` are
     set to 0, all values above `slope_end` to 1.0.
@@ -138,7 +185,7 @@ def apply_linear_slope(m: np.ndarray, slope_start: float, slope_end: float, clip
     """
 
     if clipping_start > 0 or clipping_end > 0:
-        m = apply_clipping(m, clipping_start, clipping_end)
+        m = _apply_clipping(m, clipping_start, clipping_end)
 
     m_no_nan = np.nan_to_num(m)
     m_norm = cv2.normalize(m_no_nan, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
@@ -160,12 +207,14 @@ if __name__ == "__main__":
         "--light-angle",
         type=float,
         nargs=2,
-        default=[22.5, 90],
+        default=[45, 30],
         help="[azimuthal angle φ (around Z-axis), polar angle θ (to Z-axis)] of the lighting vector in degrees",
     )
+    parser.add_argument("--projection-matrix", type=Path, default=None, help="3x4 projection matrix (NPY)")
     parser.add_argument("--scaling-factor", type=float, default=None, help="Scaling factor (float)")
     parser.add_argument("--output", type=Path, default="temp", help="Output directory")
     parser.add_argument("--debug", action="store_true", default=False, help="Enable debug output")
+    parser.add_argument("--visualize", action="store_true", default=False, help="Enable interactive visualization")
     args = parser.parse_args()
 
     timer_start = datetime.datetime.now()
@@ -190,8 +239,8 @@ if __name__ == "__main__":
         img_gray = cv2.resize(img_gray, resize_size)
         img_pxpos = cv2.resize(img_pxpos, resize_size)
 
-    if VISUALIZE:
-        resize_size = [50, 50]
+    if args.visualize:
+        resize_size = [20, 20]
         img_normals = cv2.resize(img_normals, resize_size)
         img_color = cv2.resize(img_color, resize_size)
         img_gray = cv2.resize(img_gray, resize_size)
@@ -269,19 +318,52 @@ if __name__ == "__main__":
     img_elevation_magnitude = np.arccos(dot)
 
     # create mixture for elevation and magnitude
-    mixture_elevation_magnitude = apply_linear_slope(img_elevation_magnitude, 0.1, 0.15, clipping_end=1.0)
+    mixture_elevation_magnitude = _apply_linear_slope(img_elevation_magnitude, 0.1, 0.15, clipping_end=1.0)
+
+    # calculation of angles in world space and image space
+
+    P = np.load(args.projection_matrix)
+
+    def _project_vectors_to_image_space(vector_positions: np.ndarray, vector_directions: np.ndarray, projection_matrix: np.ndarray) -> np.ndarray:
+
+        positions = vector_positions.reshape([-1, 3])
+        directions = _normalize_vectors(vector_directions).reshape([-1, 3]) * IMAGE_SPACE_DIRECTION_STEP_DISTANCE
+
+        p_image_space = _project_to_image_space(positions, projection_matrix)
+        p2_image_space = _project_to_image_space(positions + directions, P)
+
+        vectors_image_space = p2_image_space - p_image_space
+        vectors_image_space = np.hstack([vectors_image_space, np.full([vectors_image_space.shape[0], 1], 0)])
+        vectors_image_space = vectors_image_space.reshape(vector_positions.shape)
+
+        return vectors_image_space
+
+
+    img_direction_ws = img_direction
+    img_elevation_direction_ws = img_elevation_direction
+
+    if CROSS_FLOW:
+        # cross product needs happend on the vectors in world space before projecting to image space
+        img_direction_ws = np.cross(img_direction_ws, img_normals)
+        img_elevation_direction_ws = np.cross(img_elevation_direction_ws, img_normals)
+
+    img_direction_is = _project_vectors_to_image_space(img_pxpos, img_direction_ws, P)
+    img_elevation_direction_is = _project_vectors_to_image_space(img_pxpos, img_elevation_direction_ws, P)
+
+
+    # ---
 
     if args.debug:
         cv2.imwrite(
             str(DIR_DEBUG / "img_elevation_magnitude.png"),
-            apply_colormap(
+            _apply_colormap(
                 img_elevation_magnitude,
                 # clip_bottom_percentile=0,
                 # clip_top_percentile=0.5
             ),
         )
 
-        cv2.imwrite(str(DIR_DEBUG / "mixture_elevation_magnitude.png"), apply_colormap(mixture_elevation_magnitude))
+        cv2.imwrite(str(DIR_DEBUG / "mixture_elevation_magnitude.png"), _apply_colormap(mixture_elevation_magnitude))
 
     img_field_elevation_vectors_0 = np.zeros_like(img_direction)
     img_field_elevation_vectors_1 = np.zeros_like(img_direction)
@@ -291,6 +373,8 @@ if __name__ == "__main__":
     img_field_elevation_vectors_5 = np.zeros_like(img_direction)
     img_field_elevation_vectors_6 = np.zeros_like(img_direction)
     img_field_elevation_vectors_7 = np.zeros_like(img_direction)
+    img_field_elevation_vectors_8 = np.zeros_like(img_direction_is)
+    img_field_elevation_vectors_9 = np.zeros_like(img_direction_is)
 
     ELEVATION_VECTOR_WEIGHT = 0.5
 
@@ -307,7 +391,7 @@ if __name__ == "__main__":
     img_field_elevation_vectors_2 = img_direction * (1 - ELEVATION_VECTOR_WEIGHT) + img_elevation_direction * ELEVATION_VECTOR_WEIGHT
 
     # dynamic mixture based on magnitude
-    mixture_magnitude = cv2.normalize(apply_clipping(img_elevation_magnitude, 0, 1), None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
+    mixture_magnitude = cv2.normalize(_apply_clipping(img_elevation_magnitude, 0, 1), None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
     mixture_magnitude = mixture_magnitude[:, :, np.newaxis]
     img_field_elevation_vectors_3 = img_direction * (1 - mixture_magnitude) + img_elevation_direction * mixture_magnitude
 
@@ -342,6 +426,17 @@ if __name__ == "__main__":
         img_direction_crossed * (1 - mixture_elevation_magnitude_newaxis) + img_elevation_direction * mixture_elevation_magnitude_newaxis
     )
 
+    # image space - 100% elevation
+
+    img_field_elevation_vectors_8 = img_direction_is
+
+    # image space - hard cut: below MAGNITUDE_THRESHOLD follow the light vector, above the elevation vector
+
+    mask = mixture_elevation_magnitude > MAGNITUDE_THRESHOLD
+    img_field_elevation_vectors_9 = img_direction_is.copy()
+    img_field_elevation_vectors_9[mask] = img_elevation_direction_is[mask]
+
+
     # Mapping Distance
 
     mapping_distance = img_gray
@@ -375,39 +470,76 @@ if __name__ == "__main__":
     mapping_flat[mapping_distance < CUTOUT_THRESHOLD] = 255
 
     if CROSS_FLOW:
-        # img_directions = np.cross(img_directions, img_normals)
         img_field_elevation_vectors_0 = np.cross(img_field_elevation_vectors_0, img_normals)
         img_field_elevation_vectors_1 = np.cross(img_field_elevation_vectors_1, img_normals)
         img_field_elevation_vectors_2 = np.cross(img_field_elevation_vectors_2, img_normals)
         img_field_elevation_vectors_3 = np.cross(img_field_elevation_vectors_3, img_normals)
         img_field_elevation_vectors_4 = np.cross(img_field_elevation_vectors_4, img_normals)
         img_field_elevation_vectors_5 = np.cross(img_field_elevation_vectors_5, img_normals)
+        # img_field_elevation_vectors_6 = np.cross(img_field_elevation_vectors_6, img_normals)
+        # img_field_elevation_vectors_7 = np.cross(img_field_elevation_vectors_7, img_normals)
 
-    if VISUALIZE:
+    if args.visualize:
+        # in world space
+
         centers = img_pxpos.reshape([-1, 3])
-        # normals = img_normals.reshape([-1, 3])
-        direction = img_direction.reshape([-1, 3])
-        # visualize(centers, [normals, directions], light_axis).show()
-        # visualize(centers, [directions], light_axis).show()
+        normals = img_normals.reshape([-1, 3])
+        direction = img_direction.reshape([-1, 3])  # relative to (0, 0)
+        elevation_direction = _normalize_vectors(img_elevation_direction).reshape([-1, 3])
 
-        field_elevation_vectors = img_field_elevation_vectors_4.reshape([-1, 3])
-        visualize(centers, [direction, field_elevation_vectors], light_axis).show()
+        visualize(centers, [normals, direction, img_field_elevation_vectors_1.reshape([-1, 3])], [], light_axis).show()
+        # visualize(centers, [direction], [], light_axis).show()
+        # visualize(centers, [normals, elevation_direction], [], light_axis).show()
 
-    def export_angles(arr: np.ndarray) -> np.ndarray:
-        arr[:, :, 1] *= -1  # blender Y up / numpy Y down
-        mapping_angle = np.atan2(arr[:, :, 1], arr[:, :, 0])
-        mapping_angle = (mapping_angle + np.pi) / (np.pi * 2.0)
-        mapping_angle = (mapping_angle * 255).astype(np.uint8)
-        return mapping_angle
+        # field_elevation_vectors = img_field_elevation_vectors_4.reshape([-1, 3])
+        # visualize(centers, [direction, field_elevation_vectors], light_axis).show()
+        # visualize(centers, [direction], light_axis).show()
 
-    def adjust_contrast_brightness(img, contrast: float = 1.0, brightness: int = 0) -> np.ndarray:
-        """
-        Adjusts contrast and brightness of an uint8 image.
-        contrast:   (0.0,  inf) with 1.0 leaving the contrast as is
-        brightness: [-255, 255] with 0 leaving the brightness as is
-        """
-        brightness += int(round(255 * (1 - contrast) / 2))
-        return cv2.addWeighted(img, contrast, img, 0, brightness)
+        # in image space
+
+        # P = np.load(args.projection_matrix)
+        # img_centers = img_pxpos.reshape([-1, 3])
+        # img_centers = np.hstack([img_centers, np.full([img_centers.shape[0], 1], 1)])
+        # img_centers = (P @ img_centers.T).T
+        # img_centers = img_centers[:, 0:2] / img_centers[:, 2][:, np.newaxis] # divide by w
+        #
+        # img_centers /= 3000
+        #
+        # img_centers = img_centers[~np.isnan(np.sum(img_centers, axis=1))] # remove NaNs
+        # img_centers = np.hstack((img_centers, np.full([img_centers.shape[0], 1], 0)))
+
+        # # visualize(img_centers, [direction], light_axis).show()
+        # visualize(img_centers, [np.full([img_centers.shape[0], 3], [0, 0, 1])], light_axis).show()
+
+        # img_direction_reshaped = _normalize_vectors(img_direction).reshape([-1, 3]) * IMAGE_SPACE_DIRECTION_STEP_DISTANCE
+        #
+        # p_image_space = _project_to_image_space(centers, P)
+        # p2_image_space = _project_to_image_space(centers + img_direction_reshaped, P)
+        #
+        # p_image_space /= 3000
+        # p2_image_space /= 3000
+        #
+        # angles = p2_image_space - p_image_space
+        # angles = np.atan2(angles[:, 1], angles[:, 0])
+        #
+        # cos_angles = np.cos(angles)
+        # sin_angles = np.sin(angles)
+        # R = np.stack([np.stack([cos_angles, -sin_angles], axis=-1), np.stack([sin_angles, cos_angles], axis=-1)], axis=-2)
+        # rotated = np.einsum("nij,nj->ni", R, np.full([p_image_space.shape[0], 2], [IMAGE_SPACE_DIRECTION_STEP_DISTANCE, 0]))
+        # p3_image_space = p_image_space + rotated
+        #
+        # p_image_space = np.hstack([p_image_space, np.full([p_image_space.shape[0], 1], 0)])
+        # p2_image_space = np.hstack([p2_image_space, np.full([p2_image_space.shape[0], 1], 0)])
+        # p3_image_space = np.hstack([p3_image_space, np.full([p3_image_space.shape[0], 1], 0)])
+        #
+        # # visualize(centers, [], [centers, centers + direction2], light_axis).show()
+        # # visualize(centers, [], [centers, centers + direction, centers + direction2], light_axis).show()
+        # visualize(centers, [], [p_image_space, p2_image_space, p3_image_space], light_axis).show()
+
+        # foo = img_elevation_direction_is.reshape([-1, 3])
+        # foo /= 3000
+        # visualize(centers, [foo], [], light_axis).show()
+
 
     if EXPORT:
         if CONTRAST_ENHANCEMENT:
@@ -431,54 +563,54 @@ if __name__ == "__main__":
 
         cv2.imwrite(str(args.output / "mapping_distance.png"), mapping_distance)
 
-        # cv2.imwrite(
-        #     str(args.output / "mapping_angle.png"),
-        #     export_angles(img_field_elevation_vectors_4),
-        # )
-
-        # cv2.imwrite(
-        #     str(args.output / "mapping_angle.png"),
-        #     export_angles(img_directions),
-        # )
-        #
         cv2.imwrite(
             str(args.output / "mapping_angle_0.png"),
-            export_angles(img_field_elevation_vectors_0),
+            _export_angles(img_field_elevation_vectors_0, adjust_y_axis=True),
         )
 
         cv2.imwrite(
             str(args.output / "mapping_angle_1.png"),
-            export_angles(img_field_elevation_vectors_1),
+            _export_angles(img_field_elevation_vectors_1, adjust_y_axis=True),
         )
 
         cv2.imwrite(
             str(args.output / "mapping_angle_2.png"),
-            export_angles(img_field_elevation_vectors_2),
+            _export_angles(img_field_elevation_vectors_2, adjust_y_axis=True),
         )
 
         cv2.imwrite(
             str(args.output / "mapping_angle_3.png"),
-            export_angles(img_field_elevation_vectors_3),
+            _export_angles(img_field_elevation_vectors_3, adjust_y_axis=True),
         )
 
         cv2.imwrite(
             str(args.output / "mapping_angle_4.png"),
-            export_angles(img_field_elevation_vectors_4),
+            _export_angles(img_field_elevation_vectors_4, adjust_y_axis=True),
         )
 
         cv2.imwrite(
             str(args.output / "mapping_angle_5.png"),
-            export_angles(img_field_elevation_vectors_5),
+            _export_angles(img_field_elevation_vectors_5, adjust_y_axis=True),
         )
 
         cv2.imwrite(
             str(args.output / "mapping_angle_6.png"),
-            export_angles(img_field_elevation_vectors_6),
+            _export_angles(img_field_elevation_vectors_6, adjust_y_axis=True),
         )
 
         cv2.imwrite(
             str(args.output / "mapping_angle_7.png"),
-            export_angles(img_field_elevation_vectors_7),
+            _export_angles(img_field_elevation_vectors_7, adjust_y_axis=True),
+        )
+
+        cv2.imwrite(
+            str(args.output / "mapping_angle_8.png"),
+            _export_angles(img_field_elevation_vectors_8),
+        )
+
+        cv2.imwrite(
+            str(args.output / "mapping_angle_9.png"),
+            _export_angles(img_field_elevation_vectors_9),
         )
 
         cv2.imwrite(str(args.output / "mapping_line_length.png"), mapping_line_length)
