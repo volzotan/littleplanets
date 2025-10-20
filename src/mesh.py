@@ -520,7 +520,7 @@ def field_vectors_to_image(m: Mesh, num: int = 360) -> np.ndarray:
 
 
 def shift_center_to_origin(raster: np.ndarray) -> np.ndarray:
-    return np.roll(raster, int(raster.shape[0]/2), axis=1)
+    return np.roll(raster, int(raster.shape[0] / 2), axis=1)
 
 
 def display(m: Mesh) -> None:
@@ -705,7 +705,7 @@ if __name__ == "__main__":
     dem_raster = normalize_elevation(load_raster(args.elevation_raster))
     dem_raster = dem_raster[0, :, :]
     color_raster = load_raster(args.color_raster)
-    color_raster = np.transpose(color_raster[0:3, :, :], (1, 2, 0)) # from [3, rows, cols] to [rows, cols, 3]
+    color_raster = np.transpose(color_raster[0:3, :, :], (1, 2, 0))  # from [3, rows, cols] to [rows, cols, 3]
 
     dem_raster = shift_center_to_origin(dem_raster)
     color_raster = shift_center_to_origin(color_raster)

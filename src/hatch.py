@@ -22,6 +22,7 @@ DIR_DEBUG = Path("debug")
 PSEUDO_RANDOM_SEED = "littleplanets"
 OVERLAY_STENCIL_CUT_DISTANCE = 1.0
 
+
 class HatchConfig(BaseModel):
     dimensions: tuple[int, int] = (750, 750)
     invert_color: bool = True
@@ -41,7 +42,7 @@ def _project_linestring(ls: LineString, P: np.ndarray, scaling_factor: float) ->
     xyz = shapely.get_coordinates(ls, include_z=True)
     coordinates = np.hstack([xyz, np.full([xyz.shape[0], 1], 1)])  # [x, y, z, w=1]
     coordinates = (P @ coordinates.T).T
-    coordinates = coordinates[:, 0:2] / coordinates[:, 2][:, np.newaxis]
+    coordinates = coordinates[:, 0:2] / coordinates[:, 2][:, np.newaxis]  # P * [X Y 1] = [x y w], then divide x and y by w
     coordinates = coordinates * scaling_factor
     return LineString(coordinates)
 
@@ -143,7 +144,6 @@ if __name__ == "__main__":
     if len(args.overlay) > 0:
         P = np.load(args.projection_matrix)
         for overlay_path in args.overlay:
-
             overlay_npz = np.load(overlay_path)
             overlay_ls = [LineString(arr) for arr in overlay_npz.values()]
             overlay_ls = [_project_linestring(l, P, scaling_factor) for l in overlay_ls]

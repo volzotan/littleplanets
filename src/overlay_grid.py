@@ -4,7 +4,7 @@ from pathlib import Path
 from shapely.geometry import LineString
 import numpy as np
 import math
-from hershey import HersheyFont
+from util.hershey import HersheyFont
 from util.misc import write_linestrings_to_npz, _rotate_linestrings, visualize_linestrings
 
 VISUALIZE = False

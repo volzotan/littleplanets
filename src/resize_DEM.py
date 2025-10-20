@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import rasterio
@@ -66,7 +67,8 @@ if __name__ == "__main__":
     parser.add_argument("input", type=Path, help="input filename")
     parser.add_argument("output", type=Path, help="output filename")
     parser.add_argument("scaling_factor", type=float, help="scaling factor (float)")
-
     args = parser.parse_args()
+
+    os.makedirs(args.output.parent, exist_ok=True)
 
     downscale(args.input, args.output, args.scaling_factor)

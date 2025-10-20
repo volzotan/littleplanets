@@ -15,6 +15,7 @@ def linestring_to_coordinate_pairs(linestring: LineString) -> list[list[tuple[fl
 
     return pairs
 
+
 def write_linestrings_to_npz(filename: Path, linestrings: list[LineString]) -> None:
     arrays = [shapely.get_coordinates(l, include_z=True) for l in linestrings]
     np.savez(filename, *arrays)
@@ -43,12 +44,12 @@ def _rotate_linestrings(lines: list[LineString], x: float, y: float, z: float) -
         ]
     )
 
-
     lines_rotated = []
     for line in lines:
         lines_rotated.append(transform(lambda x, y, z: R_z @ R_y @ R_x @ np.array([x, y, z]), line))
 
     return lines_rotated
+
 
 def visualize_linestrings(linestrings: list[LineString]) -> pv.Plotter:
     plotter = pv.Plotter()

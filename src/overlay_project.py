@@ -12,6 +12,7 @@ from util.misc import write_linestrings_to_npz
 
 SCALE = 1.02
 
+
 def project_vertices(tree: rtree.Index, points: np.ndarray, scale: float) -> np.ndarray:
     proj = np.zeros_like(points)
 
