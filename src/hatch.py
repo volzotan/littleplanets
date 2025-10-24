@@ -96,7 +96,9 @@ if __name__ == "__main__":
 
     parser.add_argument("--palette-color", action="append", type=float, nargs=3, help="Palette color item [R, G, B], append once per color")
 
-    parser.add_argument("--overlay", type=Path, nargs="*", default=[], help="Overlay linestrings, multiple filenames possible (NPZ)")
+    parser.add_argument("--cutouts", type=Path, nargs="*", default=[], help="Cutout linestrings, multiple filenames possible (NPZ)")
+
+    parser.add_argument("--overlays", type=Path, nargs="*", default=[], help="Overlay linestrings, multiple filenames possible (NPZ)")
     parser.add_argument("--projection-matrix", type=Path, default=None, help="3x4 projection matrix (NPY)")
 
     parser.add_argument("--contours", type=Path, default=None, help="Contour linestrings (NPZ)")
@@ -140,10 +142,19 @@ if __name__ == "__main__":
 
     scaling_factor = config.dimensions[0] / mapping_angle.shape[1]
 
-    linestrings_overlays = []
-    if len(args.overlay) > 0:
+    linestrings_cutouts = []
+    if len(args.cutouts) > 0:
         P = np.load(args.projection_matrix)
-        for overlay_path in args.overlay:
+        for cutout_path in args.cutouts:
+            cutout_npz = np.load(cutout_path)
+            cutout_ls = [LineString(arr) for arr in cutout_npz.values()]
+            cutout_ls = [_project_linestring(l, P, scaling_factor) for l in cutout_ls]
+            linestrings_cutouts += cutout_ls
+
+    linestrings_overlays = []
+    if len(args.overlays) > 0:
+        P = np.load(args.projection_matrix)
+        for overlay_path in args.overlays:
             overlay_npz = np.load(overlay_path)
             overlay_ls = [LineString(arr) for arr in overlay_npz.values()]
             overlay_ls = [_project_linestring(l, P, scaling_factor) for l in overlay_ls]
@@ -215,7 +226,7 @@ if __name__ == "__main__":
 
     # cut buffered overlay from hatched linestrings
     timer_start = datetime.datetime.now()
-    stencil = shapely.ops.unary_union(linestrings_overlays).buffer(OVERLAY_STENCIL_CUT_DISTANCE / 2)
+    stencil = shapely.ops.unary_union(linestrings_cutouts + linestrings_overlays).buffer(OVERLAY_STENCIL_CUT_DISTANCE / 2)
     linestrings_cut = []
     for ls in linestrings:
         cut = shapely.difference(ls, stencil)
