@@ -95,6 +95,7 @@ if __name__ == "__main__":
     parser.add_argument("mapping_flat", type=Path, default="mapping_flat.png", help="Mapping flat (PNG)")
 
     parser.add_argument("--palette-color", action="append", type=float, nargs=3, help="Palette color item [R, G, B], append once per color")
+    parser.add_argument("--overlay-color", type=float, nargs=3, help="Overlay color item [R, G, B]")
 
     parser.add_argument("--cutouts", type=Path, nargs="*", default=[], help="Cutout linestrings, multiple filenames possible (NPZ)")
 
@@ -254,7 +255,7 @@ if __name__ == "__main__":
 
     palette = np.array(colors, dtype=int)
     palette = np.delete(palette, np.where(np.min(palette, axis=1) < 0), axis=0)  # remove invalid palette colors
-    palette = palette.astype(np.uint8)
+    palette = palette.astype(np.uint8).tolist()
 
     linestrings_split_by_palette = [[] for _ in range(len(palette))]
 
@@ -263,7 +264,9 @@ if __name__ == "__main__":
             raise Exception(f"Palette size mismatch: {args.mapping_color} has {mapping_color.shape[2]} color(s), palette has {len(palette)}")
 
         for ls in linestrings:
-            all_pixels = np.array([mapping_color[int(p[1] * 1 / scaling_factor), int(p[0] * 1 / scaling_factor)] for p in ls.coords])
+            if len(ls.coords) < 2:
+                continue
+            all_pixels = np.nan_to_num(np.array([mapping_color[int(p[1] * 1 / scaling_factor), int(p[0] * 1 / scaling_factor)] for p in ls.coords]))
             mean = np.mean(all_pixels, axis=0)
             palette_color_index = random.choices(range(len(palette)), mean)[0]
             linestrings_split_by_palette[palette_color_index].append(ls)
@@ -291,9 +294,13 @@ if __name__ == "__main__":
     #     "fill-opacity": "1.0",
     # }
 
+    overlay_color = [255, 255, 255]
+    if args.overlay_color is not None:
+        overlay_color = args.overlay_color
+
     layer_styles["overlay"] = {
         "fill": "none",
-        "stroke": "yellow",
+        "stroke": f"rgb({overlay_color[0]},{overlay_color[1]},{overlay_color[2]})",
         "stroke-width": "0.30",
         "fill-opacity": "1.0",
     }

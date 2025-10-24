@@ -9,7 +9,7 @@ import zipfile
 from fastkml import kml
 import pygeoif
 from util.hershey import HersheyFont
-from util.misc import write_linestrings_to_npz, visualize_linestrings, _rotate_linestrings
+from util.misc import write_linestrings_to_npz, visualize_linestrings, rotate_linestrings, dash_linestring
 
 from loguru import logger
 
@@ -116,7 +116,7 @@ def main() -> None:
         poi_rot_x = (poi["lat"] * -1 + 90.0) / 180 * math.pi
         poi_rot_z = (poi["lon"]) / 360 * math.tau
 
-        linestrings += _rotate_linestrings(linestrings_poi, *[poi_rot_x, 0, poi_rot_z])
+        linestrings += rotate_linestrings(linestrings_poi, *[poi_rot_x, 0, poi_rot_z])
 
         if "path" in poi:
 
@@ -146,11 +146,14 @@ def main() -> None:
                             # shapely_geom = shapely.simplify(shapely_geom, 1e-2, preserve_topology=True)
 
                             shapely_geom_xyz = shapely.ops.transform(_latlon_to_cartesian, shapely_geom)
-                            linestrings.append(shapely_geom_xyz)
+
+                            linestrings += dash_linestring(shapely_geom_xyz, 0.02, 0.02)
+
+                            # linestrings.append(shapely_geom_xyz)
 
     # ROTATE
 
-    linestrings = _rotate_linestrings(linestrings, *BLENDER_ROTATION)
+    linestrings = rotate_linestrings(linestrings, *BLENDER_ROTATION)
 
     # VISUALIZE
 

@@ -5,7 +5,7 @@ from shapely.geometry import LineString
 import numpy as np
 import math
 from util.hershey import HersheyFont
-from util.misc import write_linestrings_to_npz, _rotate_linestrings, visualize_linestrings
+from util.misc import write_linestrings_to_npz, rotate_linestrings, visualize_linestrings
 
 VISUALIZE = False
 
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     points = [[0, math.cos(angle), math.sin(angle)] for angle in points]
     points = points + [points[0]]
     for i in range(grid_num_lat_lines):
-        linestrings += _rotate_linestrings([LineString(points)], 0, 0, math.pi * i / grid_num_lat_lines)
+        linestrings += rotate_linestrings([LineString(points)], 0, 0, math.pi * i / grid_num_lat_lines)
 
     lons = [1.0 / (grid_num_lon_lines + 1) * (i + 1) for i in range(grid_num_lon_lines)]
     for lon in lons:
@@ -51,7 +51,7 @@ if __name__ == "__main__":
 
     # ROTATE
 
-    linestrings = _rotate_linestrings(linestrings, *BLENDER_ROTATION)
+    linestrings = rotate_linestrings(linestrings, *BLENDER_ROTATION)
 
     # VISUALIZE
 

@@ -5,8 +5,10 @@ import shapely
 from shapely.geometry import LineString
 import numpy as np
 import math
+
+from util.misc import dash_linestring
 from util.hershey import HersheyFont
-from util.misc import write_linestrings_to_npz, _rotate_linestrings, visualize_linestrings
+from util.misc import write_linestrings_to_npz, rotate_linestrings, visualize_linestrings
 
 VISUALIZE = False
 
@@ -32,15 +34,16 @@ if __name__ == "__main__":
     # CREATE AXIS
 
     # shapely's segmentize uses GEOS, which fails on LineStrings that are parallel to the Z axis
-    zs = _segmentize_z(-AXIS_EXTENT, AXIS_EXTENT, 1e-2)
+    zs = _segmentize_z(-AXIS_EXTENT, AXIS_EXTENT, 1e-3)
     line_coords = np.zeros([zs.shape[0], 3])
     line_coords[:, 2] = zs
 
-    linestrings.append(LineString(line_coords))
+    ls = LineString(line_coords)
+    linestrings += dash_linestring(ls, 0.02, 0.02)
 
     # ROTATE
 
-    linestrings = _rotate_linestrings(linestrings, *blender_rotation)
+    linestrings = rotate_linestrings(linestrings, *blender_rotation)
 
     # VISUALIZE
 

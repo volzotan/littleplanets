@@ -1,8 +1,9 @@
+import math
 from pathlib import Path
 
 import numpy as np
 import shapely
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point
 from shapely.ops import transform
 import pyvista as pv
 
@@ -21,7 +22,74 @@ def write_linestrings_to_npz(filename: Path, linestrings: list[LineString]) -> N
     np.savez(filename, *arrays)
 
 
-def _rotate_linestrings(lines: list[LineString], x: float, y: float, z: float) -> list[LineString]:
+def _linestring_z_length(line: LineString) -> float:
+    coords = list(line.coords)
+    return sum(math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2) for (x1, y1, z1), (x2, y2, z2) in zip(coords[:-1], coords[1:]))
+
+def _linestring_z_interpolate(line: LineString, distance: float) -> Point:
+    coords = np.array(line.coords)
+
+    # Compute 3D segment lengths
+    seg_lengths = np.linalg.norm(np.diff(coords, axis=0), axis=1)
+    total_length = seg_lengths.sum()
+
+    if distance <= 0:
+        return Point(*coords[0])
+    if distance >= total_length:
+        return Point(*coords[-1])
+
+    # Find which segment contains the target distance
+    cumdist = np.cumsum(seg_lengths)
+    idx = np.searchsorted(cumdist, distance)
+    prev_len = cumdist[idx - 1] if idx > 0 else 0.0
+
+    # Fraction along this segment
+    seg_frac = (distance - prev_len) / seg_lengths[idx]
+    p1, p2 = coords[idx], coords[idx + 1]
+    interp = p1 + seg_frac * (p2 - p1)
+
+    return Point(*interp)
+
+
+def dash_linestring(linestring: LineString, dash_length: float, pause_length: float, step_size: float = 1e-3) -> list[LineString]:
+
+    if linestring.is_empty:
+        return []
+    if dash_length <= 0 or pause_length < 0:
+        raise ValueError("dash_length must be > 0 and pause_length must be >= 0")
+
+    total_length = _linestring_z_length(linestring)
+    dash_segments = []
+
+    position = 0.0
+    pattern_length = dash_length + pause_length
+
+    while position < total_length:
+        start_pos = position
+        end_pos = min(position + dash_length, total_length)
+
+        # Extract the dashed segment
+        dash_segment = linestring.interpolate(start_pos, normalized=False)
+        segment_points = [dash_segment]
+
+        # Collect intermediate points for the dash
+        current = start_pos + step_size
+        while current < end_pos:
+            segment_points.append(_linestring_z_interpolate(linestring, current))
+            current += step_size
+        segment_points.append(_linestring_z_interpolate(linestring, end_pos))
+
+        # Create a new LineString for this dash
+        dash_line = LineString([_linestring_z_interpolate(linestring, start_pos), _linestring_z_interpolate(linestring, end_pos)])
+        dash_segments.append(dash_line)
+
+        # Move to the next dash start (skip the pause)
+        position += pattern_length
+
+    return dash_segments
+
+
+def rotate_linestrings(lines: list[LineString], x: float, y: float, z: float) -> list[LineString]:
     R_x = np.array(
         [
             [1, 0, 0],
