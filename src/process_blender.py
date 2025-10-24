@@ -517,6 +517,14 @@ if __name__ == "__main__":
 
         cv2.imwrite(str(args.output / "mapping_distance.png"), mapping_distance)
 
+        cv2.imwrite(str(args.output / "mapping_angle.png"), _export_angles(img_field_elevation_vectors_9))
+
+        cv2.imwrite(str(args.output / "mapping_line_length.png"), mapping_line_length)
+
+        cv2.imwrite(str(args.output / "mapping_flat.png"), mapping_flat)
+
+        # ---
+
         cv2.imwrite(
             str(args.output / "mapping_angle_0.png"),
             _export_angles(img_field_elevation_vectors_0, adjust_y_axis=True),
@@ -567,8 +575,5 @@ if __name__ == "__main__":
             _export_angles(img_field_elevation_vectors_9),
         )
 
-        cv2.imwrite(str(args.output / "mapping_line_length.png"), mapping_line_length)
-
-        cv2.imwrite(str(args.output / "mapping_flat.png"), mapping_flat)
 
     print(f"total time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
