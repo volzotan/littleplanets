@@ -121,29 +121,29 @@ $(DIR_BUILD)/mesh.ply: $(DIR_SRC)/mesh.py $(DEM_FILE) $(COLOR_FILE)
 	@echo "Generating mesh"
 	uv run $^ --output $@ --scale 0.04 --subdivision 10
 
-$(DIR_BUILD)/$(BLENDER_FILE): $(DIR_BLENDER)/$(BLENDER_FILE) $(DIR_BUILD)/mesh.ply
+$(DIR_BUILD)/blender_mesh.blend: $(DIR_BLENDER)/$(BLENDER_FILE) $(DIR_BUILD)/mesh.ply
 	@echo "Running blender mesh update"
-	cp $(DIR_BLENDER)/$(BLENDER_FILE) $(DIR_BUILD)/$(BLENDER_FILE)
-	$(BLENDER_BIN) $(DIR_BUILD)/$(BLENDER_FILE) --background --python $(DIR_BLENDER)/import_ply.py -- --input $(DIR_BUILD)/mesh.ply --rotX $(ROT_X) --rotY $(ROT_Y) --rotZ $(ROT_Z)
+	cp $(DIR_BLENDER)/$(BLENDER_FILE) $@
+	$(BLENDER_BIN) $@ --background --python $(DIR_BLENDER)/import_ply.py -- --input $(DIR_BUILD)/mesh.ply --rotX $(ROT_X) --rotY $(ROT_Y) --rotZ $(ROT_Z)
 	touch $@
 
-$(DIR_BUILD)/raytrace.npy: $(DIR_BUILD)/$(BLENDER_FILE) $(DIR_BLENDER)/raytracing.py
+$(DIR_BUILD)/raytrace.npy: $(DIR_BUILD)/blender_mesh.blend $(DIR_BLENDER)/raytracing.py
 	@echo "Running blender raytracer"
-	$(BLENDER_BIN) $(DIR_BUILD)/$(BLENDER_FILE) --background --python $(DIR_BLENDER)/raytracing.py -- --output $@
+	$(BLENDER_BIN) $(DIR_BUILD)/blender_mesh.blend --background --python $(DIR_BLENDER)/raytracing.py -- --output $@
 
-$(DIR_BUILD)/normals.exr $(DIR_BUILD)/image.tif &: $(DIR_BUILD)/$(BLENDER_FILE)
+$(DIR_BUILD)/normals.exr $(DIR_BUILD)/image.tif &: $(DIR_BUILD)/blender_mesh.blend
 	@echo "Running blender renderer"
-	$(BLENDER_BIN) --background $(DIR_BUILD)/$(BLENDER_FILE) -f 0 || true
+	$(BLENDER_BIN) $(DIR_BUILD)/blender_mesh.blend --background -f 0 || true
 	cp /tmp/Normals0000.exr $(DIR_BUILD)/normals.exr
 	cp /tmp/Image0000.tif $(DIR_BUILD)/image.tif
 
-$(DIR_BUILD)/projection_matrix.npy: $(DIR_BUILD)/$(BLENDER_FILE) $(DIR_BLENDER)/export_projection_matrix.py
+$(DIR_BUILD)/projection_matrix.npy: $(DIR_BUILD)/blender_mesh.blend $(DIR_BLENDER)/export_projection_matrix.py
 	@echo "Running blender P matrix exporter"
-	$(BLENDER_BIN) $(DIR_BUILD)/$(BLENDER_FILE) --background --python $(DIR_BLENDER)/export_projection_matrix.py -- --output $@
+	$(BLENDER_BIN) $(DIR_BUILD)/blender_mesh.blend --background --python $(DIR_BLENDER)/export_projection_matrix.py -- --output $@
 
-$(DIR_BUILD)/mesh_blender.ply: $(DIR_BUILD)/$(BLENDER_FILE) $(DIR_BLENDER)/export_ply.py
+$(DIR_BUILD)/mesh_blender.ply: $(DIR_BUILD)/blender_mesh.blend $(DIR_BLENDER)/export_ply.py
 	@echo "Running blender mesh export"
-	$(BLENDER_BIN) $(DIR_BUILD)/$(BLENDER_FILE) --background --python $(DIR_BLENDER)/export_ply.py -- --output $@
+	$(BLENDER_BIN) $(DIR_BUILD)/blender_mesh.blend --background --python $(DIR_BLENDER)/export_ply.py -- --output $@
 
 # Overlays
 
@@ -165,16 +165,16 @@ $(DIR_BUILD)/overlay_grid.npz: $(DIR_SRC)/overlay_grid.py
 #	uv run $^ --output $@
 
 
-$(DIR_BUILD)/overlay_pois_cropped.npz: $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_pois.npz
+$(DIR_BUILD)/overlay_pois_cropped.npz: $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_pois.npz
 	@echo "Cropping visible overlay lines: POIs"
 	uv run $(DIR_SRC)/overlay_project.py $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_pois.npz --output $(DIR_BUILD)/overlay_pois_projected.npz
-	$(BLENDER_BIN) $(DIR_BUILD)/$(BLENDER_FILE) --background --python $(DIR_BLENDER)/export_overlay_lines.py -- --input $(DIR_BUILD)/overlay_pois_projected.npz --output $(DIR_BUILD)/overlay_pois_visible.npz
+	$(BLENDER_BIN) $(DIR_BUILD)/blender_mesh.blend --background --python $(DIR_BLENDER)/export_overlay_lines.py -- --input $(DIR_BUILD)/overlay_pois_projected.npz --output $(DIR_BUILD)/overlay_pois_visible.npz
 	uv run $(DIR_SRC)/overlay_crop.py $(DIR_BUILD)/overlay_pois_projected.npz $(DIR_BUILD)/overlay_pois_visible.npz --output $@
 
-$(DIR_BUILD)/overlay_grid_cropped.npz: $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_grid.npz
+$(DIR_BUILD)/overlay_grid_cropped.npz: $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_grid.npz
 	@echo "Cropping visible overlay lines: GRID"
 	uv run $(DIR_SRC)/overlay_project.py $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_grid.npz --output $(DIR_BUILD)/overlay_grid_projected.npz
-	$(BLENDER_BIN) $(DIR_BUILD)/$(BLENDER_FILE) --background --python $(DIR_BLENDER)/export_overlay_lines.py -- --input $(DIR_BUILD)/overlay_grid_projected.npz --output $(DIR_BUILD)/overlay_grid_visible.npz
+	$(BLENDER_BIN) $(DIR_BUILD)/blender_mesh.blend --background --python $(DIR_BLENDER)/export_overlay_lines.py -- --input $(DIR_BUILD)/overlay_grid_projected.npz --output $(DIR_BUILD)/overlay_grid_visible.npz
 	uv run $(DIR_SRC)/overlay_crop.py $(DIR_BUILD)/overlay_grid_projected.npz $(DIR_BUILD)/overlay_grid_visible.npz --output $@
 
 
@@ -184,7 +184,7 @@ $(DIR_BUILD)/contours.npz: $(DIR_SRC)/contours.py $(DIR_BUILD)/normals.exr $(DIR
 	@echo "Computing contours"
 	uv run $^ --output $@
 
-$(DIR_BUILD)/mapping_color.png $(DIR_BUILD)/mapping_angle_0.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png &: $(DIR_SRC)/process_blender.py $(DIR_BUILD)/normals.exr $(DIR_BUILD)/image.tif $(DIR_BUILD)/raytrace.npy $(DIR_BUILD)/projection_matrix.npy
+$(DIR_BUILD)/mapping_color.png $(DIR_BUILD)/mapping_angle.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png &: $(DIR_SRC)/process_blender.py $(DIR_BUILD)/normals.exr $(DIR_BUILD)/image.tif $(DIR_BUILD)/raytrace.npy $(DIR_BUILD)/projection_matrix.npy
 	@echo "Processing blender mappings: $@"
 	uv run $(DIR_SRC)/process_blender.py $(DIR_BUILD)/normals.exr $(DIR_BUILD)/image.tif $(DIR_BUILD)/raytrace.npy --light-angle $(LIGHT_ANGLE_XY) $(LIGHT_ANGLE_Z) --projection-matrix $(DIR_BUILD)/projection_matrix.npy --output $(DIR_BUILD)
 
@@ -196,7 +196,7 @@ $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_brightness_difference.png &:
 		--palette-color $(COLOR_1)								\
 		--palette-color $(COLOR_2)								\
 
-run: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/overlay_pois.npz $(DIR_BUILD)/overlay_grid_cropped.npz  $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz
+run: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_grid_cropped.npz  $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz
 	@echo "Hatch"
 	uv run $(DIR_SRC)/hatch.py									\
 		$(DIR_BUILD)/mapping_color.npy 							\
@@ -204,7 +204,7 @@ run: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_ang
 		$(DIR_BUILD)/mapping_distance.png 						\
 		$(DIR_BUILD)/mapping_line_length.png 					\
 		$(DIR_BUILD)/mapping_flat.png 							\
-		--overlay $(DIR_BUILD)/overlay_pois.npz $(DIR_BUILD)/overlay_grid_cropped.npz 		\
+		--overlay $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_grid_cropped.npz 		\
 		--projection-matrix $(DIR_BUILD)/projection_matrix.npy  \
 		--contours $(DIR_BUILD)/contours.npz					\
 		--config config_hatch.toml 								\

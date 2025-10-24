@@ -6,8 +6,6 @@ import sys
 from pathlib import Path
 import numpy as np
 
-COLLECTION_NAME = "Overlay"
-
 DEBUG = False
 
 
@@ -32,11 +30,13 @@ args = parser.parse_args()
 
 scene = bpy.context.scene
 
+collection_name = f"overlay_{args.input.stem.lower()}"
+
 # cleanup
 
 bpy.ops.object.select_all(action="DESELECT")
 
-collection = bpy.data.collections.get(COLLECTION_NAME)
+collection = bpy.data.collections.get(collection_name)
 if collection is not None:
     for obj in collection.objects:
         bpy.data.objects.remove(obj, do_unlink=True)
@@ -44,7 +44,7 @@ if collection is not None:
 
 # import
 
-overlay_collection = bpy.data.collections.new(COLLECTION_NAME)
+overlay_collection = bpy.data.collections.new(collection_name)
 scene.collection.children.link(overlay_collection)
 
 overlay_npz = np.load(args.input)
@@ -115,5 +115,26 @@ for lines in overlay_npz.values():
 
 np.savez(args.output, *visibility_list)
 
+# overlay_collection.hide_render = True
+# overlay_collection.hide_viewport = True
+
+
+layer_collection = bpy.context.view_layer.layer_collection
+
+def find_layer_collection(layer_coll, coll_name):
+    if layer_coll.collection.name == coll_name:
+        return layer_coll
+    for child in layer_coll.children:
+        found = find_layer_collection(child, coll_name)
+        if found:
+            return found
+    return None
+
+layer_coll = find_layer_collection(layer_collection, collection_name)
+
+if layer_coll:
+    layer_coll.exclude = True
+
 if not DEBUG:
+    bpy.ops.wm.save_as_mainfile()
     bpy.ops.wm.quit_blender()
