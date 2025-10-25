@@ -60,17 +60,13 @@ def dash_linestring(linestring: LineString, dash_length: float, pause_length: fl
 
     total_length = _linestring_z_length(linestring)
     dash_segments = []
-
     position = 0.0
-    pattern_length = dash_length + pause_length
 
     while position < total_length:
         start_pos = position
         end_pos = min(position + dash_length, total_length)
 
-        # Extract the dashed segment
-        dash_segment = linestring.interpolate(start_pos, normalized=False)
-        segment_points = [dash_segment]
+        segment_points = [_linestring_z_interpolate(linestring, start_pos)]
 
         # Collect intermediate points for the dash
         current = start_pos + step_size
@@ -80,11 +76,11 @@ def dash_linestring(linestring: LineString, dash_length: float, pause_length: fl
         segment_points.append(_linestring_z_interpolate(linestring, end_pos))
 
         # Create a new LineString for this dash
-        dash_line = LineString([_linestring_z_interpolate(linestring, start_pos), _linestring_z_interpolate(linestring, end_pos)])
+        dash_line = LineString(segment_points)
         dash_segments.append(dash_line)
 
         # Move to the next dash start (skip the pause)
-        position += pattern_length
+        position += (dash_length + pause_length)
 
     return dash_segments
 
