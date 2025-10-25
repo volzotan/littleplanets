@@ -13,10 +13,10 @@ import matplotlib.pyplot as plt
 
 DIR_DEBUG = Path("debug")
 
-CROSS_FLOW = True
-
 VISUALIZE = False
 EXPORT = True
+
+CROSS_FLOW = True
 
 CONTRAST_ENHANCEMENT = True
 CONTRAST_VALUE = 1.0

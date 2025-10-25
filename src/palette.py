@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 from pathlib import Path
 
 import cv2
@@ -25,6 +26,9 @@ if __name__ == "__main__":
     parser.add_argument("--palette-color", action="append", type=float, nargs=3, help="Palette color item [R, G, B], append once per color")
     parser.add_argument("--debug", action="store_true", default=False, help="Write debug output")
     args = parser.parse_args()
+
+    if args.debug:
+        os.makedirs(DIR_DEBUG, exist_ok=True)
 
     mapping_color = cv2.imread(str(args.image))
 

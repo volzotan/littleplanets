@@ -112,7 +112,7 @@ LIGHT_ANGLE_Z := 90 #50
 
 COLOR_1 := 240 126 50
 COLOR_2 := 65 102 174
-COLOR_OVERLAY := 0 0 0
+COLOR_OVERLAY := 255 255 255
 
 OVERLAYS := grid pois axis
 
@@ -207,6 +207,7 @@ $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_brightness_difference.png &:
 		--palette-brightness-difference $(DIR_BUILD)/mapping_brightness_difference.png \
 		--palette-color $(COLOR_1)								\
 		--palette-color $(COLOR_2)								\
+		--debug
 
 
 run: $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png
