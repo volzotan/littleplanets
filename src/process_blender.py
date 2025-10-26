@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import math
+import os
 from pathlib import Path
 
 import numpy as np
@@ -217,6 +218,9 @@ if __name__ == "__main__":
     parser.add_argument("--visualize", action="store_true", default=False, help="Enable interactive visualization")
     args = parser.parse_args()
 
+    if args.debug:
+        os.makedirs(DIR_DEBUG, exist_ok=True)
+
     timer_start = datetime.datetime.now()
 
     img_normals = openexr_numpy.imread(str(args.normals), "XYZ")
@@ -245,7 +249,6 @@ if __name__ == "__main__":
         img_color = cv2.resize(img_color, resize_size)
         img_gray = cv2.resize(img_gray, resize_size)
         img_pxpos = cv2.resize(img_pxpos, resize_size)
-
 
     # Mapping Color
 
@@ -279,7 +282,6 @@ if __name__ == "__main__":
     P = np.load(args.projection_matrix)
 
     def _project_vectors_to_image_space(vector_positions: np.ndarray, vector_directions: np.ndarray, projection_matrix: np.ndarray) -> np.ndarray:
-
         positions = vector_positions.reshape([-1, 3])
         directions = _normalize_vectors(vector_directions).reshape([-1, 3]) * IMAGE_SPACE_DIRECTION_STEP_DISTANCE
 
@@ -292,7 +294,6 @@ if __name__ == "__main__":
 
         return vectors_image_space
 
-
     img_direction_ws = img_direction
     img_elevation_direction_ws = img_elevation_direction
 
@@ -303,7 +304,6 @@ if __name__ == "__main__":
 
     img_direction_is = _project_vectors_to_image_space(img_pxpos, img_direction_ws, P)
     img_elevation_direction_is = _project_vectors_to_image_space(img_pxpos, img_elevation_direction_ws, P)
-
 
     # ---
 
@@ -390,7 +390,6 @@ if __name__ == "__main__":
     img_field_elevation_vectors_9 = img_direction_is.copy()
     img_field_elevation_vectors_9[mask] = img_elevation_direction_is[mask]
 
-
     # Mapping Distance
 
     mapping_distance = img_gray
@@ -416,12 +415,10 @@ if __name__ == "__main__":
 
     mapping_line_length = (np.iinfo(np.uint8).max * ((win_var - np.min(win_var)) / np.ptp(win_var))).astype(np.uint8)
 
-    # Mapping Flat
+    # Mapping Background
 
-    mapping_flat = np.zeros_like(img_pxpos, dtype=np.uint8)
-    mapping_flat[np.isnan(img_pxpos)] = 255
-
-    mapping_flat[mapping_distance < CUTOUT_THRESHOLD] = 255
+    mapping_background = np.zeros_like(img_pxpos, dtype=np.uint8)
+    mapping_background[np.isnan(np.sum(img_pxpos, axis=2))] = [255, 255, 255]
 
     if CROSS_FLOW:
         img_field_elevation_vectors_0 = np.cross(img_field_elevation_vectors_0, img_normals)
@@ -494,7 +491,6 @@ if __name__ == "__main__":
         # foo /= 3000
         # visualize(centers, [foo], [], light_axis).show()
 
-
     if EXPORT:
         if CONTRAST_ENHANCEMENT:
             # evaluating a good CONTRAST_VALUE:
@@ -521,7 +517,7 @@ if __name__ == "__main__":
 
         cv2.imwrite(str(args.output / "mapping_line_length.png"), mapping_line_length)
 
-        cv2.imwrite(str(args.output / "mapping_flat.png"), mapping_flat)
+        cv2.imwrite(str(args.output / "mapping_background.png"), mapping_background)
 
         # ---
 
@@ -574,6 +570,5 @@ if __name__ == "__main__":
             str(args.output / "mapping_angle_9.png"),
             _export_angles(img_field_elevation_vectors_9),
         )
-
 
     print(f"total time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")

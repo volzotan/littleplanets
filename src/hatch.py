@@ -20,7 +20,7 @@ from svgwriter import SvgWriter
 DIR_DEBUG = Path("debug")
 
 PSEUDO_RANDOM_SEED = "littleplanets"
-OVERLAY_STENCIL_CUT_DISTANCE = 1.0
+OVERLAY_STENCIL_CUT_DISTANCE = 3
 
 
 class HatchConfig(BaseModel):
@@ -86,13 +86,36 @@ def _split_linestring(ls: LineString, max_length: float) -> list[LineString]:
     return split_ls
 
 
+def _match_linestrings_to_palette(linestrings: list[LineString], palette: np.ndarray, scaling_factor: float = 1.0) -> list[list[LineString]]:
+    linestrings_split_by_palette: list[list[LineString]] = [[] for _ in range(len(palette))]
+
+    if len(palette) == 1:
+        return [linestrings]
+
+    for ls in linestrings:
+        if len(ls.coords) < 2:
+            continue
+        all_pixels = np.nan_to_num(np.array([mapping_color[int(p[1] * 1 / scaling_factor), int(p[0] * 1 / scaling_factor)] for p in ls.coords]))
+        mean = np.mean(all_pixels, axis=0)
+        palette_color_index = 0
+
+        if np.sum(mean) > 0.1:
+            palette_color_index = random.choices(range(palette.shape[0]), mean)[0]
+        else:
+            print("NaN palette values")
+
+        linestrings_split_by_palette[palette_color_index].append(ls)
+
+    return linestrings_split_by_palette
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("mapping_color", type=Path, default="mapping_color.npy", help="Mapping color (NPY)")
     parser.add_argument("mapping_angle", type=Path, default="mapping_angle.png", help="Mapping angle (PNG)")
     parser.add_argument("mapping_distance", type=Path, default="mapping_distance.png", help="Mapping distance (PNG)")
     parser.add_argument("mapping_line_length", type=Path, default="mapping_length.png", help="Mapping line length (PNG)")
-    parser.add_argument("mapping_flat", type=Path, default="mapping_flat.png", help="Mapping flat (PNG)")
+    parser.add_argument("mapping_background", type=Path, default="mapping_background.png", help="Mapping background (PNG)")
 
     parser.add_argument("--palette-color", action="append", type=float, nargs=3, help="Palette color item [R, G, B], append once per color")
     parser.add_argument("--overlay-color", type=float, nargs=3, help="Overlay color item [R, G, B]")
@@ -121,16 +144,17 @@ if __name__ == "__main__":
 
     random.seed(PSEUDO_RANDOM_SEED)
 
-    mapping_color = None
-    if args.mapping_color.suffix == ".npy":
-        mapping_color = np.load(args.mapping_color)
-    else:
-        mapping_color = cv2.imread(args.mapping_color)
-
     mapping_angle = cv2.imread(args.mapping_angle, cv2.IMREAD_GRAYSCALE)  # uint8 image must be centered around 128 to deal with negative values
     mapping_distance = cv2.imread(args.mapping_distance, cv2.IMREAD_GRAYSCALE)
     mapping_line_length = cv2.imread(args.mapping_line_length, cv2.IMREAD_GRAYSCALE)
-    mapping_flat = cv2.imread(args.mapping_flat, cv2.IMREAD_GRAYSCALE)
+    mapping_background = cv2.imread(args.mapping_background, cv2.IMREAD_GRAYSCALE)
+
+    mapping_color = None
+    if args.mapping_color.suffix == ".npy":
+        mapping_color = np.load(args.mapping_color)
+        mapping_color[mapping_background > 0] = np.nan
+    else:
+        mapping_color = cv2.imread(args.mapping_color)
 
     mapping_color = _blur_raster(mapping_color, config.blur_color_kernel_size_perc)
     mapping_angle = _blur_raster(mapping_angle, config.blur_angle_kernel_size_perc)
@@ -176,9 +200,9 @@ if __name__ == "__main__":
 
     # all areas above/below a brightness threshold should be kept empty
     # if not INVERT_COLOR:
-    #     mapping_flat[mapping_distance > CUTOUT_THRESHOLD] = 255
+    #     mapping_background[mapping_distance > CUTOUT_THRESHOLD] = 255
     # else:
-    #     mapping_flat[mapping_distance < CUTOUT_THRESHOLD] = 255
+    #     mapping_background[mapping_distance < CUTOUT_THRESHOLD] = 255
 
     if config.invert_color:
         # white ink on black paper, invert grayscale image
@@ -191,7 +215,7 @@ if __name__ == "__main__":
         mapping_distance,
         mapping_angle,
         mapping_line_length,
-        mapping_flat,
+        mapping_background,
     ]
 
     # config = flowlines_py.FlowlinesConfig()
@@ -255,23 +279,10 @@ if __name__ == "__main__":
 
     palette = np.array(colors, dtype=int)
     palette = np.delete(palette, np.where(np.min(palette, axis=1) < 0), axis=0)  # remove invalid palette colors
-    palette = palette.astype(np.uint8).tolist()
+    palette = palette.astype(np.uint8)
 
-    linestrings_split_by_palette = [[] for _ in range(len(palette))]
-
-    if len(palette) > 1:
-        if len(palette) != mapping_color.shape[2]:
-            raise Exception(f"Palette size mismatch: {args.mapping_color} has {mapping_color.shape[2]} color(s), palette has {len(palette)}")
-
-        for ls in linestrings:
-            if len(ls.coords) < 2:
-                continue
-            all_pixels = np.nan_to_num(np.array([mapping_color[int(p[1] * 1 / scaling_factor), int(p[0] * 1 / scaling_factor)] for p in ls.coords]))
-            mean = np.mean(all_pixels, axis=0)
-            palette_color_index = random.choices(range(len(palette)), mean)[0]
-            linestrings_split_by_palette[palette_color_index].append(ls)
-    else:
-        linestrings_split_by_palette[0] = linestrings
+    if len(palette) != mapping_color.shape[2]:
+        raise Exception(f"Palette size mismatch: {args.mapping_color} has {mapping_color.shape[2]} color(s), palette has {len(palette)}")
 
     svg = SvgWriter(args.output, config.dimensions)
     if config.invert_color:
@@ -294,24 +305,37 @@ if __name__ == "__main__":
     #     "fill-opacity": "1.0",
     # }
 
-    overlay_color = [255, 255, 255]
     if args.overlay_color is not None:
         overlay_color = args.overlay_color
 
-    layer_styles["overlay"] = {
-        "fill": "none",
-        "stroke": f"rgb({overlay_color[0]},{overlay_color[1]},{overlay_color[2]})",
-        "stroke-width": "0.30",
-        "fill-opacity": "1.0",
-    }
+        layer_styles["overlay"] = {
+            "fill": "none",
+            "stroke": f"rgb({overlay_color[0]},{overlay_color[1]},{overlay_color[2]})",
+            "stroke-width": "0.30",
+            "fill-opacity": "1.0",
+        }
+
+        svg.add("overlay", linestrings_overlays)
+    else:
+        for i, color in enumerate(palette):
+            layer_styles[f"overlay_{i}"] = {
+                "fill": "none",
+                "stroke": f"rgb({color[0]},{color[1]},{color[2]})",
+                "stroke-width": "0.30",
+                "fill-opacity": "1.0",
+            }
+
+        linestrings_overlay_palette = _match_linestrings_to_palette(linestrings_overlays, palette, scaling_factor)
+        for i, colored_linestrings in enumerate(linestrings_overlay_palette):
+            svg.add(f"overlay_{i}", colored_linestrings)
 
     for k, v in layer_styles.items():
         svg.add_style(k, v)
 
-    svg.add("overlay", linestrings_overlays)
     # svg.add("contours", linestrings_contours)
 
-    for i, colored_linestrings in enumerate(linestrings_split_by_palette):
+    linestrings_palette = _match_linestrings_to_palette(linestrings, palette, scaling_factor)
+    for i, colored_linestrings in enumerate(linestrings_palette):
         svg.add(f"lines_{i}", colored_linestrings)
 
     svg.write()
