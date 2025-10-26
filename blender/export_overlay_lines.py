@@ -22,6 +22,17 @@ class ArgumentParserForBlender(argparse.ArgumentParser):
     def parse_args(self):
         return super().parse_args(args=self._get_argv_after_doubledash())
 
+# ---
+
+def find_layer_collection(layer_coll, coll_name):
+    if layer_coll.collection.name == coll_name:
+        return layer_coll
+    for child in layer_coll.children:
+        found = find_layer_collection(child, coll_name)
+        if found:
+            return found
+    return None
+
 
 parser = ArgumentParserForBlender()
 parser.add_argument("--input", type=Path, default="overlay.npz", help="Input filename [NPZ]")
@@ -95,11 +106,9 @@ for lines in overlay_npz.values():
 
         if obj is not None and obj.name.startswith("overlay_curve"):
 
-            # issue: if two elements both lie along the ray casted from the camera,
-            # the first object would be visible while the second is blocked by the mesh,
-            # the second would still be marked as visible due to the hit on the first one.
-            if location[2] < 0:
-                continue
+            # TODO: if two elements both lie along the ray cast from the camera,
+            # the first object would be visible and the second is blocked by the mesh,
+            # yet the second would still be marked as visible due to the hit on the first one.
 
             visible_points[i] = True
 
@@ -123,27 +132,10 @@ for lines in overlay_npz.values():
 
 np.savez(args.output, *visibility_list)
 
-# overlay_collection.hide_render = True
-# overlay_collection.hide_viewport = True
+layer_collection = find_layer_collection(bpy.context.view_layer.layer_collection, collection_name)
 
-
-layer_collection = bpy.context.view_layer.layer_collection
-
-
-def find_layer_collection(layer_coll, coll_name):
-    if layer_coll.collection.name == coll_name:
-        return layer_coll
-    for child in layer_coll.children:
-        found = find_layer_collection(child, coll_name)
-        if found:
-            return found
-    return None
-
-
-layer_coll = find_layer_collection(layer_collection, collection_name)
-
-if layer_coll:
-    layer_coll.exclude = True
+if layer_collection:
+    layer_collection.exclude = True
 
 if not DEBUG:
     if args.save_to is not None:
