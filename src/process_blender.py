@@ -273,7 +273,7 @@ if __name__ == "__main__":
     dot = np.sum(img_elevation_vector * img_normals, axis=2, keepdims=True)  # vectorized dot product
     img_elevation_direction = img_elevation_vector - dot * img_normals
     img_elevation_magnitude = np.arccos(dot)
-    img_elevation_magnitude = img_elevation_magnitude[:, :, 0] # [m, n, 1] to [m, n]
+    img_elevation_magnitude = img_elevation_magnitude[:, :, 0]  # [m, n, 1] to [m, n]
 
     # create mixture for elevation and magnitude
     mixture_elevation_magnitude = _apply_linear_slope(img_elevation_magnitude, 0.1, 0.15, clipping_end=1.0)

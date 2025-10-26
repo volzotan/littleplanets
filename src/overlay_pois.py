@@ -17,7 +17,7 @@ DASH_LENGTH = 0.01
 PAUSE_LENGTH = 0.01
 
 
-def _latlon_to_cartesian(xs: list[float], ys: list[float], zs: list[float]=None) -> tuple[np.array]:
+def _latlon_to_cartesian(xs: list[float], ys: list[float], zs: list[float] = None) -> tuple[np.ndarray]:
     x = np.zeros([len(xs)])
     y = np.zeros([len(xs)])
     z = np.zeros([len(xs)])
@@ -30,7 +30,8 @@ def _latlon_to_cartesian(xs: list[float], ys: list[float], zs: list[float]=None)
         y[i] = math.cos(lats[i]) * math.sin(lons[i])
         z[i] = math.sin(lats[i])
 
-    return x, y, z
+    return (x, y, z)
+
 
 def _latlon_to_rotation_angles(lat: float, lon: float) -> tuple[float, float, float]:
     poi_rot_x = (lat * -1 + 90.0) / 180 * math.pi
@@ -48,6 +49,7 @@ def _linestrings_add_z(linestrings: list[LineString]) -> list[LineString]:
         linestrings[i] = LineString(coords_with_z)
 
     return linestrings
+
 
 def _linestrings_flip_ud(linestrings: list[LineString]) -> list[LineString]:
     return [LineString(shapely.get_coordinates(l) * np.array([1, -1])) for l in linestrings]
@@ -123,7 +125,7 @@ def main() -> None:
         else:  # no path, draw simple circle
             radius = poi.get("circle_radius", args.circle_radius)
             circle = Point([0, 0]).buffer(radius).boundary.segmentize(0.05)
-            linestrings += rotate_linestrings(_linestrings_add_z([circle]), * _latlon_to_rotation_angles(poi["lat"], poi["lon"]))
+            linestrings += rotate_linestrings(_linestrings_add_z([circle]), *_latlon_to_rotation_angles(poi["lat"], poi["lon"]))
             marker_geometry = circle
 
         if "name" in poi:
@@ -139,8 +141,8 @@ def main() -> None:
 
             geom = MultiLineString(text)
 
-            center_x = (geom.bounds[2]-geom.bounds[0]) / 2
-            center_y = (geom.bounds[3]-geom.bounds[1]) / 2
+            center_x = (geom.bounds[2] - geom.bounds[0]) / 2
+            center_y = (geom.bounds[3] - geom.bounds[1]) / 2
 
             x = 0
 
@@ -149,14 +151,13 @@ def main() -> None:
             elif math.isclose(angle, 270):
                 x += -center_x
             elif angle > 90 and angle < 270:
-                x += -(geom.bounds[2]-geom.bounds[0])
+                x += -(geom.bounds[2] - geom.bounds[0])
             else:
                 pass
 
             text = [shapely.affinity.translate(ls, xoff=x, yoff=center_y) for ls in text]
 
             if "label_lat" in poi and "label_lon" in poi:
-
                 if args.visualize:
                     circle = Point([0, 0]).buffer(0.005).boundary
                     linestrings += rotate_linestrings(_linestrings_add_z([circle]), *_latlon_to_rotation_angles(poi["label_lat"], poi["label_lon"]))
@@ -170,14 +171,13 @@ def main() -> None:
                 dist = args.circle_radius * 1.30
 
                 text = [
-                    shapely.affinity.translate(ls, xoff=dist * math.cos(math.radians(angle)), yoff=dist * math.sin(math.radians(angle))) for ls in text
+                    shapely.affinity.translate(ls, xoff=dist * math.cos(math.radians(angle)), yoff=dist * math.sin(math.radians(angle)))
+                    for ls in text
                 ]
 
                 text = _linestrings_flip_ud(text)
                 text = _linestrings_add_z(text)
                 linestrings += rotate_linestrings(text, *_latlon_to_rotation_angles(poi["lat"], poi["lon"]))
-
-
 
     # ROTATE
 

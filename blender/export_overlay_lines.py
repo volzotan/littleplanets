@@ -22,7 +22,9 @@ class ArgumentParserForBlender(argparse.ArgumentParser):
     def parse_args(self):
         return super().parse_args(args=self._get_argv_after_doubledash())
 
+
 # ---
+
 
 def find_layer_collection(layer_coll, coll_name):
     if layer_coll.collection.name == coll_name:
@@ -105,7 +107,6 @@ for lines in overlay_npz.values():
         hit, location, norm, idx, obj, mw = scene.ray_cast(depsgraph, origin, direction)
 
         if obj is not None and obj.name.startswith("overlay_curve"):
-
             # TODO: if two elements both lie along the ray cast from the camera,
             # the first object would be visible and the second is blocked by the mesh,
             # yet the second would still be marked as visible due to the hit on the first one.
