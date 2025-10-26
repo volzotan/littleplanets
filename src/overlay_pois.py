@@ -13,8 +13,11 @@ from util.misc import write_linestrings_to_npz, visualize_linestrings, rotate_li
 
 from loguru import logger
 
+DASH_LENGTH = 0.01
+PAUSE_LENGTH = 0.01
 
-def _latlon_to_cartesian(xs, ys, zs=None) -> tuple[np.array]:
+
+def _latlon_to_cartesian(xs: list[float], ys: list[float], zs: list[float]=None) -> tuple[np.array]:
     x = np.zeros([len(xs)])
     y = np.zeros([len(xs)])
     z = np.zeros([len(xs)])
@@ -29,9 +32,28 @@ def _latlon_to_cartesian(xs, ys, zs=None) -> tuple[np.array]:
 
     return x, y, z
 
+def _latlon_to_rotation_angles(lat: float, lon: float) -> tuple[float, float, float]:
+    poi_rot_x = (lat * -1 + 90.0) / 180 * math.pi
+    poi_rot_z = (lon) / 360 * math.tau
+
+    return (poi_rot_x, 0, poi_rot_z)
+
+
+def _linestrings_add_z(linestrings: list[LineString]) -> list[LineString]:
+    for i in range(len(linestrings)):  # add Z
+        ls = linestrings[i]
+        coords = shapely.get_coordinates(ls)
+        new_col = np.full([coords.shape[0], 1], 1.0)
+        coords_with_z = np.concatenate((coords, new_col), axis=1)
+        linestrings[i] = LineString(coords_with_z)
+
+    return linestrings
+
+def _linestrings_flip_ud(linestrings: list[LineString]) -> list[LineString]:
+    return [LineString(shapely.get_coordinates(l) * np.array([1, -1])) for l in linestrings]
+
 
 def main() -> None:
-
     parser = argparse.ArgumentParser()
     parser.add_argument("pois", type=Path, help="Position of interest data [JSON]")
     parser.add_argument("--rotX", type=float, default=0, help="rotation X in degrees [float]")
@@ -61,65 +83,10 @@ def main() -> None:
     font = HersheyFont(font_file=Path(HersheyFont.DEFAULT_FONT))
 
     for poi in pois:
-
-        linestrings_poi = []
-
-        if "path" not in poi:
-
-            radius = poi.get("circle_radius", args.circle_radius)
-            circle = Point([0, 0]).buffer(radius).boundary.segmentize(0.05)
-            linestrings_poi.append(circle)
-
-        if "name" in poi:
-
-            # circular text
-            # path_text_baseline = Point([0, 0]).buffer(CIRCLE_RADIUS + 0.01).boundary.segmentize(0.01)
-            # linestrings_along_path = font.lines_for_text(
-            #     poi["name"], FONT_SIZE, path=path_text_baseline, align=Align.CENTER, reverse_path=True
-            # )
-
-            # linear text
-            linestrings_along_path = font.lines_for_text(poi["name"], args.font_size)
-
-            angle = poi.get("label_angle", 0.0)
-            dist = args.circle_radius * 1.30
-            geom = MultiLineString(linestrings_along_path)
-
-            x = 0
-            y = geom.bounds[3] / 2  # vertical align
-
-            if math.isclose(angle, 90):
-                x += -geom.bounds[2] / 2
-            elif math.isclose(angle, 270):
-                x += -geom.bounds[2] / 2
-            elif angle > 90 and angle < 270:
-                x += -geom.bounds[2]
-            else:
-                pass
-
-            linestrings_along_path = [shapely.affinity.translate(ls, xoff=x, yoff=y) for ls in linestrings_along_path]
-            linestrings_along_path = [
-                shapely.affinity.translate(ls, xoff=dist * math.cos(math.radians(angle)), yoff=dist * math.sin(math.radians(angle)))
-                for ls in linestrings_along_path
-            ]
-            text = [LineString(shapely.get_coordinates(l) * np.array([1, -1])) for l in linestrings_along_path]
-            linestrings_poi.append(text)
-
-
-        for i in range(len(linestrings_poi)):  # add Z
-            ls = linestrings_poi[i]
-            coords = shapely.get_coordinates(ls)
-            new_col = np.full([coords.shape[0], 1], 1.0)
-            coords_with_z = np.concatenate((coords, new_col), axis=1)
-            linestrings_poi[i] = LineString(coords_with_z)
-
-        poi_rot_x = (poi["lat"] * -1 + 90.0) / 180 * math.pi
-        poi_rot_z = (poi["lon"]) / 360 * math.tau
-
-        linestrings += rotate_linestrings(linestrings_poi, *[poi_rot_x, 0, poi_rot_z])
+        linestrings_poi: list[LineString] = []
+        marker_geometry = None
 
         if "path" in poi:
-
             with zipfile.ZipFile(args.pois.parent / poi["path"], "r") as kmz:
                 kml_filenames = [f for f in kmz.namelist() if f.lower().endswith(".kml")]
 
@@ -147,13 +114,78 @@ def main() -> None:
 
                             shapely_geom_xyz = shapely.ops.transform(_latlon_to_cartesian, shapely_geom)
 
-                            linestrings += dash_linestring(shapely_geom_xyz, 0.02, 0.02)
-
+                            # add path to linestrings, not linestrings_poi since no further rotation is necessary
                             # linestrings.append(shapely_geom_xyz)
+                            linestrings += dash_linestring(shapely_geom_xyz, DASH_LENGTH, PAUSE_LENGTH)
+
+                            # TODO: rotate path back to 0,0 so it can act as a marker_object
+
+        else:  # no path, draw simple circle
+            radius = poi.get("circle_radius", args.circle_radius)
+            circle = Point([0, 0]).buffer(radius).boundary.segmentize(0.05)
+            linestrings += rotate_linestrings(_linestrings_add_z([circle]), * _latlon_to_rotation_angles(poi["lat"], poi["lon"]))
+            marker_geometry = circle
+
+        if "name" in poi:
+            # circular text
+            # path_text_baseline = Point([0, 0]).buffer(CIRCLE_RADIUS + 0.01).boundary.segmentize(0.01)
+            # linestrings_along_path = font.lines_for_text(
+            #     poi["name"], FONT_SIZE, path=path_text_baseline, align=Align.CENTER, reverse_path=True
+            # )
+
+            # linear text
+            text = font.lines_for_text(poi["name"], args.font_size)
+            angle = poi.get("label_angle", 0.0)
+
+            geom = MultiLineString(text)
+
+            center_x = (geom.bounds[2]-geom.bounds[0]) / 2
+            center_y = (geom.bounds[3]-geom.bounds[1]) / 2
+
+            x = 0
+
+            if math.isclose(angle, 90):
+                x += -center_x
+            elif math.isclose(angle, 270):
+                x += -center_x
+            elif angle > 90 and angle < 270:
+                x += -(geom.bounds[2]-geom.bounds[0])
+            else:
+                pass
+
+            text = [shapely.affinity.translate(ls, xoff=x, yoff=center_y) for ls in text]
+
+            if "label_lat" in poi and "label_lon" in poi:
+
+                if args.visualize:
+                    circle = Point([0, 0]).buffer(0.005).boundary
+                    linestrings += rotate_linestrings(_linestrings_add_z([circle]), *_latlon_to_rotation_angles(poi["label_lat"], poi["label_lon"]))
+
+                text = _linestrings_flip_ud(text)
+                text = _linestrings_add_z(text)
+                linestrings += rotate_linestrings(text, *_latlon_to_rotation_angles(poi["label_lat"], poi["label_lon"]))
+            else:
+
+                # TODO: extent of the marker_geometry bounding box in relation to the label_angle
+                dist = args.circle_radius * 1.30
+
+                text = [
+                    shapely.affinity.translate(ls, xoff=dist * math.cos(math.radians(angle)), yoff=dist * math.sin(math.radians(angle))) for ls in text
+                ]
+
+                text = _linestrings_flip_ud(text)
+                text = _linestrings_add_z(text)
+                linestrings += rotate_linestrings(text, *_latlon_to_rotation_angles(poi["lat"], poi["lon"]))
+
+
 
     # ROTATE
 
     linestrings = rotate_linestrings(linestrings, *BLENDER_ROTATION)
+
+    # FILTER
+
+    linestrings = [ls for ls in linestrings if np.min(np.array(ls.coords)[:, 2]) > 0]
 
     # VISUALIZE
 
