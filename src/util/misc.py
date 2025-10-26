@@ -26,6 +26,7 @@ def _linestring_z_length(line: LineString) -> float:
     coords = list(line.coords)
     return sum(math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2) for (x1, y1, z1), (x2, y2, z2) in zip(coords[:-1], coords[1:]))
 
+
 def _linestring_z_interpolate(line: LineString, distance: float) -> Point:
     coords = np.array(line.coords)
 
@@ -52,7 +53,6 @@ def _linestring_z_interpolate(line: LineString, distance: float) -> Point:
 
 
 def dash_linestring(linestring: LineString, dash_length: float, pause_length: float, step_size: float = 1e-3) -> list[LineString]:
-
     if linestring.is_empty:
         return []
     if dash_length <= 0 or pause_length < 0:
@@ -80,7 +80,7 @@ def dash_linestring(linestring: LineString, dash_length: float, pause_length: fl
         dash_segments.append(dash_line)
 
         # Move to the next dash start (skip the pause)
-        position += (dash_length + pause_length)
+        position += dash_length + pause_length
 
     return dash_segments
 
@@ -140,7 +140,11 @@ def visualize_linestrings(linestrings: list[LineString]) -> pv.Plotter:
 
     for li, linestring in enumerate(linestrings):
         for pair in linestring_to_coordinate_pairs(linestring):
-            spline = pv.Spline(np.array(pair, dtype=np.float32)).tube(radius=0.005)
+            # discard any linestrings with almost zero length
+            if np.all(np.isclose(pair[0], pair[1])):
+                continue
+
+            spline = pv.Spline(np.array(pair, dtype=np.float32)).tube(radius=0.002)
             plotter.add_mesh(spline, color=colors[li % 3])
 
     return plotter

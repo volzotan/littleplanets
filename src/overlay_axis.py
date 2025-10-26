@@ -13,9 +13,12 @@ from util.misc import write_linestrings_to_npz, rotate_linestrings, visualize_li
 VISUALIZE = False
 
 AXIS_EXTENT = 1.3
+DASH_LENGTH = 0.02
+PAUSE_LENGTH = 0.02
+
 
 def _segmentize_z(start_z: float, end_z: float, max_length_segment: float) -> np.ndarray:
-    return np.linspace(start_z, end_z, num=math.ceil((end_z-start_z)/max_length_segment), endpoint=True)
+    return np.linspace(start_z, end_z, num=math.ceil((end_z - start_z) / max_length_segment), endpoint=True)
 
 
 if __name__ == "__main__":
@@ -39,7 +42,7 @@ if __name__ == "__main__":
     line_coords[:, 2] = zs
 
     ls = LineString(line_coords)
-    linestrings += dash_linestring(ls, 0.02, 0.02)
+    linestrings += dash_linestring(ls, DASH_LENGTH, PAUSE_LENGTH)
 
     # ROTATE
 

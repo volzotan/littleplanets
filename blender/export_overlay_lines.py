@@ -26,6 +26,7 @@ class ArgumentParserForBlender(argparse.ArgumentParser):
 parser = ArgumentParserForBlender()
 parser.add_argument("--input", type=Path, default="overlay.npz", help="Input filename [NPZ]")
 parser.add_argument("--output", type=Path, default="overlay_visible.npz", help="Output filename [NPZ]")
+parser.add_argument("--save-to", type=Path, default=None, help="Output filename of the blender file [blend]")
 args = parser.parse_args()
 
 scene = bpy.context.scene
@@ -93,6 +94,13 @@ for lines in overlay_npz.values():
         hit, location, norm, idx, obj, mw = scene.ray_cast(depsgraph, origin, direction)
 
         if obj is not None and obj.name.startswith("overlay_curve"):
+
+            # issue: if two elements both lie along the ray casted from the camera,
+            # the first object would be visible while the second is blocked by the mesh,
+            # the second would still be marked as visible due to the hit on the first one.
+            if location[2] < 0:
+                continue
+
             visible_points[i] = True
 
             if DEBUG:
@@ -121,6 +129,7 @@ np.savez(args.output, *visibility_list)
 
 layer_collection = bpy.context.view_layer.layer_collection
 
+
 def find_layer_collection(layer_coll, coll_name):
     if layer_coll.collection.name == coll_name:
         return layer_coll
@@ -130,11 +139,15 @@ def find_layer_collection(layer_coll, coll_name):
             return found
     return None
 
+
 layer_coll = find_layer_collection(layer_collection, collection_name)
 
 if layer_coll:
     layer_coll.exclude = True
 
 if not DEBUG:
-    bpy.ops.wm.save_as_mainfile()
+    if args.save_to is not None:
+        bpy.ops.wm.save_as_mainfile(filepath=args.save_to)
+    else:
+        bpy.ops.wm.save_as_mainfile()
     bpy.ops.wm.quit_blender()
