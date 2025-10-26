@@ -20,7 +20,9 @@ from svgwriter import SvgWriter
 DIR_DEBUG = Path("debug")
 
 PSEUDO_RANDOM_SEED = "littleplanets"
-OVERLAY_STENCIL_CUT_DISTANCE = 3
+
+OVERLAY_STENCIL_CUT_DISTANCE = 4
+CUTOUT_STENCIL_CUT_DISTANCE = 1
 
 
 class HatchConfig(BaseModel):
@@ -101,12 +103,29 @@ def _match_linestrings_to_palette(linestrings: list[LineString], palette: np.nda
 
         if np.sum(mean) > 0.1:
             palette_color_index = random.choices(range(palette.shape[0]), mean)[0]
-        else:
-            print("NaN palette values")
 
         linestrings_split_by_palette[palette_color_index].append(ls)
 
     return linestrings_split_by_palette
+
+
+def _cut(objects: list[LineString], tools: list[LineString], buffer_radius: float) -> list[LineString]:
+    linestrings_cut = []
+    stencil = shapely.ops.unary_union(tools).buffer(buffer_radius)
+
+    for ls in objects:
+        cut = shapely.difference(ls, stencil)
+
+        match cut:
+            case LineString():
+                linestrings_cut.append(cut)
+            case MultiLineString():
+                for g in cut.geoms:
+                    linestrings_cut.append(g)
+            case _:
+                print(f"unexpected geometry: {g}")
+
+    return linestrings_cut
 
 
 if __name__ == "__main__":
@@ -251,20 +270,8 @@ if __name__ == "__main__":
 
     # cut buffered overlay from hatched linestrings
     timer_start = datetime.datetime.now()
-    stencil = shapely.ops.unary_union(linestrings_cutouts + linestrings_overlays).buffer(OVERLAY_STENCIL_CUT_DISTANCE / 2)
-    linestrings_cut = []
-    for ls in linestrings:
-        cut = shapely.difference(ls, stencil)
-
-        match cut:
-            case LineString():
-                linestrings_cut.append(cut)
-            case MultiLineString():
-                for g in cut.geoms:
-                    linestrings_cut.append(g)
-            case _:
-                print(f"unexpected geometry: {g}")
-    linestrings = linestrings_cut
+    linestrings = _cut(linestrings, linestrings_cutouts, CUTOUT_STENCIL_CUT_DISTANCE / 2)
+    linestrings = _cut(linestrings, linestrings_overlays, OVERLAY_STENCIL_CUT_DISTANCE / 2)
     print(f"stencil time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
 
     # linestrings_stencil = []
