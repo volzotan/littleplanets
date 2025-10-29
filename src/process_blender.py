@@ -145,16 +145,6 @@ def _export_angles(arr: np.ndarray, adjust_y_axis: bool = False) -> np.ndarray:
     return mapping_angle
 
 
-def _adjust_contrast_brightness(img, contrast: float = 1.0, brightness: int = 0) -> np.ndarray:
-    """
-    Adjusts contrast and brightness of an uint8 image.
-    contrast:   (0.0,  inf) with 1.0 leaving the contrast as is
-    brightness: [-255, 255] with 0 leaving the brightness as is
-    """
-    brightness += int(round(255 * (1 - contrast) / 2))
-    return cv2.addWeighted(img, contrast, img, 0, brightness)
-
-
 def _apply_clipping(m: np.ndarray, start_percentile: float, end_percentile: float) -> np.ndarray:
     m_no_nan = np.nan_to_num(m)
     minval = np.percentile(m_no_nan, start_percentile)
@@ -200,7 +190,7 @@ def _apply_linear_slope(m: np.ndarray, slope_start: float, slope_end: float, cli
 
 
 def _apply_linear_transition(m: np.ndarray, min: float, max: float) -> np.ndarray:
-    return (np.clip(m, min, max) - min) / (max-min)
+    return (np.clip(m, min, max) - min) / (max - min)
 
 
 if __name__ == "__main__":
@@ -399,7 +389,7 @@ if __name__ == "__main__":
     # image space - blend:
 
     mixture = _apply_linear_transition(img_elevation_magnitude, 0.035, 0.06)
-    img_field_elevation_vectors_10 = img_direction_is * (1 - mixture)[:, :, np.newaxis] + img_elevation_direction_is * mixture[: ,:, np.newaxis]
+    img_field_elevation_vectors_10 = img_direction_is * (1 - mixture)[:, :, np.newaxis] + img_elevation_direction_is * mixture[:, :, np.newaxis]
 
     # ---
 
@@ -506,13 +496,6 @@ if __name__ == "__main__":
 
     if EXPORT:
         if CONTRAST_ENHANCEMENT:
-            # evaluating a good CONTRAST_VALUE:
-            # for i in range(1, 10):
-            #     contrast = 1.0+i/10
-            #     cv2.imwrite(str(args.output / f"mapping_distance_{contrast:5.2f}.png"), adjust_contrast_brightness(mapping_distance, contrast=contrast))
-
-            # mapping_distance = adjust_contrast_brightness(mapping_distance, contrast=CONTRAST_VALUE)
-
             clahe = cv2.createCLAHE(clipLimit=1.0, tileGridSize=(8, 8))
             mapping_distance = cv2.addWeighted(clahe.apply(mapping_distance), CONTRAST_VALUE, mapping_distance, 1 - CONTRAST_VALUE, 0.0)
 

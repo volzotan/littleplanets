@@ -179,11 +179,6 @@ if __name__ == "__main__":
     mapping_angle = _blur_raster(mapping_angle, config.blur_angle_kernel_size_perc)
     mapping_distance = _blur_raster(mapping_distance, config.blur_distance_kernel_size_perc)
 
-    if args.debug:
-        cv2.imwrite(str(DIR_DEBUG / f"hatch_mapping_color{args.suffix}.png"), mapping_color)
-        cv2.imwrite(str(DIR_DEBUG / f"hatch_mapping_angle{args.suffix}.png"), mapping_angle)
-        cv2.imwrite(str(DIR_DEBUG / f"hatch_mapping_distance{args.suffix}.png"), mapping_distance)
-
     scaling_factor = config.dimensions[0] / mapping_angle.shape[1]
 
     linestrings_cutouts = []
@@ -215,7 +210,9 @@ if __name__ == "__main__":
     for ls in linestrings_cutouts:
         exclusion_points += shapely.get_coordinates(ls.segmentize(0.01)).tolist()
 
-    mapping_distance = ((mapping_distance - np.min(mapping_distance)) / np.ptp(mapping_distance) * 255).astype(np.uint8)
+    mask = mapping_background == 0
+    mapping_distance = ((mapping_distance - np.min(mapping_distance[mask])) / np.ptp(mapping_distance[mask]) * 255).astype(np.uint8)
+    mapping_distance[~mask] = 0
 
     # all areas above/below a brightness threshold should be kept empty
     # if not INVERT_COLOR:
@@ -226,6 +223,11 @@ if __name__ == "__main__":
     if config.invert_color:
         # white ink on black paper, invert grayscale image
         mapping_distance = ~mapping_distance
+
+    if args.debug:
+        # cv2.imwrite(str(DIR_DEBUG / f"hatch_mapping_color{args.suffix}.png"), mapping_color) # doesn't make sense to export mapping_color if it's palette colors
+        cv2.imwrite(str(DIR_DEBUG / f"hatch_mapping_angle{args.suffix}.png"), mapping_angle)
+        cv2.imwrite(str(DIR_DEBUG / f"hatch_mapping_distance{args.suffix}.png"), mapping_distance)
 
     # mapping_distance = np.zeros_like(mapping_angle, dtype=np.uint8)
     # mapping_line_length = np.zeros_like(mapping_angle)

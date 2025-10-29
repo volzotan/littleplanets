@@ -276,20 +276,26 @@ gcode_crop: $(DIR_BUILD)/littleplanets.svg
 # ----------
 
 
-test: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_flat.png $(DIR_BUILD)/projection_matrix.npy
-	@echo "Hatch"
+test: $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle.png $(DIR_BUILD)/mapping_brightness_difference.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_background.png
+test: $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_grid_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz
+test: $(DIR_SRC)/hatch.py
+	@echo "test"
 	uv run $(DIR_SRC)/hatch.py									\
 		$(DIR_BUILD)/mapping_color.npy 							\
 		$(DIR_BUILD)/mapping_angle.png 							\
-		$(DIR_BUILD)/mapping_distance.png 						\
+		$(DIR_BUILD)/mapping_brightness_difference.png 			\
 		$(DIR_BUILD)/mapping_line_length.png 					\
-		$(DIR_BUILD)/mapping_flat.png 							\
+		$(DIR_BUILD)/mapping_background.png 					\
+		--cutouts $(DIR_BUILD)/overlay_grid_cropped.npz 		\
+		--overlays $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz 		\
 		--projection-matrix $(DIR_BUILD)/projection_matrix.npy  \
-		--overlays $(DIR_BUILD)/overlay_grid_cropped.npz 		\
+		--contours $(DIR_BUILD)/contours.npz					\
+		--palette-color $(COLOR_1)								\
+		--palette-color $(COLOR_2)								\
 		--config config_hatch.toml 								\
-		--output $(DIR_BUILD)/littleplanets.svg
+		--output $(DIR_BUILD)/littleplanets.svg					\
+		--debug
 	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=littleplanets.png --export-width=2000 --export-background=#000000
-
 
 
 test_angle: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle_0.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_background.png

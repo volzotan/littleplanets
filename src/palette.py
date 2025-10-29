@@ -12,6 +12,9 @@ DIR_DEBUG = Path("debug")
 
 MIN_RATIO_THRESHOLD = 0.15
 
+CONTRAST_ENHANCEMENT = False
+CONTRAST_VALUE = 1.0
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("image", type=Path, default="image.tif", help="RGB image (TIFF)")
@@ -41,10 +44,10 @@ if __name__ == "__main__":
 
     if args.debug:  # TODO: remove hardcoded paths
         mapping_distance = cv2.imread("build/mapping_color.png", cv2.IMREAD_GRAYSCALE)
-        mapping_flat = cv2.imread("build/mapping_flat.png", cv2.IMREAD_GRAYSCALE)
+        mapping_background = cv2.imread("build/mapping_background.png", cv2.IMREAD_GRAYSCALE)
         if RESIZE_SIZE is not None:
             mapping_distance = cv2.resize(mapping_distance, RESIZE_SIZE)
-            mapping_flat = cv2.resize(mapping_flat, RESIZE_SIZE)
+            mapping_background = cv2.resize(mapping_background, RESIZE_SIZE)
 
         cv2.imwrite(str(DIR_DEBUG / "palette_mapping_color.png"), mapping_color)
         cv2.imwrite(str(DIR_DEBUG / "palette_mapping_distance.png"), mapping_distance)
@@ -136,7 +139,11 @@ if __name__ == "__main__":
     # i.e. it is the "too bright" error value.
     # The error of "too dark" is not relevant, since making a pixel brighter than the mixed color
     # is not possible (assuming bright colors on dark surface)
-    diff_v = np.clip(mapping_palette_avg_hsv[:, :, 2].astype(np.float32) - mapping_color_hsv[:, :, 2], 0, 255).astype(np.uint8)
+    diff_v = np.clip(mapping_palette_avg_hsv[:, :, 2].astype(float) - mapping_color_hsv[:, :, 2], 0, 255).astype(np.uint8)
+
+    if CONTRAST_ENHANCEMENT:
+        clahe = cv2.createCLAHE(clipLimit=1.0, tileGridSize=(8, 8))
+        diff_v = cv2.addWeighted(clahe.apply(diff_v), CONTRAST_VALUE, diff_v, 1 - CONTRAST_VALUE, 0.0)
 
     # mapping_palette_avg_hsv[:, :, 2] -= diff_v
 
@@ -161,7 +168,7 @@ if __name__ == "__main__":
     mapping_palette_closest = palette[np.argmin(color_distance_error, axis=2)]
 
     if args.debug:
-        mapping_palette_closest[mapping_flat > 0] = [0, 0, 0]
+        mapping_palette_closest[mapping_background > 0] = [0, 0, 0]
         cv2.imwrite(str(DIR_DEBUG / "palette_mapping_hsv_closest.png"), cv2.cvtColor(mapping_palette_closest, cv2.COLOR_RGB2BGR))
 
     # LAB AVG
@@ -186,7 +193,7 @@ if __name__ == "__main__":
     weighted_colors = weighted_colors * ratio[:, :, :, np.newaxis]
     mapping_palette_avg_rgb = np.sum(weighted_colors, axis=2).astype(np.uint8)
 
-    # mapping_palette_avg_rgb[mapping_flat > 0] = [0, 0, 0]
+    # mapping_palette_avg_rgb[mapping_background > 0] = [0, 0, 0]
 
     mapping_palette_avg_hsv = cv2.cvtColor(mapping_palette_avg_rgb, cv2.COLOR_RGB2HSV)
     diff_v = np.clip(mapping_palette_avg_hsv[:, :, 2].astype(np.float32) - mapping_color_hsv[:, :, 2], 0, 255).astype(np.uint8)
@@ -208,7 +215,7 @@ if __name__ == "__main__":
     mapping_palette_closest = palette[np.argmin(color_distance_error, axis=2)]
 
     if args.debug:
-        mapping_palette_closest[mapping_flat > 0] = [0, 0, 0]
+        mapping_palette_closest[mapping_background > 0] = [0, 0, 0]
         cv2.imwrite(str(DIR_DEBUG / "palette_mapping_lab_closest.png"), cv2.cvtColor(mapping_palette_closest, cv2.COLOR_RGB2BGR))
 
     # HSV LAB AVG
