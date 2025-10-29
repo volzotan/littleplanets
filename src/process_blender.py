@@ -25,7 +25,7 @@ CONTRAST_VALUE = 1.0
 CLIPPING = True
 CLIPPING_CUTOFF_PERCENTILE = 1.00
 
-MAGNITUDE_THRESHOLD = 0.04
+MAGNITUDE_THRESHOLD = 0.06
 
 CUTOUT_THRESHOLD = 10
 
@@ -199,6 +199,10 @@ def _apply_linear_slope(m: np.ndarray, slope_start: float, slope_end: float, cli
     return m_norm
 
 
+def _apply_linear_transition(m: np.ndarray, min: float, max: float) -> np.ndarray:
+    return (np.clip(m, min, max) - min) / (max-min)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("normals", type=Path, default="normals.exr", help="Normals (EXR)")
@@ -330,6 +334,7 @@ if __name__ == "__main__":
     img_field_elevation_vectors_7 = np.zeros_like(img_direction)
     img_field_elevation_vectors_8 = np.zeros_like(img_direction_is)
     img_field_elevation_vectors_9 = np.zeros_like(img_direction_is)
+    img_field_elevation_vectors_10 = np.zeros_like(img_direction_is)
 
     ELEVATION_VECTOR_WEIGHT = 0.5
 
@@ -390,6 +395,13 @@ if __name__ == "__main__":
     mask = img_elevation_magnitude > MAGNITUDE_THRESHOLD
     img_field_elevation_vectors_9 = img_direction_is.copy()
     img_field_elevation_vectors_9[mask] = img_elevation_direction_is[mask]
+
+    # image space - blend:
+
+    mixture = _apply_linear_transition(img_elevation_magnitude, 0.035, 0.06)
+    img_field_elevation_vectors_10 = img_direction_is * (1 - mixture)[:, :, np.newaxis] + img_elevation_direction_is * mixture[: ,:, np.newaxis]
+
+    # ---
 
     # Mapping Distance
 
@@ -514,7 +526,7 @@ if __name__ == "__main__":
 
         cv2.imwrite(str(args.output / "mapping_distance.png"), mapping_distance)
 
-        cv2.imwrite(str(args.output / "mapping_angle.png"), _export_angles(img_field_elevation_vectors_9))
+        cv2.imwrite(str(args.output / "mapping_angle.png"), _export_angles(img_field_elevation_vectors_10))
 
         cv2.imwrite(str(args.output / "mapping_line_length.png"), mapping_line_length)
 
@@ -570,6 +582,11 @@ if __name__ == "__main__":
         cv2.imwrite(
             str(args.output / "mapping_angle_9.png"),
             _export_angles(img_field_elevation_vectors_9),
+        )
+
+        cv2.imwrite(
+            str(args.output / "mapping_angle_10.png"),
+            _export_angles(img_field_elevation_vectors_10),
         )
 
     print(f"total time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")

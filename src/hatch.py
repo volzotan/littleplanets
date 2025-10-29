@@ -212,7 +212,7 @@ if __name__ == "__main__":
         linestrings_contours = [shapely.affinity.scale(ls, xfact=scaling_factor, yfact=scaling_factor, origin=(0, 0)) for ls in linestrings_contours]
 
     exclusion_points = []
-    for ls in linestrings_overlays + linestrings_contours:
+    for ls in linestrings_cutouts:
         exclusion_points += shapely.get_coordinates(ls.segmentize(0.01)).tolist()
 
     mapping_distance = ((mapping_distance - np.min(mapping_distance)) / np.ptp(mapping_distance) * 255).astype(np.uint8)
