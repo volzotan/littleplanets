@@ -20,6 +20,7 @@ dependencies = [
     "shapely>=2.1.1",
     "svgpathtools>=1.7.1",
     "tifffile>=2025.5.26",
+    "toml>=0.10.2",
     "trimesh>=4.6.11",
 ]
 

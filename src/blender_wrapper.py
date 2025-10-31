@@ -1,0 +1,37 @@
+import argparse
+import subprocess
+from pathlib import Path
+
+import toml
+
+"""
+Python wrapper for executing python scripts within Blender with arguments from a TOML configuration file.
+Required in order to detected changes in the config file with make and rebuild if necessary.
+"""
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("blender_binary", type=Path, help="Path to the Blender binary")
+    parser.add_argument("blender_file", type=Path, help="Path to the Blender file [BLEND]")
+    parser.add_argument("python_script", type=Path, help="Path to the Python script executed within Blender")
+    parser.add_argument("--file", type=Path, help="Configuration file for values passed on to the script [TOML]")
+    parser.add_argument("--config", nargs="+", type=str, help="Additional strings passed as parameters")
+    args = parser.parse_args()
+
+    file_values = []
+    with open(args.file) as f:
+        data = toml.load(f)
+        for key, value in data.items():
+            file_values += [f"--{key}", str(value)]
+
+    config_values = []
+    for val in args.config:
+        config_values += val.split(" ")
+
+    command = [args.blender_binary, args.blender_file, "--background", "--python", args.python_script, "--"] + file_values + config_values
+    # print(" ".join([str(e) for e in command]))
+
+    subprocess.run(command, check=True)
+
+if __name__ == "__main__":
+    main()

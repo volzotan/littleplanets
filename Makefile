@@ -104,7 +104,7 @@ COLOR_FILE := $(DIR_DATA)/Mars_Viking_ClrMosaic_global_925m.tif
 POI_FILE := $(DIR_DATA)/Mars_poi.json
 
 ROT_X := -90
-ROT_Y := 80
+ROT_Y := 85
 ROT_Z := -22.5
 
 LIGHT_ANGLE_XY := 67.5
@@ -118,15 +118,18 @@ OVERLAYS := grid pois axis
 
 # ----------
 
+$(DIR_BUILD)/%.toml: $(DIR_SRC)/configurator.py mars.toml
+	@echo "Configurator"
+	uv run $^ --output $(DIR_BUILD)
+
 $(DIR_BUILD)/mesh.ply: $(DIR_SRC)/mesh.py $(DEM_FILE) $(COLOR_FILE)
 	@echo "Generating mesh"
 	uv run $^ --output $@ --scale 0.04 --subdivision 10
 
-$(DIR_BUILD)/blender_mesh.blend: $(DIR_BLENDER)/$(BLENDER_FILE) $(DIR_BUILD)/mesh.ply
+$(DIR_BUILD)/blender_mesh.blend: $(DIR_SRC)/blender_wrapper.py $(DIR_BLENDER)/import_ply.py $(DIR_BUILD)/mesh.ply $(DIR_BUILD)/import_ply.toml
 	@echo "Running blender mesh update"
 	cp $(DIR_BLENDER)/$(BLENDER_FILE) $@
-	$(BLENDER_BIN) $@ --background --python $(DIR_BLENDER)/import_ply.py -- --input $(DIR_BUILD)/mesh.ply --rotX $(ROT_X) --rotY $(ROT_Y) --rotZ $(ROT_Z)
-	touch $@
+	uv run $(DIR_SRC)/blender_wrapper.py $(BLENDER_BIN) $@ $(DIR_BLENDER)/import_ply.py --file $(DIR_BUILD)/import_ply.toml --config "--input $(DIR_BUILD)/mesh.ply"
 
 $(DIR_BUILD)/raytrace.npy: $(DIR_BUILD)/blender_mesh.blend $(DIR_BLENDER)/raytracing.py
 	@echo "Running blender raytracer"
@@ -207,8 +210,7 @@ $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_brightness_difference.png &:
 		--palette-mixture $(DIR_BUILD)/mapping_color.npy 		\
 		--palette-brightness-difference $(DIR_BUILD)/mapping_brightness_difference.png \
 		--palette-color $(COLOR_1)								\
-		--palette-color $(COLOR_2)								\
-		--debug
+		--palette-color $(COLOR_2)
 
 
 run: $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_background.png
