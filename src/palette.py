@@ -5,6 +5,8 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import toml
+from pydantic import BaseModel
 from skimage.color import rgb2lab, deltaE_ciede2000, deltaE_cie76, deltaE_ciede94
 
 RESIZE_SIZE = None  # (500, 500)
@@ -15,8 +17,14 @@ MIN_RATIO_THRESHOLD = 0.15
 CONTRAST_ENHANCEMENT = False
 CONTRAST_VALUE = 1.0
 
+
+class PaletteConfig(BaseModel):
+    colors: list[list[int]] = [[255, 255, 255]]
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+
     parser.add_argument("image", type=Path, default="image.tif", help="RGB image (TIFF)")
     parser.add_argument("--palette-mixture", type=Path, default="palette_mixture.npy", help="Output filename for palette mixture ratios [NPY]")
     parser.add_argument(
@@ -26,9 +34,16 @@ if __name__ == "__main__":
         help="Output filename for HSV value difference mapping [PNG]",
     )
     parser.add_argument("--color-model", default="hsv", choices=["hsv", "lab"], help="Choice of color model for ink to image comparisons")
-    parser.add_argument("--palette-color", action="append", type=float, nargs=3, help="Palette color item [R, G, B], append once per color")
+    parser.add_argument("--config", type=Path, help="Configuration file [TOML]")
     parser.add_argument("--debug", action="store_true", default=False, help="Write debug output")
+
     args = parser.parse_args()
+
+    config = PaletteConfig()
+    if args.config is not None:
+        with open(args.config, "r") as f:
+            data = toml.load(f)
+            config = PaletteConfig.model_validate(data)
 
     if args.debug:
         os.makedirs(DIR_DEBUG, exist_ok=True)
@@ -84,7 +99,7 @@ if __name__ == "__main__":
     #     dtype=np.uint8,
     # )
 
-    palette = np.array(args.palette_color, dtype=int)
+    palette = np.array(config.colors, dtype=int)
     palette = np.delete(palette, np.where(np.min(palette, axis=1) < 0), axis=0)  # remove invalid palette colors
     palette = palette.astype(np.uint8)
 

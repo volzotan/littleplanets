@@ -29,6 +29,8 @@ class HatchConfig(BaseModel):
     dimensions: tuple[int, int] = (750, 750)
     invert_color: bool = True
 
+    colors: list[list[int]] = [[255, 255, 255]]
+
     # Blurring kernel size, percentage of raster size(float)
     blur_color_kernel_size_perc: float = Field(0, ge=0)
     blur_angle_kernel_size_perc: float = Field(0, ge=0)
@@ -130,13 +132,13 @@ def _cut(objects: list[LineString], tools: list[LineString], buffer_radius: floa
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+
     parser.add_argument("mapping_color", type=Path, default="mapping_color.npy", help="Mapping color (NPY)")
     parser.add_argument("mapping_angle", type=Path, default="mapping_angle.png", help="Mapping angle (PNG)")
     parser.add_argument("mapping_distance", type=Path, default="mapping_distance.png", help="Mapping distance (PNG)")
     parser.add_argument("mapping_line_length", type=Path, default="mapping_length.png", help="Mapping line length (PNG)")
     parser.add_argument("mapping_background", type=Path, default="mapping_background.png", help="Mapping background (PNG)")
 
-    parser.add_argument("--palette-color", action="append", type=float, nargs=3, help="Palette color item [R, G, B], append once per color")
     parser.add_argument("--overlay-color", type=float, nargs=3, help="Overlay color item [R, G, B]")
 
     parser.add_argument("--cutouts", type=Path, nargs="*", default=[], help="Cutout linestrings, multiple filenames possible (NPZ)")
@@ -281,12 +283,8 @@ if __name__ == "__main__":
     #     linestrings_stencil.append(g)
 
     # Coloring
-
-    colors = [[255, 255, 255]]
-    if args.palette_color is not None and len(args.palette_color) > 0:
-        colors = args.palette_color
-
-    palette = np.array(colors, dtype=int)
+    palette = np.array(config.colors, dtype=int)
+    print(palette)
     palette = np.delete(palette, np.where(np.min(palette, axis=1) < 0), axis=0)  # remove invalid palette colors
     palette = palette.astype(np.uint8)
 

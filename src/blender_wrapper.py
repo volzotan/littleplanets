@@ -6,7 +6,7 @@ import toml
 
 """
 Python wrapper for executing python scripts within Blender with arguments from a TOML configuration file.
-Required in order to detected changes in the config file with make and rebuild if necessary.
+Required in order to detected changes in the config file with make to re-execute if necessary.
 """
 
 
