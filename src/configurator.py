@@ -4,16 +4,20 @@ from pathlib import Path
 import toml
 from loguru import logger
 
+
 def is_different(a: dict, b: dict) -> bool:
-    return a!= b
+    return a != b
+
 
 def load_toml(filename: Path) -> dict:
     with open(filename, "r") as f:
         return toml.load(f)
 
+
 def write_toml(filename: Path, data: dict) -> None:
     with open(filename, "w") as f:
         toml.dump(data, f)
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -30,6 +34,7 @@ def main() -> None:
         else:
             write_toml(filename, config_data)
             logger.info(f"Write {filename}")
+
 
 if __name__ == "__main__":
     main()

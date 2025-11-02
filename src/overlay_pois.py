@@ -2,6 +2,8 @@ import argparse
 import json
 from pathlib import Path
 import shapely
+import toml
+from pydantic import BaseModel
 from shapely.geometry import LineString, Point, MultiLineString
 import numpy as np
 import math
@@ -15,6 +17,14 @@ from loguru import logger
 
 DASH_LENGTH = 0.01
 PAUSE_LENGTH = 0.01
+
+
+class OverlayPoiConfig(BaseModel):
+    rotX: float = 0
+    rotY: float = 0
+    rotZ: float = 0
+    circle_radius: float = 0.02
+    font_size: float = 0.03
 
 
 def _latlon_to_cartesian(xs: list[float], ys: list[float], zs: list[float] = None) -> tuple[np.ndarray]:
@@ -57,22 +67,23 @@ def _linestrings_flip_ud(linestrings: list[LineString]) -> list[LineString]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
+
     parser.add_argument("pois", type=Path, help="Position of interest data [JSON]")
-    parser.add_argument("--rotX", type=float, default=0, help="rotation X in degrees [float]")
-    parser.add_argument("--rotY", type=float, default=0, help="rotation Y in degrees [float]")
-    parser.add_argument("--rotZ", type=float, default=0, help="rotation Z in degrees [float]")
-    parser.add_argument("--grid-num-lat", type=int, default=0, help="number of latitude grid lines")
-    parser.add_argument("--grid-num-lon", type=int, default=0, help="number of longitude grid lines")
     parser.add_argument("--output", type=Path, default="overlay.npz", help="Output filename [NPZ]")
-    parser.add_argument("--circle-radius", type=float, default=0.02, help="POI circle radius [float]")
-    parser.add_argument("--font-size", type=float, default=0.03, help="Label font size [float]")
+    parser.add_argument("--config", type=Path, help="Configuration file [TOML]")
     parser.add_argument("--visualize", action="store_true", default=False, help="Enable interactive visualization")
 
     args = parser.parse_args()
 
+    config = OverlayPoiConfig()
+    if args.config is not None:
+        with open(args.config, "r") as f:
+            data = toml.load(f)
+            config = OverlayPoiConfig.model_validate(data)
+
     # PLY exported from Blender is already correctly rotated with regard to Z axis up
     # but Lat/Lon needs to be adjusted for any additional rotation
-    BLENDER_ROTATION = np.array([np.radians(c) for c in [args.rotX, args.rotY, args.rotZ]])
+    BLENDER_ROTATION = np.array([np.radians(c) for c in [config.rotX, config.rotY, config.rotZ]])
 
     linestrings = []
 
@@ -123,7 +134,7 @@ def main() -> None:
                             # TODO: rotate path back to 0,0 so it can act as a marker_object
 
         else:  # no path, draw simple circle
-            radius = poi.get("circle_radius", args.circle_radius)
+            radius = poi.get("circle_radius", config.circle_radius)
             circle = Point([0, 0]).buffer(radius).boundary.segmentize(0.05)
             linestrings += rotate_linestrings(_linestrings_add_z([circle]), *_latlon_to_rotation_angles(poi["lat"], poi["lon"]))
             marker_geometry = circle
@@ -136,7 +147,7 @@ def main() -> None:
             # )
 
             # linear text
-            text = font.lines_for_text(poi["name"], args.font_size)
+            text = font.lines_for_text(poi["name"], config.font_size)
             angle = poi.get("label_angle", 0.0)
 
             geom = MultiLineString(text)
@@ -166,9 +177,8 @@ def main() -> None:
                 text = _linestrings_add_z(text)
                 linestrings += rotate_linestrings(text, *_latlon_to_rotation_angles(poi["label_lat"], poi["label_lon"]))
             else:
-
                 # TODO: extent of the marker_geometry bounding box in relation to the label_angle
-                dist = args.circle_radius * 1.30
+                dist = config.circle_radius * 1.30
 
                 text = [
                     shapely.affinity.translate(ls, xoff=dist * math.cos(math.radians(angle)), yoff=dist * math.sin(math.radians(angle)))

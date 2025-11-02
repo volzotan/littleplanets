@@ -8,6 +8,8 @@ import numpy as np
 import pyvista as pv
 import openexr_numpy
 import cv2
+import toml
+from pydantic import BaseModel, Field
 from scipy import ndimage
 
 import matplotlib.pyplot as plt
@@ -32,6 +34,11 @@ CUTOUT_THRESHOLD = 10
 IMAGE_SPACE_DIRECTION_STEP_DISTANCE = 0.01
 
 # EXPORT = False
+
+
+class ProcessBlenderConfig(BaseModel):
+    light_angle_xy: float = Field(default=45, description="Azimuthal angle φ (around Z-axis) of the lighting vector in degrees")
+    light_angle_z: float = Field(default=45, description="Polar angle θ (to Z-axis) of the lighting vector in degrees")
 
 
 def _normalize_vector(v: np.array) -> np.array:
@@ -193,24 +200,26 @@ def _apply_linear_transition(m: np.ndarray, min: float, max: float) -> np.ndarra
     return (np.clip(m, min, max) - min) / (max - min)
 
 
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser()
+
     parser.add_argument("normals", type=Path, default="normals.exr", help="Normals (EXR)")
     parser.add_argument("image", type=Path, default="image.tif", help="RGB image (TIFF)")
     parser.add_argument("raytrace", type=Path, default="raytrace.npy", help="Raytracing distance raster (NPY)")
-    parser.add_argument(
-        "--light-angle",
-        type=float,
-        nargs=2,
-        default=[45, 30],
-        help="[azimuthal angle φ (around Z-axis), polar angle θ (to Z-axis)] of the lighting vector in degrees",
-    )
     parser.add_argument("--projection-matrix", type=Path, default=None, help="3x4 projection matrix (NPY)")
     parser.add_argument("--scaling-factor", type=float, default=None, help="Scaling factor (float)")
     parser.add_argument("--output", type=Path, default="temp", help="Output directory")
+    parser.add_argument("--config", type=Path, help="Configuration file [TOML]")
     parser.add_argument("--debug", action="store_true", default=False, help="Enable debug output")
     parser.add_argument("--visualize", action="store_true", default=False, help="Enable interactive visualization")
+
     args = parser.parse_args()
+
+    config = ProcessBlenderConfig()
+    if args.config is not None:
+        with open(args.config, "r") as f:
+            data = toml.load(f)
+            config = ProcessBlenderConfig.model_validate(data)
 
     if args.debug:
         os.makedirs(DIR_DEBUG, exist_ok=True)
@@ -222,7 +231,8 @@ if __name__ == "__main__":
     img_gray = cv2.imread(str(args.image), cv2.IMREAD_GRAYSCALE)
     img_pxpos = np.load(args.raytrace)
 
-    azimuthal_angle, polar_angle = args.light_angle
+    azimuthal_angle = config.light_angle_xy
+    polar_angle = config.light_angle_z
     light_pos = [
         math.sin(math.radians(polar_angle)) * math.cos(math.radians(azimuthal_angle)),
         math.sin(math.radians(polar_angle)) * math.sin(math.radians(azimuthal_angle)),
@@ -573,3 +583,7 @@ if __name__ == "__main__":
         )
 
     print(f"total time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
+
+
+if __name__ == "__main__":
+    main()

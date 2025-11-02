@@ -103,13 +103,6 @@ DEM_FILE := $(DIR_DATA_LOWRES)/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif
 COLOR_FILE := $(DIR_DATA)/Mars_Viking_ClrMosaic_global_925m.tif
 POI_FILE := $(DIR_DATA)/Mars_poi.json
 
-ROT_X := -90
-ROT_Y := 85
-ROT_Z := -22.5
-
-LIGHT_ANGLE_XY := 67.5
-LIGHT_ANGLE_Z := 90 #50
-
 COLOR_1 := 240 126 50
 COLOR_2 := 65 102 174
 COLOR_OVERLAY := 255 255 255
@@ -151,17 +144,17 @@ $(DIR_BUILD)/mesh_blender.ply: $(DIR_BUILD)/blender_mesh.blend $(DIR_BLENDER)/ex
 
 # Overlays
 
-$(DIR_BUILD)/overlay_pois.npz: $(DIR_SRC)/overlay_pois.py $(POI_FILE)
+$(DIR_BUILD)/overlay_pois.npz: $(DIR_SRC)/overlay_pois.py $(POI_FILE) $(DIR_BUILD)/overlay_pois.toml
 	@echo "Create POI overlay"
-	uv run $^ --output $@ --rotX $(ROT_X) --rotY $(ROT_Y) --rotZ $(ROT_Z) --circle-radius 0.015 --font-size 0.020
+	uv run $(DIR_SRC)/overlay_pois.py $(POI_FILE) --output $@ --config $(DIR_BUILD)/overlay_pois.toml
 
-$(DIR_BUILD)/overlay_grid.npz: $(DIR_SRC)/overlay_grid.py
+$(DIR_BUILD)/overlay_grid.npz: $(DIR_SRC)/overlay_grid.py $(DIR_BUILD)/overlay_grid.toml
 	@echo "Create grid overlay"
-	uv run $^ --output $@ --rotX $(ROT_X) --rotY $(ROT_Y) --rotZ $(ROT_Z) --grid-num-lat 16 --grid-num-lon 8
+	uv run $(DIR_SRC)/overlay_grid.py --output $@ --config $(DIR_BUILD)/overlay_grid.toml
 
-$(DIR_BUILD)/overlay_axis.npz: $(DIR_SRC)/overlay_axis.py
+$(DIR_BUILD)/overlay_axis.npz: $(DIR_SRC)/overlay_axis.py $(DIR_BUILD)/overlay_axis.toml
 	@echo "Create axis overlay"
-	uv run $^ --output $@ --rotX $(ROT_X) --rotY $(ROT_Y) --rotZ $(ROT_Z)
+	uv run $(DIR_SRC)/overlay_axis.py --output $@ --config $(DIR_BUILD)/overlay_axis.toml
 
 
 #$(DIR_BUILD)/overlay_visible_%.npz: $(DIR_BUILD)/$(BLENDER_FILE) $(DIR_BLENDER)/export_overlay_lines.py $(DIR_BUILD)/overlay_%.npz
@@ -195,14 +188,13 @@ $(DIR_BUILD)/overlay_axis_cropped.npz: $(DIR_BUILD)/blender_mesh.blend $(DIR_BUI
 
 
 
-
 $(DIR_BUILD)/contours.npz: $(DIR_SRC)/contours.py $(DIR_BUILD)/normals.exr $(DIR_BUILD)/raytrace.npy
 	@echo "Computing contours"
 	uv run $^ --output $@
 
-$(DIR_BUILD)/mapping_color.png $(DIR_BUILD)/mapping_angle.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_background.png &: $(DIR_SRC)/process_blender.py $(DIR_BUILD)/normals.exr $(DIR_BUILD)/image.tif $(DIR_BUILD)/raytrace.npy $(DIR_BUILD)/projection_matrix.npy
+$(DIR_BUILD)/mapping_color.png $(DIR_BUILD)/mapping_angle.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_background.png &: $(DIR_SRC)/process_blender.py $(DIR_BUILD)/normals.exr $(DIR_BUILD)/image.tif $(DIR_BUILD)/raytrace.npy $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/process_blender.toml
 	@echo "Processing blender mappings: $@"
-	uv run $(DIR_SRC)/process_blender.py $(DIR_BUILD)/normals.exr $(DIR_BUILD)/image.tif $(DIR_BUILD)/raytrace.npy --light-angle $(LIGHT_ANGLE_XY) $(LIGHT_ANGLE_Z) --projection-matrix $(DIR_BUILD)/projection_matrix.npy --output $(DIR_BUILD)
+	uv run $(DIR_SRC)/process_blender.py $(DIR_BUILD)/normals.exr $(DIR_BUILD)/image.tif $(DIR_BUILD)/raytrace.npy --config $(DIR_BUILD)/process_blender.toml --projection-matrix $(DIR_BUILD)/projection_matrix.npy --output $(DIR_BUILD)
 
 $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_brightness_difference.png &: $(DIR_SRC)/palette.py $(DIR_BUILD)/image.tif
 	@echo "Processing palette colors"

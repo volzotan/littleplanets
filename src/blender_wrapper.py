@@ -9,6 +9,7 @@ Python wrapper for executing python scripts within Blender with arguments from a
 Required in order to detected changes in the config file with make and rebuild if necessary.
 """
 
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("blender_binary", type=Path, help="Path to the Blender binary")
@@ -32,6 +33,7 @@ def main() -> None:
     # print(" ".join([str(e) for e in command]))
 
     subprocess.run(command, check=True)
+
 
 if __name__ == "__main__":
     main()
