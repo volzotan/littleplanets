@@ -125,7 +125,7 @@ def _cut(objects: list[LineString], tools: list[LineString], buffer_radius: floa
                 for g in cut.geoms:
                     linestrings_cut.append(g)
             case _:
-                print(f"unexpected geometry: {g}")
+                print(f"unexpected geometry: {cut}")
 
     return linestrings_cut
 
