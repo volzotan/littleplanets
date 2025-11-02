@@ -29,7 +29,7 @@ parser.add_argument("--input", type=Path, default="mesh.ply", help="Input filena
 parser.add_argument("--rotX", type=float, default=0, help="rotation X in degrees [float]")
 parser.add_argument("--rotY", type=float, default=0, help="rotation Y in degrees [float]")
 parser.add_argument("--rotZ", type=float, default=0, help="rotation Z in degrees [float]")
-args = parser.parse_args()
+args, _ = parser.parse_known_args()
 
 scene = bpy.context.scene
 

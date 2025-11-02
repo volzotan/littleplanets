@@ -26,13 +26,26 @@ def main() -> None:
     args = parser.parse_args()
 
     data = load_toml(args.config)
-    for config_name, config_data in data.items():
-        filename = args.output / f"{config_name}.toml"
 
-        if filename.exists() and load_toml(filename) == config_data:
+    global_config = {}
+    sub_configs = {}
+
+    # collect all global values (global = not in a TOML table block [foo])
+    for config_name, config_data in data.items():
+        if type(config_data) is dict:
+            sub_configs[config_name] = config_data
+        else:
+            global_config[config_name] = config_data
+
+    # for each table block write the specific and global variables to a toml file of the same name
+    for config_name, config_data in sub_configs.items():
+        filename = args.output / f"{config_name}.toml"
+        combined_config = {**global_config, **config_data}
+
+        if filename.exists() and load_toml(filename) == combined_config:
             logger.info(f"Skip {filename}")
         else:
-            write_toml(filename, config_data)
+            write_toml(filename, combined_config)
             logger.info(f"Write {filename}")
 
 

@@ -1,56 +1,35 @@
-
-[import_ply]
-
 rotX = -90
 rotY = 84.375 # 360 / 32 (16 lat lines die aber je zweimal erscheinen) * 7.5 (7 lines und ne halbe)
 rotZ = -22.5
 
+colors = [[240, 126, 50], [65, 102, 174]]
+
+[import_ply]
 
 [overlay_pois]
-
-rotX = -90
-rotY = 84.375
-rotZ = -22.5
 
 circle_radius = 0.015
 font_size = 0.020
 
-
 [overlay_grid]
-
-rotX = -90
-rotY = 84.375
-rotZ = -22.5
 
 grid_lines_lat = 16
 grid_lines_lon = 8
 
-
 [overlay_axis]
-
-rotX = -90
-rotY = 84.375
-rotZ = -22.5
-
 
 [process_blender]
 
 light_angle_xy = 67.5
 light_angle_z = 90 #50
 
-
 [palette]
-
-colors = [[240, 126, 50], [65, 102, 174]]
-
 
 [hatch]
 
 blur_color_kernel_size_perc = 0.00
 blur_angle_kernel_size_perc = 0.40
 blur_distance_kernel_size_perc = 0.40
-
-colors = [[240, 126, 50], [65, 102, 174]]
 
 flowlines_line_distance = [0.6, 12.0]
 flowlines_line_max_length = [30, 30]
