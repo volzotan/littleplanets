@@ -1,6 +1,7 @@
 """
 Python wrapper for wget to load files specified in a TOML configuration file.
 """
+
 import argparse
 import subprocess
 from pathlib import Path
@@ -16,6 +17,7 @@ class DownloaderConfig(BaseModel):
 
 def _run(cmd: list) -> None:
     subprocess.run([str(e) for e in cmd], check=True)
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -36,6 +38,7 @@ def main() -> None:
     filename_surface_color = args.output_dir / "surface_color.tif"
     if not filename_surface_color.exists():
         _run(["wget", config.surface_color_uri, "-O", filename_surface_color])
+
 
 if __name__ == "__main__":
     main()

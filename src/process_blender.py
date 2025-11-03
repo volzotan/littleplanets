@@ -16,9 +16,6 @@ import matplotlib.pyplot as plt
 
 DIR_DEBUG = Path("debug")
 
-VISUALIZE = False
-EXPORT = True
-
 CROSS_FLOW = True
 
 CONTRAST_ENHANCEMENT = True
@@ -39,6 +36,8 @@ IMAGE_SPACE_DIRECTION_STEP_DISTANCE = 0.01
 class ProcessBlenderConfig(BaseModel):
     light_angle_xy: float = Field(default=45, description="Azimuthal angle φ (around Z-axis) of the lighting vector in degrees")
     light_angle_z: float = Field(default=45, description="Polar angle θ (to Z-axis) of the lighting vector in degrees")
+
+    mixture: list[float] = [0.035, 0.06]
 
 
 def _normalize_vector(v: np.array) -> np.array:
@@ -142,6 +141,20 @@ def _compute_intersections(centers: np.ndarray, normals: np.ndarray, axis: np.ar
     return intersections
 
 
+def _project_vectors_to_image_space(vector_positions: np.ndarray, vector_directions: np.ndarray, projection_matrix: np.ndarray) -> np.ndarray:
+    positions = vector_positions.reshape([-1, 3])
+    directions = _normalize_vectors(vector_directions).reshape([-1, 3]) * IMAGE_SPACE_DIRECTION_STEP_DISTANCE
+
+    p_image_space = _project_to_image_space(positions, projection_matrix)
+    p2_image_space = _project_to_image_space(positions + directions, projection_matrix)
+
+    vectors_image_space = p2_image_space - p_image_space
+    vectors_image_space = np.hstack([vectors_image_space, np.full([vectors_image_space.shape[0], 1], 0)])
+    vectors_image_space = vectors_image_space.reshape(vector_positions.shape)
+
+    return vectors_image_space
+
+
 def _export_angles(arr: np.ndarray, adjust_y_axis: bool = False) -> np.ndarray:
     if adjust_y_axis:  # blender Y up / numpy Y down
         arr[:, :, 1] *= -1
@@ -161,7 +174,7 @@ def _apply_clipping(m: np.ndarray, start_percentile: float, end_percentile: floa
 
 def _apply_colormap(img: np.ndarray, clip_bottom_percentile: float = 0, clip_top_percentile: float = 0) -> np.ndarray:
     if len(img.shape) > 2 and img.shape[2] > 1:
-        raise Exception("Can not apply colormap to multi-dimensional image")
+        raise Exception(f"Can not apply colormap to multi-dimensional image with shape {img.shape}")
 
     if clip_bottom_percentile > 0 or clip_top_percentile > 0:
         img = _apply_clipping(img, clip_bottom_percentile, clip_top_percentile)
@@ -284,20 +297,7 @@ def main() -> None:
 
     # calculation of angles in world space and image space
 
-    P = np.load(args.projection_matrix)
-
-    def _project_vectors_to_image_space(vector_positions: np.ndarray, vector_directions: np.ndarray, projection_matrix: np.ndarray) -> np.ndarray:
-        positions = vector_positions.reshape([-1, 3])
-        directions = _normalize_vectors(vector_directions).reshape([-1, 3]) * IMAGE_SPACE_DIRECTION_STEP_DISTANCE
-
-        p_image_space = _project_to_image_space(positions, projection_matrix)
-        p2_image_space = _project_to_image_space(positions + directions, P)
-
-        vectors_image_space = p2_image_space - p_image_space
-        vectors_image_space = np.hstack([vectors_image_space, np.full([vectors_image_space.shape[0], 1], 0)])
-        vectors_image_space = vectors_image_space.reshape(vector_positions.shape)
-
-        return vectors_image_space
+    projection_matrix = np.load(args.projection_matrix)
 
     img_direction_ws = img_direction
     img_elevation_direction_ws = img_elevation_direction
@@ -307,22 +307,10 @@ def main() -> None:
         img_direction_ws = np.cross(img_direction_ws, img_normals)
         img_elevation_direction_ws = np.cross(img_elevation_direction_ws, img_normals)
 
-    img_direction_is = _project_vectors_to_image_space(img_pxpos, img_direction_ws, P)
-    img_elevation_direction_is = _project_vectors_to_image_space(img_pxpos, img_elevation_direction_ws, P)
+    img_direction_is = _project_vectors_to_image_space(img_pxpos, img_direction_ws, projection_matrix)
+    img_elevation_direction_is = _project_vectors_to_image_space(img_pxpos, img_elevation_direction_ws, projection_matrix)
 
     # ---
-
-    if args.debug:
-        cv2.imwrite(
-            str(DIR_DEBUG / "img_elevation_magnitude.png"),
-            _apply_colormap(
-                img_elevation_magnitude,
-                # clip_bottom_percentile=0,
-                # clip_top_percentile=0.5
-            ),
-        )
-
-        cv2.imwrite(str(DIR_DEBUG / "mixture_elevation_magnitude.png"), _apply_colormap(mixture_elevation_magnitude))
 
     img_field_elevation_vectors_0 = np.zeros_like(img_direction)
     img_field_elevation_vectors_1 = np.zeros_like(img_direction)
@@ -398,8 +386,13 @@ def main() -> None:
 
     # image space - blend:
 
-    mixture = _apply_linear_transition(img_elevation_magnitude, 0.035, 0.06)
+    mixture = _apply_linear_transition(img_elevation_magnitude, config.mixture[0], config.mixture[1])
     img_field_elevation_vectors_10 = img_direction_is * (1 - mixture)[:, :, np.newaxis] + img_elevation_direction_is * mixture[:, :, np.newaxis]
+
+    if args.debug:
+        cv2.imwrite(str(DIR_DEBUG / "img_direction_is.png"), _apply_colormap(_export_angles(img_direction_is)))
+        cv2.imwrite(str(DIR_DEBUG / "img_elevation_direction_is.png"), _apply_colormap(_export_angles(img_elevation_direction_is)))
+        cv2.imwrite(str(DIR_DEBUG / "mixture.png"), _apply_colormap(mixture))
 
     # ---
 
@@ -504,83 +497,82 @@ def main() -> None:
         # foo /= 3000
         # visualize(centers, [foo], [], light_axis).show()
 
-    if EXPORT:
-        if CONTRAST_ENHANCEMENT:
-            clahe = cv2.createCLAHE(clipLimit=1.0, tileGridSize=(8, 8))
-            mapping_distance = cv2.addWeighted(clahe.apply(mapping_distance), CONTRAST_VALUE, mapping_distance, 1 - CONTRAST_VALUE, 0.0)
+    if CONTRAST_ENHANCEMENT:
+        clahe = cv2.createCLAHE(clipLimit=1.0, tileGridSize=(8, 8))
+        mapping_distance = cv2.addWeighted(clahe.apply(mapping_distance), CONTRAST_VALUE, mapping_distance, 1 - CONTRAST_VALUE, 0.0)
 
-        cv2.imwrite(str(args.output / "mapping_color.png"), mapping_color)
+    cv2.imwrite(str(args.output / "mapping_color.png"), mapping_color)
 
-        if CLIPPING:
-            minval = np.percentile(mapping_distance, CLIPPING_CUTOFF_PERCENTILE)
-            maxval = np.percentile(mapping_distance, 100 - CLIPPING_CUTOFF_PERCENTILE)
-            mapping_distance = np.clip(mapping_distance, minval, maxval)
-            mapping_distance = (((mapping_distance - minval) / (maxval - minval)) * 255).astype(np.uint8)
+    if CLIPPING:
+        minval = np.percentile(mapping_distance, CLIPPING_CUTOFF_PERCENTILE)
+        maxval = np.percentile(mapping_distance, 100 - CLIPPING_CUTOFF_PERCENTILE)
+        mapping_distance = np.clip(mapping_distance, minval, maxval)
+        mapping_distance = (((mapping_distance - minval) / (maxval - minval)) * 255).astype(np.uint8)
 
-        cv2.imwrite(str(args.output / "mapping_distance.png"), mapping_distance)
+    cv2.imwrite(str(args.output / "mapping_distance.png"), mapping_distance)
 
-        cv2.imwrite(str(args.output / "mapping_angle.png"), _export_angles(img_field_elevation_vectors_10))
+    cv2.imwrite(str(args.output / "mapping_angle.png"), _export_angles(img_field_elevation_vectors_10))
 
-        cv2.imwrite(str(args.output / "mapping_line_length.png"), mapping_line_length)
+    cv2.imwrite(str(args.output / "mapping_line_length.png"), mapping_line_length)
 
-        cv2.imwrite(str(args.output / "mapping_background.png"), mapping_background)
+    cv2.imwrite(str(args.output / "mapping_background.png"), mapping_background)
 
-        # ---
+    # ---
 
-        cv2.imwrite(
-            str(args.output / "mapping_angle_0.png"),
-            _export_angles(img_field_elevation_vectors_0, adjust_y_axis=True),
-        )
+    cv2.imwrite(
+        str(args.output / "mapping_angle_0.png"),
+        _export_angles(img_field_elevation_vectors_0, adjust_y_axis=True),
+    )
 
-        cv2.imwrite(
-            str(args.output / "mapping_angle_1.png"),
-            _export_angles(img_field_elevation_vectors_1, adjust_y_axis=True),
-        )
+    cv2.imwrite(
+        str(args.output / "mapping_angle_1.png"),
+        _export_angles(img_field_elevation_vectors_1, adjust_y_axis=True),
+    )
 
-        cv2.imwrite(
-            str(args.output / "mapping_angle_2.png"),
-            _export_angles(img_field_elevation_vectors_2, adjust_y_axis=True),
-        )
+    cv2.imwrite(
+        str(args.output / "mapping_angle_2.png"),
+        _export_angles(img_field_elevation_vectors_2, adjust_y_axis=True),
+    )
 
-        cv2.imwrite(
-            str(args.output / "mapping_angle_3.png"),
-            _export_angles(img_field_elevation_vectors_3, adjust_y_axis=True),
-        )
+    cv2.imwrite(
+        str(args.output / "mapping_angle_3.png"),
+        _export_angles(img_field_elevation_vectors_3, adjust_y_axis=True),
+    )
 
-        cv2.imwrite(
-            str(args.output / "mapping_angle_4.png"),
-            _export_angles(img_field_elevation_vectors_4, adjust_y_axis=True),
-        )
+    cv2.imwrite(
+        str(args.output / "mapping_angle_4.png"),
+        _export_angles(img_field_elevation_vectors_4, adjust_y_axis=True),
+    )
 
-        cv2.imwrite(
-            str(args.output / "mapping_angle_5.png"),
-            _export_angles(img_field_elevation_vectors_5, adjust_y_axis=True),
-        )
+    cv2.imwrite(
+        str(args.output / "mapping_angle_5.png"),
+        _export_angles(img_field_elevation_vectors_5, adjust_y_axis=True),
+    )
 
-        cv2.imwrite(
-            str(args.output / "mapping_angle_6.png"),
-            _export_angles(img_field_elevation_vectors_6, adjust_y_axis=True),
-        )
+    cv2.imwrite(
+        str(args.output / "mapping_angle_6.png"),
+        _export_angles(img_field_elevation_vectors_6, adjust_y_axis=True),
+    )
 
-        cv2.imwrite(
-            str(args.output / "mapping_angle_7.png"),
-            _export_angles(img_field_elevation_vectors_7, adjust_y_axis=True),
-        )
+    cv2.imwrite(
+        str(args.output / "mapping_angle_7.png"),
+        _export_angles(img_field_elevation_vectors_7, adjust_y_axis=True),
+    )
 
-        cv2.imwrite(
-            str(args.output / "mapping_angle_8.png"),
-            _export_angles(img_field_elevation_vectors_8),
-        )
+    cv2.imwrite(
+        str(args.output / "mapping_angle_8.png"),
+        _export_angles(img_field_elevation_vectors_8),
+    )
 
-        cv2.imwrite(
-            str(args.output / "mapping_angle_9.png"),
-            _export_angles(img_field_elevation_vectors_9),
-        )
+    cv2.imwrite(
+        str(args.output / "mapping_angle_9.png"),
+        _export_angles(img_field_elevation_vectors_9),
+    )
 
-        cv2.imwrite(
-            str(args.output / "mapping_angle_10.png"),
-            _export_angles(img_field_elevation_vectors_10),
-        )
+    cv2.imwrite(
+        str(args.output / "mapping_angle_10.png"),
+        _export_angles(img_field_elevation_vectors_10),
+    )
 
     print(f"total time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
 
