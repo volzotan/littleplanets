@@ -15,21 +15,21 @@ def main() -> None:
     parser.add_argument("blender_binary", type=Path, help="Path to the Blender binary")
     parser.add_argument("blender_file", type=Path, help="Path to the Blender file [BLEND]")
     parser.add_argument("python_script", type=Path, help="Path to the Python script executed within Blender")
-    parser.add_argument("--file", type=Path, help="Configuration file for values passed on to the script [TOML]")
-    parser.add_argument("--config", nargs="+", type=str, help="Additional strings passed as parameters")
+    parser.add_argument("--config", type=Path, help="Configuration file for values passed on to the script [TOML]")
+    parser.add_argument("--params", nargs="+", type=str, help="Additional strings passed as parameters")
     args = parser.parse_args()
 
-    file_values = []
-    with open(args.file) as f:
+    config_values = []
+    with open(args.config) as f:
         data = toml.load(f)
         for key, value in data.items():
-            file_values += [f"--{key}", str(value)]
+            config_values += [f"--{key}", str(value)]
 
-    config_values = []
-    for val in args.config:
-        config_values += val.split(" ")
+    params_values = []
+    for val in args.params:
+        params_values += val.split(" ")
 
-    command = [args.blender_binary, args.blender_file, "--background", "--python", args.python_script, "--"] + file_values + config_values
+    command = [args.blender_binary, args.blender_file, "--background", "--python", args.python_script, "--"] + config_values + params_values
     # print(" ".join([str(e) for e in command]))
 
     subprocess.run(command, check=True)
