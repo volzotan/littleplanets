@@ -3,6 +3,7 @@ import os
 import shutil
 import subprocess
 from concurrent.futures import ProcessPoolExecutor, as_completed
+import multiprocessing
 from pathlib import Path
 from typing import Any
 
@@ -12,21 +13,10 @@ from loguru import logger
 
 NUM_WORKERS = 4
 
-CONFIG_BASE_FILE = Path("config_hatch.toml")
-CONFIG_OVERRIDE_FILE = Path("config_hatch_override.toml")
-
-PY_FILE = "src/hatch.py"
-INKSCAPE_BIN = "/Applications/Inkscape.app/Contents/MacOS/inkscape"
-TEMP_DIR = Path("experiment_temp")
+CONFIG_BASE_FILE = Path("mars.toml")
 OUTPUT_DIR = Path("experiment_output")
 
-ARGUMENTS = [
-    "build/mapping_color.npy",
-    "build/mapping_angle_5.png",
-    "build/mapping_distance.png",
-    "build/mapping_line_length.png",
-    "build/mapping_flat.png",
-]
+MAKEFILE_TARGET = "test"
 
 VARIABLES = {
     #     "blur_angle_kernel_size_perc": [0.1, 0.2, 0.3, 0.4, 0.5],
@@ -38,8 +28,25 @@ VARIABLES = {
     #     "flowlines_line_max_length": [(3, 3), (6, 6), (12, 12), (16, 16), (20, 20), (30, 30), (40, 40)],
     #     # "flowlines_line_max_length": [(1, 16), (2, 16), (3, 16), (4, 16), (5, 16), (6, 16), (7, 16), (8, 16), (10, 16), (12, 16), (14, 16), (16, 16)],
     #     "flowlines_max_angle_discontinuity": [math.pi / 16, math.pi / 8, math.pi / 4, math.pi / 2]
-    "flowlines_line_distance": [(0.8, 5), (0.8, 10), (0.8, 15), (0.8, 20)],
+    # "hatch|flowlines_line_distance": [(0.8, 5.), (0.8, 10.), (0.8, 15.), (0.8, 20.)],
+    # "process_blender|mixture": [[0.010, 0.06], [0.015, 0.06], [0.020, 0.06], [0.025, 0.06], [0.030, 0.06], [0.035, 0.06], [0.040, 0.06], [0.045, 0.06], [0.050, 0.06]],
+    "process_blender|mixture": [
+        [0.03, 0.04],
+        [0.03, 0.045],
+        [0.03, 0.050],
+        [0.03, 0.055],
+        [0.03, 0.060],
+        [0.03, 0.065],
+        [0.03, 0.070],
+        [0.03, 0.080],
+        [0.03, 0.090],
+        [0.03, 0.100],
+    ],
 }
+
+
+def worker_get_build_dir() -> Path:
+    return Path(f"build_{multiprocessing.current_process().name}")
 
 
 def process(num_experiment: int, config_override: dict[str, Any]) -> None:
@@ -49,46 +56,39 @@ def process(num_experiment: int, config_override: dict[str, Any]) -> None:
     config_file = OUTPUT_DIR / (filename + ".toml")
     image_file = OUTPUT_DIR / (filename + ".png")
 
-    with open(config_file, "w") as f:
-        toml.dump(config_override, f)
+    # restructure "foo|bar: 3" to [foo] bar: 3, i.e. split off 'bar' into a sub-dict
+    config_override_restructured = {}
+    for key, value in config_override.items():
+        if "|" in key:
+            parent, child = key.split("|")[0:2]
 
-    svg_path = TEMP_DIR / f"{num_experiment}.svg"
+            if parent not in config_override_restructured:
+                config_override_restructured[parent] = {child: value}
+            else:
+                config_override_restructured[parent][child] = value
+        else:
+            config_override_restructured[key] = value
+
+    with open(config_file, "w") as f:
+        toml.dump(config_override_restructured, f)
+
+    build_dir = worker_get_build_dir()
 
     try:
         subprocess.run(
             [
-                "uv",
-                "run",
-                PY_FILE,
-                *ARGUMENTS,
-                "--config",
-                config_file,
-                # "--contours",
-                # "build/contours.npz",
-                "--output",
-                svg_path,
-                "--palette-color",
-                "240",
-                "126",
-                "50",
-                "--palette-color",
-                "65",
-                "102",
-                "174",
+                "make",
+                MAKEFILE_TARGET,
+                f"CONFIG={config_file}",
+                f"DIR_BUILD={build_dir}",
+                f"OUTPUT_PNG={image_file}",
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=True,
         )
 
-        subprocess.run(
-            [INKSCAPE_BIN, svg_path, f"--export-filename={image_file}", "--export-width=2000", "--export-background=#000000"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=True,
-        )
-
-        os.remove(svg_path)
+        # shutil.copy(build_dir.parent / Path(str(build_dir.stem) + "_debug") / "mixture.png", image_file)
 
     except Exception as e:
         logger.error(f"Subprocess failed: {e}")
@@ -112,24 +112,31 @@ def rec_looping(variables: dict[str, list[Any]], config_override: dict[str, Any]
         return [config_override]
 
 
+def worker_init() -> None:
+    build_dir = worker_get_build_dir()
+    logger.info(f"worker init {build_dir}")
+    os.makedirs(build_dir, exist_ok=True)
+    subprocess.run(
+        ["rsync", "-av", "build/", str(build_dir)],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=True,
+    )
+
+
 def main() -> None:
-    shutil.rmtree(TEMP_DIR)
     shutil.rmtree(OUTPUT_DIR)
-    os.makedirs(TEMP_DIR, exist_ok=True)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     total_experiments = math.prod([len(values) for values in VARIABLES.values()])
-    overrides = rec_looping(VARIABLES)
 
     with open(CONFIG_BASE_FILE, "rb") as f:
         base_config = tomllib.load(f)
 
-    overrides = [{**base_config, **override} for override in overrides]
-
-    # [process(i, config_override) for i, config_override in enumerate(overrides)]
+    overrides = [{**base_config, **override} for override in rec_looping(VARIABLES)]
 
     completed_experiments = 0
-    with ProcessPoolExecutor(NUM_WORKERS) as executor:
+    with ProcessPoolExecutor(max_workers=NUM_WORKERS, initializer=worker_init) as executor:
         futures = [executor.submit(process, i, config_override) for i, config_override in enumerate(overrides)]
 
         for future in as_completed(futures):
