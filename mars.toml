@@ -1,6 +1,5 @@
 rotX = -90
-# rotY = 84.375 # 360 / 32 (16 lat lines die aber je zweimal erscheinen) * 7.5 (7 lines und ne halbe)
-rotY = 78.75 # 360 / 32
+rotY = 84.375 # 360 / 32 * 7.5  (32 lines in total, 7.5 to be in between)
 rotZ = -22.5
 
 colors = [[240, 126, 50], [65, 102, 174]]
@@ -37,6 +36,7 @@ grid_lines_lon = 8
 
 light_angle_xy = 67.5
 light_angle_z = 90 #50
+mixture = [0.03, 0.07]
 
 [palette]
 
