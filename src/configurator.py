@@ -21,7 +21,7 @@ def write_toml(filename: Path, data: dict) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("config", type=Path, default="config.toml", help="Main TOML configuration file")
+    parser.add_argument("config", type=Path, help="Main TOML configuration file")
     parser.add_argument("--output", type=Path, default=Path("."), help="Output directory")
     args = parser.parse_args()
 

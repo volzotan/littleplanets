@@ -284,7 +284,6 @@ if __name__ == "__main__":
 
     # Coloring
     palette = np.array(config.colors, dtype=int)
-    print(palette)
     palette = np.delete(palette, np.where(np.min(palette, axis=1) < 0), axis=0)  # remove invalid palette colors
     palette = palette.astype(np.uint8)
 

@@ -14,8 +14,6 @@ from scipy import ndimage
 
 import matplotlib.pyplot as plt
 
-DIR_DEBUG = Path("debug")
-
 CROSS_FLOW = True
 
 CONTRAST_ENHANCEMENT = True
@@ -234,8 +232,10 @@ def main() -> None:
             data = toml.load(f)
             config = ProcessBlenderConfig.model_validate(data)
 
+    dir_debug = args.output.parent / (str(args.output.stem) + "_debug")
+
     if args.debug:
-        os.makedirs(DIR_DEBUG, exist_ok=True)
+        os.makedirs(dir_debug, exist_ok=True)
 
     timer_start = datetime.datetime.now()
 
@@ -390,9 +390,9 @@ def main() -> None:
     img_field_elevation_vectors_10 = img_direction_is * (1 - mixture)[:, :, np.newaxis] + img_elevation_direction_is * mixture[:, :, np.newaxis]
 
     if args.debug:
-        cv2.imwrite(str(DIR_DEBUG / "img_direction_is.png"), _apply_colormap(_export_angles(img_direction_is)))
-        cv2.imwrite(str(DIR_DEBUG / "img_elevation_direction_is.png"), _apply_colormap(_export_angles(img_elevation_direction_is)))
-        cv2.imwrite(str(DIR_DEBUG / "mixture.png"), _apply_colormap(mixture))
+        cv2.imwrite(str(dir_debug / "img_direction_is.png"), _apply_colormap(_export_angles(img_direction_is)))
+        cv2.imwrite(str(dir_debug / "img_elevation_direction_is.png"), _apply_colormap(_export_angles(img_elevation_direction_is)))
+        cv2.imwrite(str(dir_debug / "mixture.png"), _apply_colormap(mixture))
 
     # ---
 
