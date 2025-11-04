@@ -1,0 +1,43 @@
+rotX = -84.86 # -90 -5.14 lunar ortibal inclination, see https://en.wikipedia.org/wiki/Orbit_of_the_Moon#/media/File:Lunar_Orbit_and_Orientation_with_respect_to_the_Ecliptic.svg 
+rotY = 0
+rotZ = -6.68 # axial tilt
+
+colors = [[255, 255, 255]]
+
+[downloader]
+
+dem_uri = "https://planetarymaps.usgs.gov/mosaic/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"
+surface_color_uri = "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_poles.tif"
+
+[import_ply]
+
+[overlay_pois]
+
+circle_radius = 0.015
+font_size = 0.020
+
+[overlay_grid]
+
+grid_lines_lat = 16
+grid_lines_lon = 8
+
+[overlay_axis]
+
+[process_blender]
+
+light_angle_xy = 83.32
+light_angle_z = 90
+mixture = [0.03, 0.07]
+
+[palette]
+
+[hatch]
+
+blur_color_kernel_size_perc = 0.00
+blur_angle_kernel_size_perc = 0.40
+blur_distance_kernel_size_perc = 0.40
+
+flowlines_line_distance = [0.6, 12.0]
+flowlines_line_max_length = [30, 30]
+flowlines_line_distance_end_factor = 0.5
+flowlines_max_angle_discontinuity = 1.57 # pi/2

@@ -16,6 +16,9 @@ wheels/
 data/
 data_lowres/
 build/
+data_*/
+data_lowres_*/
+build_*/
 debug/
 
 experiment_output/

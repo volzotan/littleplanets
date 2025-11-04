@@ -12,9 +12,13 @@ PYPROJECT_FILE := pyproject.toml
 
 DIR_SRC := src
 DIR_DATA := data
-DIR_DATA_LOWRES := data_lowres
+DIR_DATA_LOWRES := $(DIR_DATA)_lowres
 DIR_BUILD := build
 DIR_DEBUG := debug
+
+CONFIG := mars.toml
+POI_FILE := $(DIR_DATA)/poi.json
+OUTPUT_PNG := littleplanets.png
 
 SCALING_FACTOR := 0.5
 
@@ -67,11 +71,6 @@ clean:
 #COLOR_1 := 255 255 255
 #COLOR_2 := 111 115 122
 
-# Mars
-
-POI_FILE := $(DIR_DATA)/Mars_poi.json
-CONFIG := mars.toml
-OUTPUT_PNG := littleplanets.png
 
 # ----------
 

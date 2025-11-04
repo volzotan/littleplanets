@@ -1,0 +1,38 @@
+[
+    {
+        "name": "Apollo 11",
+        "lat": 0.67409,
+        "lon": 23.47298,
+        "label_angle": 0
+    },
+    {
+        "name": "Apollo 12",
+        "lat": -3.01381,
+        "lon": -23.41930,
+        "label_angle": 0
+    },
+    {
+        "name": "Apollo 14",
+        "lat": -3.64544,
+        "lon": -17.47139,
+        "label_angle": 0
+    },
+    {
+        "name": "Apollo 15",
+        "lat": 26.13224,
+        "lon": 3.63400,
+        "label_angle": 0
+    },
+    {
+        "name": "Apollo 16",
+        "lat": -8.97341,
+        "lon": 15.49859,
+        "label_angle": 180
+    },
+    {
+        "name": "Apollo 17",
+        "lat": 20.18809,
+        "lon": 30.77475,
+        "label_angle": 180
+    }
+]

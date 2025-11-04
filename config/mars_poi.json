@@ -1,0 +1,95 @@
+[
+    {
+        "name": "Valles Marineris",
+        "lat": -13.9,
+        "lon": -59.2,
+        "label_lat": -16,
+        "label_lon": -50,
+        "label_angle": 0,
+        "path": "poi_paths/MarinersValley.kmz"
+    },
+    {
+        "name": "Olympus Mons",
+        "lat": 19,
+        "lon": -134,
+        "label_lat": 18,
+        "label_lon": -126,
+        "label_angle": 0,
+        "path": "poi_paths/OlympusMons.kmz"
+    },
+    {
+        "name": "Ascraeus Mons",
+        "lat": 11.76,
+        "lon": 255.55,
+        "label_lat": 11.5,
+        "label_lon": 260,
+        "label_angle": 0,
+        "path": "poi_paths/AscraeusMons.kmz"
+    },
+    {
+        "name": "Arsia Mons",
+        "lat": -8.35,
+        "lon": 239.91,
+        "label_lat": -8.35,
+        "label_lon": 245,
+        "label_angle": 0,
+        "path": "poi_paths/ArsiaMons.kmz"
+    },
+    {
+        "name": "Pavonis Mons",
+        "lat": 1.48,
+        "lon": 247.04,
+        "label_lat": 1.0,
+        "label_lon": 251,
+        "label_angle": 0,
+        "path": "poi_paths/PavonisMons.kmz"
+    },
+    {
+        "name": "Elysium Mons",
+        "lat": 25.02,
+        "lon": 147.21,
+        "label_angle": 0
+    },
+    {
+        "name": "Perseverance",
+        "lat": 18.38,
+        "lon": 77.58,
+        "label_angle": 0
+    },
+    {
+        "name": "Curiosity",
+        "lat": -4.589,
+        "lon": 137.44,
+        "label_angle": 0
+    },
+    {
+        "name": "Spirit",
+        "lat": -14.5692,
+        "lon": 175.4729,
+        "label_angle": 0
+    },
+    {
+        "name": "Opportunity",
+        "lat": -1.9462,
+        "lon": 354.4734,
+        "label_angle": 0
+    },
+    {
+        "name": "Sojourner",
+        "lat": 19.33,
+        "lon": -33.55,
+        "label_angle": 180
+    },
+    {
+        "name": "Viking 1",
+        "lat": 22.697,
+        "lon": -48.222,
+        "label_angle": 0
+    },
+    {
+        "name": "Viking 2",
+        "lat": 48.269,
+        "lon": -225.990,
+        "label_angle": 0
+    }
+]
