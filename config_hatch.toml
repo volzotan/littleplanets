@@ -1,8 +1,0 @@
-blur_color_kernel_size_perc = 0.00
-blur_angle_kernel_size_perc = 0.40
-blur_distance_kernel_size_perc = 0.40
-
-flowlines_line_distance = [0.6, 12]
-flowlines_line_max_length = [30, 30]
-flowlines_line_distance_end_factor = 0.5
-flowlines_max_angle_discontinuity = 1.57 # pi/2
