@@ -48,7 +48,7 @@ if obj is not None:
 
 # import
 
-bpy.ops.wm.ply_import(filepath="build/mesh.ply", global_scale=PLY_IMPORT_SCALE)
+bpy.ops.wm.ply_import(filepath=str(args.input), global_scale=PLY_IMPORT_SCALE)
 
 obj = bpy.context.selected_objects[0]
 obj.rotation_euler = (
