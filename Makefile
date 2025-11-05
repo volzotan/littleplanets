@@ -14,13 +14,12 @@ DIR_SRC := src
 DIR_DATA := data
 DIR_DATA_LOWRES := $(DIR_DATA)_lowres
 DIR_BUILD := build
+DIR_CONFIG := config
 DIR_DEBUG := debug
 
 CONFIG := mars.toml
-POI_FILE := $(DIR_DATA)/poi.json
+POI_FILE := $(DIR_CONFIG)/poi.json
 OUTPUT_PNG := littleplanets.png
-
-SCALING_FACTOR := 0.5
 
 # ----------
 
