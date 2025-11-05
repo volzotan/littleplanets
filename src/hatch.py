@@ -26,7 +26,7 @@ CUTOUT_STENCIL_CUT_DISTANCE = 1
 
 
 class HatchConfig(BaseModel):
-    dimensions: tuple[int, int] = (750, 750)
+    dimensions: tuple[int, int] = (1000, 1000)
     invert_color: bool = True
 
     colors: list[list[int]] = [[255, 255, 255]]

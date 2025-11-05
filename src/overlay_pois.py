@@ -40,14 +40,14 @@ def _latlon_to_cartesian(xs: list[float], ys: list[float], zs: list[float] = Non
         y[i] = math.cos(lats[i]) * math.sin(lons[i])
         z[i] = math.sin(lats[i])
 
-    return (x, y, z)
+    return x, y, z
 
 
 def _latlon_to_rotation_angles(lat: float, lon: float) -> tuple[float, float, float]:
     poi_rot_x = (lat * -1 + 90.0) / 180 * math.pi
     poi_rot_z = (lon) / 360 * math.tau
 
-    return (poi_rot_x, 0, poi_rot_z)
+    return poi_rot_x, 0, poi_rot_z
 
 
 def _linestrings_add_z(linestrings: list[LineString]) -> list[LineString]:
@@ -161,7 +161,7 @@ def main() -> None:
                 x += -center_x
             elif math.isclose(angle, 270):
                 x += -center_x
-            elif angle > 90 and angle < 270:
+            elif 90 < angle < 270:
                 x += -(geom.bounds[2] - geom.bounds[0])
             else:
                 pass
