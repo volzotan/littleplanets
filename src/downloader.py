@@ -9,15 +9,36 @@ from pathlib import Path
 import toml
 from pydantic import BaseModel
 
+from loguru import logger
 
 class DownloaderConfig(BaseModel):
-    dem_uri: Path
-    surface_color_uri: Path
+    dem_url: str
+    surface_color_url: str
 
 
 def _run(cmd: list) -> None:
     subprocess.run([str(e) for e in cmd], check=True)
 
+
+def download(url: str, filename: Path) -> None:
+    if len(str(url)) == 0:
+        logger.info("Skipping download: URI is empty")
+        return
+
+    if filename.exists():
+        logger.info(f"Skipping download: file {filename} already exists")
+        return
+
+    if "." not in url:
+        logger.error(f"Skipping download: cannot determine file type of URL {url}")
+    else:
+        if url[url.rfind("."):].lower() == ".tif":
+            _run(["wget", url, "-O", filename])
+        else:
+            original_filename = filename.parent / url[url.rfind("/")+1:]
+            logger.warning(f"Non-TIFF download file {original_filename}, attempting conversion")
+            _run(["wget", url, "--directory-prefix", filename.parent])
+            subprocess.run(["magick", str(original_filename), str(filename)], check=True)
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -31,13 +52,8 @@ def main() -> None:
             data = toml.load(f)
             config = DownloaderConfig(**data)
 
-    filename_dem = args.output_dir / "dem.tif"
-    if not filename_dem.exists():
-        _run(["wget", config.dem_uri, "-O", filename_dem])
-
-    filename_surface_color = args.output_dir / "surface_color.tif"
-    if not filename_surface_color.exists():
-        _run(["wget", config.surface_color_uri, "-O", filename_surface_color])
+    download(config.dem_url, args.output_dir / "dem.tif")
+    download(config.surface_color_url, args.output_dir / "surface_color.tif")
 
 
 if __name__ == "__main__":
