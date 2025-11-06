@@ -19,6 +19,7 @@ class ArgumentParserForBlender(argparse.ArgumentParser):
     def parse_args(self):
         return super().parse_args(args=self._get_argv_after_doubledash())
 
+# ---
 
 parser = ArgumentParserForBlender()
 parser.add_argument("--output", type=Path, default="mesh_blender.ply", help="Output filename [PLY]")

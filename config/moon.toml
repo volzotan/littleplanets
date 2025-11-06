@@ -1,4 +1,4 @@
-rotX = -84.86 # -90 -5.14 lunar ortibal inclination, see https://en.wikipedia.org/wiki/Orbit_of_the_Moon#/media/File:Lunar_Orbit_and_Orientation_with_respect_to_the_Ecliptic.svg 
+rotX = -84.86 # -90 -5.14 lunar orbital inclination, see https://en.wikipedia.org/wiki/Orbit_of_the_Moon#/media/File:Lunar_Orbit_and_Orientation_with_respect_to_the_Ecliptic.svg
 rotY = 0
 rotZ = -6.68 # axial tilt
 

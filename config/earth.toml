@@ -2,7 +2,7 @@ rotX = -90
 rotY = 0
 rotZ = -23.44
 
-colors = [[0, 255, 0], [0, 0, 255]]
+colors = [[65, 102, 174], [240, 126, 50], [3, 168, 115]]
 
 [downloader]
 
@@ -11,6 +11,11 @@ dem_url = ""
 
 # source: https://visibleearth.nasa.gov/images/57730/the-blue-marble-land-surface-ocean-color-and-sea-ice
 surface_color_url = "https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57730/land_ocean_ice_8192.png"
+
+[adjust_camera]
+
+horizontal_width = 2.2
+camera_focal_length = 90.0
 
 [mesh]
 

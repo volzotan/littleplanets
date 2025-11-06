@@ -64,5 +64,10 @@
         "total_cover": true,
         "on_white": [0, 154, 194],
         "on_black": [0, 154, 194]
+    },
+    "phthalogrün": {
+        "total_cover": true,
+        "on_white": [3, 168, 115],
+        "on_black": [3, 168, 115]
     }
 }
