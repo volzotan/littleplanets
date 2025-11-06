@@ -23,11 +23,13 @@ def main() -> None:
     with open(args.config) as f:
         data = toml.load(f)
         for key, value in data.items():
+            key = key.replace("_", "-")
             config_values += [f"--{key}", str(value)]
 
     params_values = []
-    for val in args.params:
-        params_values += val.split(" ")
+    if args.params is not None:
+        for val in args.params:
+            params_values += val.split(" ")
 
     command = [args.blender_binary, args.blender_file, "--background", "--python", args.python_script, "--"] + config_values + params_values
     # print(" ".join([str(e) for e in command]))
