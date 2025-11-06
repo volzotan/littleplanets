@@ -11,10 +11,12 @@ import tomllib
 import toml
 from loguru import logger
 
-NUM_WORKERS = 4
+NUM_WORKERS = 2
 
-CONFIG_BASE_FILE = Path("mars.toml")
+CONFIG_BASE_FILE = Path("config/earth.toml")
 OUTPUT_DIR = Path("experiment_output")
+BUILD_DIR_BASE = Path("build_earth") # base build dir from which initial files are copied
+DATA_DIR = Path("data_earth")
 
 MAKEFILE_TARGET = "test"
 
@@ -30,18 +32,19 @@ VARIABLES = {
     #     "flowlines_max_angle_discontinuity": [math.pi / 16, math.pi / 8, math.pi / 4, math.pi / 2]
     # "hatch|flowlines_line_distance": [(0.8, 5.), (0.8, 10.), (0.8, 15.), (0.8, 20.)],
     # "process_blender|mixture": [[0.010, 0.06], [0.015, 0.06], [0.020, 0.06], [0.025, 0.06], [0.030, 0.06], [0.035, 0.06], [0.040, 0.06], [0.045, 0.06], [0.050, 0.06]],
-    "process_blender|mixture": [
-        [0.03, 0.04],
-        [0.03, 0.045],
-        [0.03, 0.050],
-        [0.03, 0.055],
-        [0.03, 0.060],
-        [0.03, 0.065],
-        [0.03, 0.070],
-        [0.03, 0.080],
-        [0.03, 0.090],
-        [0.03, 0.100],
-    ],
+    # "process_blender|mixture": [
+    #     [0.03, 0.04],
+    #     [0.03, 0.045],
+    #     [0.03, 0.050],
+    #     [0.03, 0.055],
+    #     [0.03, 0.060],
+    #     [0.03, 0.065],
+    #     [0.03, 0.070],
+    #     [0.03, 0.080],
+    #     [0.03, 0.090],
+    #     [0.03, 0.100],
+    # ],
+    "adjust_camera|camera_focal_length": [30, 50, 70, 150]
 }
 
 
@@ -116,12 +119,16 @@ def worker_init() -> None:
     build_dir = worker_get_build_dir()
     logger.info(f"worker init {build_dir}")
     os.makedirs(build_dir, exist_ok=True)
-    subprocess.run(
-        ["rsync", "-av", "build/", str(build_dir)],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        check=True,
-    )
+
+    if BUILD_DIR_BASE is not None:
+        subprocess.run(
+            ["rsync", "-av", str(BUILD_DIR_BASE) + "/", str(build_dir) + "/"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True,
+        )
+
+    logger.info(f"worker init {build_dir} completed")
 
 
 def main() -> None:

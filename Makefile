@@ -85,13 +85,18 @@ $(DIR_DATA_LOWRES)/dem.tif: $(DIR_SRC)/resize_DEM.py $(DIR_DATA)/dem.tif
 	@echo "Resize $@"
 	uv run $^ $@ 0.25
 
-$(DIR_BUILD)/mesh.ply: $(DIR_SRC)/mesh.py $(DIR_DATA_LOWRES)/dem.tif $(DIR_DATA)/surface_color.tif
+$(DIR_BUILD)/mesh.ply: $(DIR_SRC)/mesh.py $(DIR_DATA_LOWRES)/dem.tif $(DIR_DATA)/surface_color.tif $(DIR_BUILD)/mesh.toml
 	@echo "Generating mesh"
-	uv run $^ --output $@ --scale 0.04 --subdivision 10
+	uv run $(DIR_SRC)/mesh.py $(DIR_DATA_LOWRES)/dem.tif $(DIR_DATA)/surface_color.tif --output $@ --config $(DIR_BUILD)/mesh.toml
 
-$(DIR_BUILD)/blender_mesh.blend: $(DIR_SRC)/blender_wrapper.py $(DIR_BLENDER)/import_ply.py $(DIR_BUILD)/mesh.ply $(DIR_BUILD)/import_ply.toml
-	@echo "Running blender mesh update"
+$(DIR_BUILD)/blender_camera.blend: $(DIR_BLENDER)/$(BLENDER_FILE) $(DIR_SRC)/blender_wrapper.py $(DIR_BLENDER)/adjust_camera.py $(DIR_BUILD)/adjust_camera.toml
+	@echo "Running blender camera update"
 	cp $(DIR_BLENDER)/$(BLENDER_FILE) $@
+	uv run $(DIR_SRC)/blender_wrapper.py $(BLENDER_BIN) $@ $(DIR_BLENDER)/adjust_camera.py --config $(DIR_BUILD)/adjust_camera.toml
+
+$(DIR_BUILD)/blender_mesh.blend: $(DIR_BUILD)/blender_camera.blend $(DIR_SRC)/blender_wrapper.py $(DIR_BLENDER)/import_ply.py $(DIR_BUILD)/mesh.ply $(DIR_BUILD)/import_ply.toml
+	@echo "Running blender mesh update"
+	cp $(DIR_BUILD)/blender_camera.blend $@
 	uv run $(DIR_SRC)/blender_wrapper.py $(BLENDER_BIN) $@ $(DIR_BLENDER)/import_ply.py --config $(DIR_BUILD)/import_ply.toml --params "--input $(DIR_BUILD)/mesh.ply"
 
 $(DIR_BUILD)/raytrace.npy: $(DIR_BUILD)/blender_mesh.blend $(DIR_BLENDER)/raytracing.py
