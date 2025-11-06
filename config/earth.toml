@@ -12,6 +12,11 @@ dem_url = ""
 # source: https://visibleearth.nasa.gov/images/57730/the-blue-marble-land-surface-ocean-color-and-sea-ice
 surface_color_url = "https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57730/land_ocean_ice_8192.png"
 
+[mesh]
+
+scale = 0.04
+subdivision = 10
+
 [import_ply]
 
 [overlay_pois]

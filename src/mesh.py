@@ -13,6 +13,8 @@ import numpy as np
 import pyvista as pv
 from shapely.geometry import LineString
 import cv2
+import toml
+from pydantic import BaseModel, Field
 
 # since the magnitude of the elevation direction vector is so small
 # a strong weight is required in order to have _any_ noticeable effect
@@ -685,17 +687,28 @@ def write_obj(plotter: pv.Plotter, filename: Path) -> None:
     plotter.export_obj(filename)
 
 
-if __name__ == "__main__":
+class MeshConfig(BaseModel):
+    scale: float = Field(default=0.10, description="Scaling factor")
+    blur: int = Field(default=100, description="Elevation raster blurring kernel size")
+    subdivision: int = Field(default=10, description="Number of subdivision steps")
+
+
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("elevation_raster", type=Path, help="Elevation raster data in the GeoTiff format")
     parser.add_argument("color_raster", type=Path, help="Surface color raster data in the Tiff format")
     parser.add_argument("--output", type=Path, default="mesh.ply", help="Output filename [PLY]")
-    parser.add_argument("--scale", type=float, default=0.10, help="Scaling factor (float)")
-    parser.add_argument("--blur", type=int, default=100, help="Elevation raster blurring kernel size (int)")
-    parser.add_argument("--subdivision", type=int, default=10, help="Number of subdivision steps (int)")
+    parser.add_argument("--config", type=Path, help="Configuration file [TOML]")
     parser.add_argument("--debug", action="store_true", default=False, help="Write debug output")
 
     args = parser.parse_args()
+
+    config = MeshConfig()
+    if args.config is not None:
+        with open(args.config, "r") as f:
+            data = toml.load(f)
+            config = MeshConfig.model_validate(data)
+
     os.makedirs(args.output if args.output.is_dir() else args.output.parent, exist_ok=True)
 
     # WRITE
@@ -719,10 +732,10 @@ if __name__ == "__main__":
     if args.debug:
         cv2.imwrite(str(DIR_DEBUG / "color_raster.png"), color_raster)
 
-    if args.blur is not None and args.blur > 1:
-        dem_raster = cv2.blur(dem_raster, (args.blur, args.blur))
+    if config.blur is not None and config.blur > 1:
+        dem_raster = cv2.blur(dem_raster, (config.blur, config.blur))
 
-    poly = project(subdivide(tetrahedron(), n=args.subdivision), dem_raster, scale=args.scale)
+    poly = project(subdivide(tetrahedron(), n=config.subdivision), dem_raster, scale=config.scale)
     write_ply(
         add_color(poly, color_raster, color_vertices=True),
         args.output,
@@ -777,3 +790,6 @@ if __name__ == "__main__":
     # # visualize(poly, []).show()
     #
     # visualize_lines(poly, lines).show()
+
+if __name__ == "__main__":
+    main()
