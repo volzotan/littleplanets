@@ -132,8 +132,11 @@ def worker_init() -> None:
 
 
 def main() -> None:
-    shutil.rmtree(OUTPUT_DIR)
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    try:
+        shutil.rmtree(OUTPUT_DIR)
+    except FileNotFoundError:
+        pass
+    os.makedirs(OUTPUT_DIR)
 
     total_experiments = math.prod([len(values) for values in VARIABLES.values()])
 
