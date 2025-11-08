@@ -1,6 +1,7 @@
 import argparse
 import math
 from pathlib import Path
+from datetime import datetime
 
 import numpy as np
 import shapely
@@ -40,6 +41,8 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default="overlay_projected.npz", help="Output filename [NPZ]")
     args = parser.parse_args()
 
+    timer_start = datetime.now()
+
     linestrings = [LineString(e) for e in list(np.load(args.linestrings).values())]
 
     mesh = trimesh.load(args.mesh)
@@ -52,6 +55,8 @@ def main() -> None:
 
     projected_linestrings = [LineString(project_vertices(tree, shapely.get_coordinates(l, include_z=True), SCALE)) for l in linestrings]
     write_linestrings_to_npz(args.output, projected_linestrings)
+
+    print("Completed overlay projection of {} in: {:.3f}s".format(args.mesh, (datetime.now() - timer_start).total_seconds()))
 
 
 if __name__ == "__main__":

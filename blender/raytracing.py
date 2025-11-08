@@ -6,6 +6,7 @@ import numpy as np
 import sys
 import argparse
 from pathlib import Path
+from datetime import datetime
 from mathutils import Vector
 
 # camera property calculations from:
@@ -64,8 +65,9 @@ resolution_y = int(bpy.context.scene.render.resolution_y * (bpy.context.scene.re
 x_range = np.linspace(top_left[0], top_right[0], resolution_x)
 y_range = np.linspace(top_left[1], bottom_left[1], resolution_y)
 
-values = np.full([resolution_y, resolution_x, 3], np.nan, dtype=float)
+timer_start = datetime.now()
 
+values = np.full([resolution_y, resolution_x, 3], np.nan, dtype=float)
 origin = cam.matrix_world.translation
 
 for x in range(resolution_x):
@@ -97,7 +99,7 @@ for x in range(resolution_x):
 with open(args.output, "wb") as f:
     np.save(f, values)
 
-print(f"Raytracing complete. Data written to file {args.output}")
+print("Completed in: {:.3f}s".format((datetime.now() - timer_start).total_seconds()))
 
 if not DEBUG:
     bpy.ops.wm.quit_blender()
