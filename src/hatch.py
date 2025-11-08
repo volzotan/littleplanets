@@ -14,6 +14,8 @@ import shapely.ops
 from pydantic import BaseModel, Field
 from shapely import LineString, MultiLineString
 
+from loguru import logger
+
 from util import flowlines
 from svgwriter import SvgWriter
 
@@ -90,7 +92,9 @@ def _split_linestring(ls: LineString, max_length: float) -> list[LineString]:
     return split_ls
 
 
-def _match_linestrings_to_palette(linestrings: list[LineString], palette: np.ndarray, scaling_factor: float = 1.0) -> list[list[LineString]]:
+def _match_linestrings_to_palette(
+    linestrings: list[LineString], mapping: np.ndarray, palette: np.ndarray, scaling_factor: float = 1.0
+) -> list[list[LineString]]:
     linestrings_split_by_palette: list[list[LineString]] = [[] for _ in range(len(palette))]
 
     if len(palette) == 1:
@@ -99,7 +103,8 @@ def _match_linestrings_to_palette(linestrings: list[LineString], palette: np.nda
     for ls in linestrings:
         if len(ls.coords) < 2:
             continue
-        all_pixels = np.nan_to_num(np.array([mapping_color[int(p[1] * 1 / scaling_factor), int(p[0] * 1 / scaling_factor)] for p in ls.coords]))
+
+        all_pixels = np.nan_to_num(np.array([mapping[int(p[1] * 1 / scaling_factor), int(p[0] * 1 / scaling_factor)] for p in ls.coords]))
         mean = np.mean(all_pixels, axis=0)
         palette_color_index = 0
 
@@ -109,6 +114,28 @@ def _match_linestrings_to_palette(linestrings: list[LineString], palette: np.nda
         linestrings_split_by_palette[palette_color_index].append(ls)
 
     return linestrings_split_by_palette
+
+
+def _check_linestrings_within_bounds(linestrings: list[LineString], xmin: float, ymin: float, xmax: float, ymax: float) -> list[LineString]:
+    checked_linestrings = []
+    box = shapely.box(xmin, ymin, xmax, ymax)
+
+    for ls in linestrings:
+        if ls.within(box):
+            checked_linestrings.append(ls)
+        else:
+            g = shapely.intersection(box, ls)
+            match g:
+                case LineString():
+                    if len(g.coords) >= 2:
+                        checked_linestrings.append(g)
+                case MultiLineString():
+                    for sg in g.geoms:
+                        checked_linestrings.append(sg)
+                case _:
+                    logger.warning(f"unexpected geometry: {g}")
+
+    return checked_linestrings
 
 
 def _cut(objects: list[LineString], tools: list[LineString], buffer_radius: float) -> list[LineString]:
@@ -199,6 +226,7 @@ if __name__ == "__main__":
             overlay_npz = np.load(overlay_path)
             overlay_ls = [LineString(arr) for arr in overlay_npz.values()]
             overlay_ls = [_project_linestring(l, P, scaling_factor) for l in overlay_ls]
+            overlay_ls = _check_linestrings_within_bounds(overlay_ls, 0, 0, config.dimensions[0], config.dimensions[1])
             linestrings_overlays += overlay_ls
 
     # TODO: contours don't need to be projected, but they need to be scaled (currently missing!)
@@ -331,7 +359,7 @@ if __name__ == "__main__":
                 "fill-opacity": "1.0",
             }
 
-        linestrings_overlay_palette = _match_linestrings_to_palette(linestrings_overlays, palette, scaling_factor)
+        linestrings_overlay_palette = _match_linestrings_to_palette(linestrings_overlays, mapping_color, palette, scaling_factor)
         for i, colored_linestrings in enumerate(linestrings_overlay_palette):
             svg.add(f"overlay_{i}", colored_linestrings)
 
@@ -340,7 +368,7 @@ if __name__ == "__main__":
 
     # svg.add("contours", linestrings_contours)
 
-    linestrings_palette = _match_linestrings_to_palette(linestrings, palette, scaling_factor)
+    linestrings_palette = _match_linestrings_to_palette(linestrings, mapping_color, palette, scaling_factor)
     for i, colored_linestrings in enumerate(linestrings_palette):
         svg.add(f"lines_{i}", colored_linestrings)
 
