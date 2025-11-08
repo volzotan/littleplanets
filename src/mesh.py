@@ -791,5 +791,6 @@ def main() -> None:
     #
     # visualize_lines(poly, lines).show()
 
+
 if __name__ == "__main__":
     main()

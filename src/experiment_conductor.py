@@ -15,7 +15,7 @@ NUM_WORKERS = 2
 
 CONFIG_BASE_FILE = Path("config/earth.toml")
 OUTPUT_DIR = Path("experiment_output")
-BUILD_DIR_BASE = Path("build_earth") # base build dir from which initial files are copied
+BUILD_DIR_BASE = Path("build_earth")  # base build dir from which initial files are copied
 DATA_DIR = Path("data_earth")
 
 MAKEFILE_TARGET = "test"

@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from loguru import logger
 
+
 class DownloaderConfig(BaseModel):
     dem_url: str
     surface_color_url: str
@@ -32,13 +33,14 @@ def download(url: str, filename: Path) -> None:
     if "." not in url:
         logger.error(f"Skipping download: cannot determine file type of URL {url}")
     else:
-        if url[url.rfind("."):].lower() == ".tif":
+        if url[url.rfind(".") :].lower() == ".tif":
             _run(["wget", url, "-O", filename])
         else:
-            original_filename = filename.parent / url[url.rfind("/")+1:]
+            original_filename = filename.parent / url[url.rfind("/") + 1 :]
             logger.warning(f"Non-TIFF download file {original_filename}, attempting conversion")
             _run(["wget", url, "--directory-prefix", filename.parent])
             subprocess.run(["magick", str(original_filename), str(filename)], check=True)
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
