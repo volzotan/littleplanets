@@ -18,6 +18,16 @@ dem_url = "https://planetarymaps.usgs.gov/mosaic/Mars/HRSC_MOLA_Blend/Mars_HRSC_
 # source: https://astrogeology.usgs.gov/search/map/mars_viking_global_color_mosaic_925m
 surface_color_url = "https://planetarymaps.usgs.gov/mosaic/Mars_Viking_ClrMosaic_global_925m.tif"
 
+[modify_DEM]
+
+scaling_factor = 0.25
+floor = 0
+
+[adjust_camera]
+
+horizontal_width = 2.2
+camera_focal_length = 50.0
+
 [mesh]
 
 scale = 0.04
