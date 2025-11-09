@@ -83,7 +83,7 @@ $(DIR_DATA)/dem.tif $(DIR_DATA)/surface_color.tif: $(DIR_SRC)/downloader.py $(DI
 
 $(DIR_DATA_LOWRES)/dem.tif: $(DIR_SRC)/modify_DEM.py $(DIR_DATA)/dem.tif $(DIR_BUILD)/modify_DEM.toml
 	@echo "Modify DEM $@"
-	uv run $(DIR_SRC)/modify_DEM.py $(DIR_DATA)/dem.tif $@ --config $(DIR_BUILD)/mesh.toml
+	uv run $(DIR_SRC)/modify_DEM.py $(DIR_DATA)/dem.tif $@ --config $(DIR_BUILD)/modify_DEM.toml
 
 $(DIR_BUILD)/mesh.ply: $(DIR_SRC)/mesh.py $(DIR_DATA_LOWRES)/dem.tif $(DIR_DATA)/surface_color.tif $(DIR_BUILD)/mesh.toml
 	@echo "Generating mesh"
