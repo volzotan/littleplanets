@@ -38,41 +38,6 @@ clean:
 
 # ----------
 
-# Moon
-
-#$(DIR_DATA)/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif:
-#	@echo "Downloading digital elevation model data"
-#	wget -N https://planetarymaps.usgs.gov/mosaic/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif -O $@
-#
-#$(DIR_DATA_LOWRES)/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif: $(DIR_SRC)/resize_DEM.py $(DIR_DATA)/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif
-#	@echo "Resize $@"
-#	uv run $^ $@ 0.25
-#
-#$(DIR_DATA)/lroc_color_poles.tif:
-#	@echo "Downloading surface color data"
-#	wget https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_poles.tif -O $@
-#
-#$(DIR_BUILD)/lroc_color_poles_imagemagick_contrast.tif: $(DIR_DATA)/lroc_color_poles.tif
-#	@echo "Increasing contrast for surface color data"
-#	magick $^ -level 20%,95% -brightness-contrast 0x10 $@
-
-#DEM_FILE := $(DIR_DATA_LOWRES)/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif
-#COLOR_FILE := $(DIR_BUILD)/lroc_color_poles_imagemagick_contrast.tif
-#POI_FILE := $(DIR_DATA)/Moon_apollo_landing_sites.json
-#
-#ROT_X := -90
-#ROT_Y := 90
-#ROT_Z := -6.68
-#
-#LIGHT_ANGLE_XY := 83.32
-#LIGHT_ANGLE_Z := 60
-#
-#COLOR_1 := 255 255 255
-#COLOR_2 := 111 115 122
-
-
-# ----------
-
 $(DIR_BUILD)/%.toml: $(DIR_SRC)/configurator.py $(CONFIG)
 	@echo "Configurator for file $(CONFIG)"
 	uv run $^ --output $(DIR_BUILD)
@@ -185,7 +150,6 @@ $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_brightness_difference.png &:
 		--palette-brightness-difference $(DIR_BUILD)/mapping_brightness_difference.png \
 		--config $(DIR_BUILD)/palette.toml
 
-
 run: $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_background.png
 run: $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_grid_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz
 run: $(DIR_SRC)/hatch.py
@@ -203,7 +167,6 @@ run: $(DIR_SRC)/hatch.py
 		--config $(DIR_BUILD)/hatch.toml 						\
 		--output $(DIR_BUILD)/littleplanets.svg
 	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=$(OUTPUT_PNG) --export-width=2000 --export-background=#000000
-
 
 run_palette: $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_background.png
 run_palette: $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_grid_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz $(DIR_BUILD)/hatch.toml
@@ -230,7 +193,6 @@ gcode_crop: $(DIR_BUILD)/littleplanets.svg
 	uv run svgtogcode.py $^ --crop 375 375 100 400
 
 # ----------
-
 
 test: $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_background.png
 test: $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/hatch.toml
