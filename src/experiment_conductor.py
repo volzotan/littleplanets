@@ -13,12 +13,15 @@ from loguru import logger
 
 NUM_WORKERS = 2
 
-CONFIG_BASE_FILE = Path("config/earth.toml")
-OUTPUT_DIR = Path("experiment_output")
-BUILD_DIR_BASE = Path("build_earth")  # base build dir from which initial files are copied
-DATA_DIR = Path("data_earth")
+PLANET = "mars"
 
-MAKEFILE_TARGET = "test"
+CONFIG_BASE_FILE = Path(f"config/{PLANET}.toml")
+OUTPUT_DIR = Path("experiment_output")
+BUILD_DIR_BASE = Path(f"build_{PLANET}")  # base build dir from which initial files are copied
+DATA_DIR = Path(f"data_{PLANET}")
+POI_FILE = Path(f"config/{PLANET}_poi.json")
+
+MAKEFILE_TARGET = "run_palette"
 
 VARIABLES = {
     #     "blur_angle_kernel_size_perc": [0.1, 0.2, 0.3, 0.4, 0.5],
@@ -44,7 +47,7 @@ VARIABLES = {
     #     [0.03, 0.090],
     #     [0.03, 0.100],
     # ],
-    "adjust_camera|camera_focal_length": [30, 50, 70, 150]
+    "adjust_camera|camera_focal_length": [20, 30, 40, 50, 90, 150, 300]
 }
 
 
@@ -81,13 +84,15 @@ def process(num_experiment: int, config_override: dict[str, Any]) -> None:
         subprocess.run(
             [
                 "make",
-                MAKEFILE_TARGET,
+                "setup", MAKEFILE_TARGET,
                 f"CONFIG={config_file}",
+                f"DIR_DATA={DATA_DIR}",
                 f"DIR_BUILD={build_dir}",
+                f"POI_FILE={POI_FILE}",
                 f"OUTPUT_PNG={image_file}",
             ],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            # stdout=subprocess.DEVNULL,
+            # stderr=subprocess.DEVNULL,
             check=True,
         )
 

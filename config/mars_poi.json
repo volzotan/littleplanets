@@ -6,7 +6,7 @@
         "label_lat": -16,
         "label_lon": -50,
         "label_angle": 0,
-        "path": "poi_paths/MarinersValley.kmz"
+        "path": "mars_paths/MarinersValley.kmz"
     },
     {
         "name": "Olympus Mons",
@@ -15,7 +15,7 @@
         "label_lat": 18,
         "label_lon": -126,
         "label_angle": 0,
-        "path": "poi_paths/OlympusMons.kmz"
+        "path": "mars_paths/OlympusMons.kmz"
     },
     {
         "name": "Ascraeus Mons",
@@ -24,7 +24,7 @@
         "label_lat": 11.5,
         "label_lon": 260,
         "label_angle": 0,
-        "path": "poi_paths/AscraeusMons.kmz"
+        "path": "mars_paths/AscraeusMons.kmz"
     },
     {
         "name": "Arsia Mons",
@@ -33,7 +33,7 @@
         "label_lat": -8.35,
         "label_lon": 245,
         "label_angle": 0,
-        "path": "poi_paths/ArsiaMons.kmz"
+        "path": "mars_paths/ArsiaMons.kmz"
     },
     {
         "name": "Pavonis Mons",
@@ -42,7 +42,7 @@
         "label_lat": 1.0,
         "label_lon": 251,
         "label_angle": 0,
-        "path": "poi_paths/PavonisMons.kmz"
+        "path": "mars_paths/PavonisMons.kmz"
     },
     {
         "name": "Elysium Mons",

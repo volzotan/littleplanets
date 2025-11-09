@@ -12,7 +12,6 @@ PYPROJECT_FILE := pyproject.toml
 
 DIR_SRC := src
 DIR_DATA := data
-DIR_DATA_LOWRES := $(DIR_DATA)_lowres
 DIR_BUILD := build
 DIR_CONFIG := config
 DIR_DEBUG := debug
@@ -28,13 +27,11 @@ all: setup run
 setup: $(PYPROJECT_FILE)
 	@echo "Sync Environment"
 	mkdir -p $(DIR_BUILD)
-	mkdir -p $(DIR_DATA_LOWRES)
 	mkdir -p $(DIR_DEBUG)
 	uv sync
 
 clean:
 	rm -r $(DIR_BUILD)
-	rm -r $(DIR_DATA_LOWRES)
 
 # ----------
 
@@ -46,13 +43,13 @@ $(DIR_DATA)/dem.tif $(DIR_DATA)/surface_color.tif: $(DIR_SRC)/downloader.py $(DI
 	@echo "Downloader"
 	uv run $(DIR_SRC)/downloader.py --output-dir $(DIR_DATA) --config $(DIR_BUILD)/downloader.toml
 
-$(DIR_DATA_LOWRES)/dem.tif: $(DIR_SRC)/modify_DEM.py $(DIR_DATA)/dem.tif $(DIR_BUILD)/modify_DEM.toml
+$(DIR_BUILD)/dem.tif: $(DIR_SRC)/modify_DEM.py $(DIR_DATA)/dem.tif $(DIR_BUILD)/modify_DEM.toml
 	@echo "Modify DEM $@"
 	uv run $(DIR_SRC)/modify_DEM.py $(DIR_DATA)/dem.tif $@ --config $(DIR_BUILD)/modify_DEM.toml
 
-$(DIR_BUILD)/mesh.ply: $(DIR_SRC)/mesh.py $(DIR_DATA_LOWRES)/dem.tif $(DIR_DATA)/surface_color.tif $(DIR_BUILD)/mesh.toml
+$(DIR_BUILD)/mesh.ply: $(DIR_SRC)/mesh.py $(DIR_BUILD)/dem.tif $(DIR_DATA)/surface_color.tif $(DIR_BUILD)/mesh.toml
 	@echo "Generating mesh"
-	uv run $(DIR_SRC)/mesh.py $(DIR_DATA_LOWRES)/dem.tif $(DIR_DATA)/surface_color.tif --output $@ --config $(DIR_BUILD)/mesh.toml
+	uv run $(DIR_SRC)/mesh.py $(DIR_BUILD)/dem.tif $(DIR_DATA)/surface_color.tif --output $@ --config $(DIR_BUILD)/mesh.toml
 
 $(DIR_BUILD)/blender_camera.blend: $(DIR_BLENDER)/$(BLENDER_FILE) $(DIR_SRC)/blender_wrapper.py $(DIR_BLENDER)/adjust_camera.py $(DIR_BUILD)/adjust_camera.toml
 	@echo "Running blender camera update"
