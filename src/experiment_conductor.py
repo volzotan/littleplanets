@@ -11,14 +11,14 @@ import tomllib
 import toml
 from loguru import logger
 
-NUM_WORKERS = 2
+NUM_WORKERS = 3
 
-PLANET = "mars"
+PLANET = "earth"
 
 FILE_CONFIG_BASE = Path(f"config/{PLANET}.toml")
 FILE_POI = Path(f"config/{PLANET}_poi.json")
 DIR_OUTPUT = Path("experiment_output")
-DIR_BUILD_BASE = Path(f"build_{PLANET}")  # base build dir from which initial files are copied
+DIR_BUILD_BASE = None # Path(f"build_{PLANET}")  # base build dir from which initial files are copied
 DIR_DATA = Path(f"data_{PLANET}")
 
 MAKEFILE_TARGET = "run_palette"
@@ -86,13 +86,13 @@ def process(num_experiment: int, config_override: dict[str, Any]) -> None:
             [
                 "make", # "-j4",
                 "setup", MAKEFILE_TARGET,
-                f"CONFIG={config_file}",
+                f"CONFIG_FILE={config_file}",
                 f"DIR_DATA={DIR_DATA}",
                 f"DIR_BUILD={build_dir}",
                 f"POI_FILE={FILE_POI}",
                 f"OUTPUT_PNG={image_file}",
             ],
-            stdout=subprocess.DEVNULL,
+            # stdout=subprocess.DEVNULL,
             # stderr=subprocess.DEVNULL,
             check=True,
         )
