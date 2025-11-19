@@ -8,6 +8,8 @@ from pathlib import Path
 
 import toml
 from pydantic import BaseModel
+import numpy as np
+import tifffile
 
 from loguru import logger
 
@@ -22,12 +24,13 @@ def _run(cmd: list) -> None:
 
 
 def download(url: str, filename: Path) -> None:
-    if len(str(url)) == 0:
-        logger.info("Skipping download: URI is empty")
-        return
-
     if filename.exists():
         logger.info(f"Skipping download: file {filename} already exists")
+        return
+
+    if len(str(url)) == 0:
+        logger.info(f"Skipping download: URI is empty, writing zero value file to {filename}")
+        tifffile.imwrite(filename, np.ones([1, 1, 1], dtype=float))
         return
 
     if "." not in url:
