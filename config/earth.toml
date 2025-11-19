@@ -84,3 +84,7 @@ subdivision = 10
 
 [overlay_clouds_hatch]
 
+flowlines_line_distance = [0.6, 12.0]
+flowlines_line_max_length = [30, 30]
+flowlines_line_distance_end_factor = 0.5
+flowlines_max_angle_discontinuity = 1.57 # pi/2

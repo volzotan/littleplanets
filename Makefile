@@ -236,7 +236,8 @@ run_palette: $(DIR_SRC)/combine.py
 		$(DIR_BUILD)/mapping_background.png 					\
 		--hatchlines $(DIR_BUILD)/hatchlines.npz				\
 		--cutouts $(DIR_BUILD)/overlay_grid_cropped.npz 		\
-		--overlays $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz $(DIR_BUILD)/overlay_clouds.npz 		\
+		--overlays $(DIR_BUILD)/overlay_clouds.npz 				\
+		--overlays-world-space $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz \
 		--projection-matrix $(DIR_BUILD)/projection_matrix.npy  \
 		--contours $(DIR_BUILD)/contours.npz					\
 		--config $(DIR_BUILD)/combine.toml 						\

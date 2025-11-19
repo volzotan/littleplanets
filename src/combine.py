@@ -113,6 +113,9 @@ def _check_linestrings_within_bounds(linestrings: list[LineString], xmin: float,
     box = shapely.box(xmin, ymin, xmax - 1, ymax - 1)
 
     for ls in linestrings:
+        if not ls.is_valid:
+            continue
+
         if ls.within(box):
             checked_linestrings.append(ls)
         else:
@@ -126,6 +129,8 @@ def _check_linestrings_within_bounds(linestrings: list[LineString], xmin: float,
                         checked_linestrings.append(sg)
                 case _:
                     logger.warning(f"unexpected geometry: {g}")
+
+    logger.info(f"check_linestrings_within_bounds, failed linestrings: {len(linestrings)-len(checked_linestrings)}")
 
     return checked_linestrings
 
@@ -158,6 +163,7 @@ if __name__ == "__main__":
     parser.add_argument("--hatchlines", type=Path, help="Hatchline linestrings (NPZ)")
     parser.add_argument("--cutouts", type=Path, nargs="*", default=[], help="Cutout linestrings, multiple filenames possible (NPZ)")
     parser.add_argument("--overlays", type=Path, nargs="*", default=[], help="Overlay linestrings, multiple filenames possible (NPZ)")
+    parser.add_argument("--overlays-world-space", type=Path, nargs="*", default=[], help="Overlay linestrings in world space, projection matrix required, multiple filenames possible (NPZ)")
     parser.add_argument("--contours", type=Path, default=None, help="Contour linestrings (NPZ)")
 
     parser.add_argument("--projection-matrix", type=Path, default=None, help="3x4 projection matrix (NPY)")
@@ -192,12 +198,14 @@ if __name__ == "__main__":
     scaling_factor = config.dimensions[0] / mapping_background.shape[1]
 
     linestrings = []
+
     if args.hatchlines is not None:
         hatchlines_npz = np.load(args.hatchlines)
         linestrings = [LineString(arr) for arr in hatchlines_npz.values()]
         # linestrings = [shapely.affinity.scale(ls, xfact=scaling_factor, yfact=scaling_factor, origin=(0, 0)) for ls in linestrings]
 
     linestrings_cutouts = []
+
     if len(args.cutouts) > 0:
         P = np.load(args.projection_matrix)
         for cutout_path in args.cutouts:
@@ -207,17 +215,21 @@ if __name__ == "__main__":
             linestrings_cutouts += cutout_ls
 
     linestrings_overlays = []
+
     if len(args.overlays) > 0:
-        P = np.load(args.projection_matrix)
         for overlay_path in args.overlays:
             overlay_npz = np.load(overlay_path)
             overlay_ls = [LineString(arr) for arr in overlay_npz.values()]
+            overlay_ls = _check_linestrings_within_bounds(overlay_ls, 0, 0, config.dimensions[0], config.dimensions[1])
+            linestrings_overlays += overlay_ls
 
-            # print(overlay_ls)
-            # print(overlay_path)
-
+    if len(args.overlays_world_space) > 0:
+        P = np.load(args.projection_matrix)
+        for overlay_path in args.overlays_world_space:
+            overlay_npz = np.load(overlay_path)
+            overlay_ls = [LineString(arr) for arr in overlay_npz.values()]
             overlay_ls = [_project_linestring(l, P, scaling_factor) for l in overlay_ls]
-            # overlay_ls = _check_linestrings_within_bounds(overlay_ls, 0, 0, config.dimensions[0], config.dimensions[1])
+            overlay_ls = _check_linestrings_within_bounds(overlay_ls, 0, 0, config.dimensions[0], config.dimensions[1])
             linestrings_overlays += overlay_ls
 
     # TODO: contours don't need to be projected, but they need to be scaled (currently missing!)
@@ -238,7 +250,7 @@ if __name__ == "__main__":
     # cut buffered overlay from hatched linestrings
     timer_start = datetime.datetime.now()
     linestrings = _cut(linestrings, linestrings_cutouts, CUTOUT_STENCIL_CUT_DISTANCE / 2)
-    # linestrings = _cut(linestrings, linestrings_overlays, OVERLAY_STENCIL_CUT_DISTANCE / 2)
+    linestrings = _cut(linestrings, linestrings_overlays, OVERLAY_STENCIL_CUT_DISTANCE / 2)
     print(f"stencil time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
 
     # linestrings_stencil = []

@@ -88,9 +88,9 @@ def main() -> None:
     mapping_background = np.zeros(img_pxpos.shape[0:2], dtype=np.uint8)
     mapping_background[np.isnan(np.sum(img_pxpos, axis=2))] = 255
 
-    # mask = image_rotated >= 200
-    # image_rotated[mask] = 255
-    # image_rotated[~mask] = 0
+    mask = image_rotated >= 150
+    image_rotated[mask] = 255
+    image_rotated[~mask] = 0
 
     if DEBUG:
         cv2.imwrite(str(DIR_DEBUG / "overlay_clouds.png"), image_rotated)
