@@ -35,7 +35,7 @@ args, _ = parser.parse_known_args()
 bpy.context.scene.render.filepath = str(args.render_output_dir)
 
 for node in bpy.context.scene.node_tree.nodes:
-    if not node.type == 'OUTPUT_FILE':
+    if not node.type == "OUTPUT_FILE":
         continue
 
     node.base_path = str(args.render_output_dir)

@@ -35,6 +35,7 @@ class CombineConfig(BaseModel):
     # Blurring kernel size, percentage of raster size(float)
     blur_color_kernel_size_perc: float = Field(0, ge=0)
 
+
 def _project_linestring(ls: LineString, P: np.ndarray, scaling_factor: float) -> LineString:
     xyz = shapely.get_coordinates(ls, include_z=True)
     coordinates = np.hstack([xyz, np.full([xyz.shape[0], 1], 1)])  # [x, y, z, w=1]
@@ -109,7 +110,7 @@ def _match_linestrings_to_palette(
 
 def _check_linestrings_within_bounds(linestrings: list[LineString], xmin: float, ymin: float, xmax: float, ymax: float) -> list[LineString]:
     checked_linestrings = []
-    box = shapely.box(xmin, ymin, xmax-1, ymax-1)
+    box = shapely.box(xmin, ymin, xmax - 1, ymax - 1)
 
     for ls in linestrings:
         if ls.within(box):
@@ -211,8 +212,12 @@ if __name__ == "__main__":
         for overlay_path in args.overlays:
             overlay_npz = np.load(overlay_path)
             overlay_ls = [LineString(arr) for arr in overlay_npz.values()]
+
+            # print(overlay_ls)
+            # print(overlay_path)
+
             overlay_ls = [_project_linestring(l, P, scaling_factor) for l in overlay_ls]
-            overlay_ls = _check_linestrings_within_bounds(overlay_ls, 0, 0, config.dimensions[0], config.dimensions[1])
+            # overlay_ls = _check_linestrings_within_bounds(overlay_ls, 0, 0, config.dimensions[0], config.dimensions[1])
             linestrings_overlays += overlay_ls
 
     # TODO: contours don't need to be projected, but they need to be scaled (currently missing!)
@@ -222,10 +227,9 @@ if __name__ == "__main__":
         linestrings_contours = [LineString(arr) for arr in contours_npz.values()]
         linestrings_contours = [shapely.affinity.scale(ls, xfact=scaling_factor, yfact=scaling_factor, origin=(0, 0)) for ls in linestrings_contours]
 
-
     # merge contours with hatchlines
     linestrings_contours_split = itertools.chain.from_iterable(
-        [_split_linestring(ls, 10.0) for ls in linestrings_contours] # TODO: set max_length to a sensible value
+        [_split_linestring(ls, 10.0) for ls in linestrings_contours]  # TODO: set max_length to a sensible value
     )
     linestrings += linestrings_contours_split
 
@@ -234,7 +238,7 @@ if __name__ == "__main__":
     # cut buffered overlay from hatched linestrings
     timer_start = datetime.datetime.now()
     linestrings = _cut(linestrings, linestrings_cutouts, CUTOUT_STENCIL_CUT_DISTANCE / 2)
-    linestrings = _cut(linestrings, linestrings_overlays, OVERLAY_STENCIL_CUT_DISTANCE / 2)
+    # linestrings = _cut(linestrings, linestrings_overlays, OVERLAY_STENCIL_CUT_DISTANCE / 2)
     print(f"stencil time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
 
     # linestrings_stencil = []

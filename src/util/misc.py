@@ -140,6 +140,7 @@ def rotate_points(points: list[np.ndarray], x: float, y: float, z: float) -> lis
 
     return [R_z @ R_y @ R_x @ p for p in points]
 
+
 def rotate_points_inv(points: list[np.ndarray], x: float, y: float, z: float) -> list[np.ndarray]:
     R_x = np.array(
         [

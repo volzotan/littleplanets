@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from loguru import logger
 
+
 class ModifyDemConfig(BaseModel):
     scaling_factor: float | None = None
     floor: float | None = None
@@ -50,15 +51,9 @@ def _read(input_path: Path) -> np.ndarray:
 
 
 def _rescale(data: np.ndarray, scaling_factor: float) -> np.ndarray:
+    new_size = (max(int(data.shape[1] * scaling_factor), 1), max(int(data.shape[0] * scaling_factor), 1))
 
-    new_size = (
-        max(int(data.shape[1] * scaling_factor), 1),
-        max(int(data.shape[0] * scaling_factor), 1)
-    )
-
-    return cv2.resize(data, new_size, interpolation=cv2.INTER_AREA).astype(
-        data.dtype
-    )
+    return cv2.resize(data, new_size, interpolation=cv2.INTER_AREA).astype(data.dtype)
 
 
 def _write(output_path: Path, data: np.ndarray, options: dict[str, Any] = {}) -> None:

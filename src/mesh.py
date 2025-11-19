@@ -691,7 +691,9 @@ def write_obj(plotter: pv.Plotter, filename: Path) -> None:
 
 class MeshConfig(BaseModel):
     scale: float = Field(default=0.10, description="Scaling factor")
-    fixed_elevation_scale: float | None = Field(default=None, description="A fixed scale value [-1, +1] that uniformly overrides elevation raster data")
+    fixed_elevation_scale: float | None = Field(
+        default=None, description="A fixed scale value [-1, +1] that uniformly overrides elevation raster data"
+    )
     blur: int = Field(default=100, description="Elevation raster blurring kernel size")
     subdivision: int = Field(default=10, description="Number of subdivision steps")
 
@@ -728,7 +730,7 @@ def main() -> None:
     color_raster = load_raster(args.color)
     color_raster = np.transpose(color_raster[0:3, :, :], (1, 2, 0))  # from [3, rows, cols] to [rows, cols, 3]
 
-    if color_raster.shape[2] == 1: # grayscale color image, i.e. cloud cover map
+    if color_raster.shape[2] == 1:  # grayscale color image, i.e. cloud cover map
         color_raster = np.dstack([color_raster, color_raster, color_raster])
 
     dem_raster = shift_center_to_origin(dem_raster)

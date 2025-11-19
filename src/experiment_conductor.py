@@ -18,7 +18,7 @@ PLANET = "earth"
 FILE_CONFIG_BASE = Path(f"config/{PLANET}.toml")
 FILE_POI = Path(f"config/{PLANET}_poi.json")
 DIR_OUTPUT = Path("experiment_output")
-DIR_BUILD_BASE = None # Path(f"build_{PLANET}")  # base build dir from which initial files are copied
+DIR_BUILD_BASE = None  # Path(f"build_{PLANET}")  # base build dir from which initial files are copied
 DIR_DATA = Path(f"data_{PLANET}")
 
 MAKEFILE_TARGET = "run_palette"
@@ -48,7 +48,7 @@ VARIABLES = {
     #     [0.03, 0.100],
     # ],
     "adjust_camera|camera_focal_length": [10, 15, 20, 30, 50, 90, 150, 300],
-    "mesh|scale": [0.01, 0.02, 0.04, 0.06, 0.08]
+    "mesh|scale": [0.01, 0.02, 0.04, 0.06, 0.08],
 }
 
 
@@ -84,8 +84,9 @@ def process(num_experiment: int, config_override: dict[str, Any]) -> None:
     try:
         subprocess.run(
             [
-                "make", # "-j4",
-                "setup", MAKEFILE_TARGET,
+                "make",  # "-j4",
+                "setup",
+                MAKEFILE_TARGET,
                 f"CONFIG_FILE={config_file}",
                 f"DIR_DATA={DIR_DATA}",
                 f"DIR_BUILD={build_dir}",

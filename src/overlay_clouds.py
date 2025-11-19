@@ -16,6 +16,7 @@ from util.misc import write_linestrings_to_npz, rotate_linestrings, visualize_li
 DEBUG = True
 DIR_DEBUG = Path("debug")
 
+
 class OverlayCloudsConfig(BaseModel):
     rotX: float = 0
     rotY: float = 0
@@ -27,6 +28,7 @@ class OverlayCloudsConfig(BaseModel):
     # flowlines_line_max_length: tuple[float, float] = (5, 25)
     # flowlines_line_distance_end_factor: float = Field(0.25, ge=0, le=1.0)
     # flowlines_max_angle_discontinuity: float = Field(math.pi / 12, gt=0, lt=math.tau)
+
 
 def _map(raster: np.ndarray, lat: float, lon: float) -> np.ndarray:
     height, width = raster.shape
@@ -65,7 +67,7 @@ def main() -> None:
     # img_pxpos = cv2.resize(img_pxpos, (500, 500))  # TODO
     # map_clouds = cv2.resize(map_clouds, (500, 500))  # TODO
 
-    map_clouds = np.roll(map_clouds, int(map_clouds.shape[0] / 2), axis=1) # shift center to origin
+    map_clouds = np.roll(map_clouds, int(map_clouds.shape[0] / 2), axis=1)  # shift center to origin
 
     image_rotated = np.zeros_like(img_pxpos, dtype=np.uint8)
     for y in range(img_pxpos.shape[0]):
@@ -79,9 +81,9 @@ def main() -> None:
 
             d = math.sqrt(np.sum(np.power(p, 2)))
             lat = math.acos(p[2] / d)
-            lon = math.atan2(p[1] / d, p[0] / d) # - math.pi/2
+            lon = math.atan2(p[1] / d, p[0] / d)  # - math.pi/2
 
-            image_rotated[y, x] = _map(map_clouds, lat, lon).astype(np.uint8),
+            image_rotated[y, x] = (_map(map_clouds, lat, lon).astype(np.uint8),)
 
     mapping_background = np.zeros(img_pxpos.shape[0:2], dtype=np.uint8)
     mapping_background[np.isnan(np.sum(img_pxpos, axis=2))] = 255
@@ -91,7 +93,7 @@ def main() -> None:
     # image_rotated[~mask] = 0
 
     if DEBUG:
-        cv2.imwrite(str(DIR_DEBUG / "overlay_cloud.png"), image_rotated)
+        cv2.imwrite(str(DIR_DEBUG / "overlay_clouds.png"), image_rotated)
 
     # exit()
 

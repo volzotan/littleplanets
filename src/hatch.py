@@ -54,7 +54,7 @@ def _blur_raster(raster: np.ndarray, perc: float) -> np.ndarray:
 
 def _check_linestrings_within_bounds(linestrings: list[LineString], xmin: float, ymin: float, xmax: float, ymax: float) -> list[LineString]:
     checked_linestrings = []
-    box = shapely.box(xmin, ymin, xmax-1, ymax-1)
+    box = shapely.box(xmin, ymin, xmax - 1, ymax - 1)
 
     for ls in linestrings:
         if ls.within(box):
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     # else:
     #     mapping_background[mapping_distance < CUTOUT_THRESHOLD] = 255
 
-    if config.invert_color: # white ink on black paper, invert grayscale image
+    if config.invert_color:  # white ink on black paper, invert grayscale image
         mapping_distance = ~mapping_distance
 
     if args.debug:
