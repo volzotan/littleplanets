@@ -11,15 +11,15 @@ import tomllib
 import toml
 from loguru import logger
 
-NUM_WORKERS = 2
+NUM_WORKERS = 3
 
-PLANET = "mars"
+PLANET = "earth"
 
-CONFIG_BASE_FILE = Path(f"config/{PLANET}.toml")
-OUTPUT_DIR = Path("experiment_output")
-BUILD_DIR_BASE = Path(f"build_{PLANET}")  # base build dir from which initial files are copied
-DATA_DIR = Path(f"data_{PLANET}")
-POI_FILE = Path(f"config/{PLANET}_poi.json")
+FILE_CONFIG_BASE = Path(f"config/{PLANET}.toml")
+FILE_POI = Path(f"config/{PLANET}_poi.json")
+DIR_OUTPUT = Path("experiment_output")
+DIR_BUILD_BASE = None # Path(f"build_{PLANET}")  # base build dir from which initial files are copied
+DIR_DATA = Path(f"data_{PLANET}")
 
 MAKEFILE_TARGET = "run_palette"
 
@@ -47,7 +47,8 @@ VARIABLES = {
     #     [0.03, 0.090],
     #     [0.03, 0.100],
     # ],
-    "adjust_camera|camera_focal_length": [20, 30, 40, 50, 90, 150, 300]
+    "adjust_camera|camera_focal_length": [10, 15, 20, 30, 50, 90, 150, 300],
+    "mesh|scale": [0.01, 0.02, 0.04, 0.06, 0.08]
 }
 
 
@@ -59,8 +60,8 @@ def process(num_experiment: int, config_override: dict[str, Any]) -> None:
     # logger.info(f"Executing experiment {num_experiment:> 5}")
 
     filename = f"experiment_{num_experiment}"
-    config_file = OUTPUT_DIR / (filename + ".toml")
-    image_file = OUTPUT_DIR / (filename + ".png")
+    config_file = DIR_OUTPUT / (filename + ".toml")
+    image_file = DIR_OUTPUT / (filename + ".png")
 
     # restructure "foo|bar: 3" to [foo] bar: 3, i.e. split off 'bar' into a sub-dict
     config_override_restructured = {}
@@ -83,12 +84,12 @@ def process(num_experiment: int, config_override: dict[str, Any]) -> None:
     try:
         subprocess.run(
             [
-                "make",
+                "make", # "-j4",
                 "setup", MAKEFILE_TARGET,
-                f"CONFIG={config_file}",
-                f"DIR_DATA={DATA_DIR}",
+                f"CONFIG_FILE={config_file}",
+                f"DIR_DATA={DIR_DATA}",
                 f"DIR_BUILD={build_dir}",
-                f"POI_FILE={POI_FILE}",
+                f"POI_FILE={FILE_POI}",
                 f"OUTPUT_PNG={image_file}",
             ],
             # stdout=subprocess.DEVNULL,
@@ -125,9 +126,9 @@ def worker_init() -> None:
     logger.info(f"worker init {build_dir}")
     os.makedirs(build_dir, exist_ok=True)
 
-    if BUILD_DIR_BASE is not None:
+    if DIR_BUILD_BASE is not None:
         subprocess.run(
-            ["rsync", "-av", str(BUILD_DIR_BASE) + "/", str(build_dir) + "/"],
+            ["rsync", "-av", str(DIR_BUILD_BASE) + "/", str(build_dir) + "/"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=True,
@@ -138,14 +139,14 @@ def worker_init() -> None:
 
 def main() -> None:
     try:
-        shutil.rmtree(OUTPUT_DIR)
+        shutil.rmtree(DIR_OUTPUT)
     except FileNotFoundError:
         pass
-    os.makedirs(OUTPUT_DIR)
+    os.makedirs(DIR_OUTPUT)
 
     total_experiments = math.prod([len(values) for values in VARIABLES.values()])
 
-    with open(CONFIG_BASE_FILE, "rb") as f:
+    with open(FILE_CONFIG_BASE, "rb") as f:
         base_config = tomllib.load(f)
 
     overrides = [{**base_config, **override} for override in rec_looping(VARIABLES)]

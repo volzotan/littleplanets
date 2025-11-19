@@ -16,8 +16,8 @@ DIR_BUILD := build
 DIR_CONFIG := config
 DIR_DEBUG := debug
 
-CONFIG := mars.toml
-POI_FILE := $(DIR_CONFIG)/poi.json
+CONFIG_FILE := $(DIR_CONFIG)/mars.toml
+POI_FILE := $(DIR_CONFIG)/mars_poi.json
 OUTPUT_PNG := littleplanets.png
 
 # ----------
@@ -36,7 +36,7 @@ clean:
 
 # ----------
 
-$(DIR_BUILD)/%.toml: $(DIR_SRC)/configurator.py $(CONFIG)
+$(DIR_BUILD)/%.toml: $(DIR_SRC)/configurator.py $(CONFIG_FILE)
 	@echo "Configurator for file $(CONFIG)"
 	uv run $^ --output $(DIR_BUILD)
 
@@ -52,9 +52,14 @@ $(DIR_BUILD)/mesh.ply: $(DIR_SRC)/mesh.py $(DIR_BUILD)/dem.tif $(DIR_DATA)/surfa
 	@echo "Generating mesh"
 	uv run $(DIR_SRC)/mesh.py --elevation $(DIR_BUILD)/dem.tif --color $(DIR_DATA)/surface_color.tif --output $@ --config $(DIR_BUILD)/mesh.toml
 
-$(DIR_BUILD)/blender_camera.blend: $(DIR_BLENDER)/$(BLENDER_FILE) $(DIR_SRC)/blender_wrapper.py $(DIR_BLENDER)/adjust_camera.py $(DIR_BUILD)/adjust_camera.toml
-	@echo "Running blender camera update"
+$(DIR_BUILD)/blender_paths.blend: $(DIR_BLENDER)/$(BLENDER_FILE) $(DIR_BLENDER)/adjust_paths.py
+	@echo "Adjusting blender paths"
 	cp $(DIR_BLENDER)/$(BLENDER_FILE) $@
+	$(BLENDER_BIN) $(DIR_BUILD)/blender_paths.blend --background --python $(DIR_BLENDER)/adjust_paths.py -- --render-output-dir $(DIR_BUILD)
+
+$(DIR_BUILD)/blender_camera.blend: $(DIR_BUILD)/blender_paths.blend $(DIR_SRC)/blender_wrapper.py $(DIR_BLENDER)/adjust_camera.py $(DIR_BUILD)/adjust_camera.toml
+	@echo "Running blender camera update"
+	cp $(DIR_BUILD)/blender_paths.blend $@
 	uv run $(DIR_SRC)/blender_wrapper.py $(BLENDER_BIN) $@ $(DIR_BLENDER)/adjust_camera.py --config $(DIR_BUILD)/adjust_camera.toml
 
 $(DIR_BUILD)/blender_mesh.blend: $(DIR_BUILD)/blender_camera.blend $(DIR_SRC)/blender_wrapper.py $(DIR_BLENDER)/import_ply.py $(DIR_BUILD)/mesh.ply $(DIR_BUILD)/import_ply.toml
@@ -68,9 +73,9 @@ $(DIR_BUILD)/raytrace.npy: $(DIR_BUILD)/blender_mesh.blend $(DIR_BLENDER)/raytra
 
 $(DIR_BUILD)/normals.exr $(DIR_BUILD)/image.tif &: $(DIR_BUILD)/blender_mesh.blend
 	@echo "Running blender renderer"
-	$(BLENDER_BIN) $(DIR_BUILD)/blender_mesh.blend --background -f 0 || true
-	cp /tmp/Normals0000.exr $(DIR_BUILD)/normals.exr
-	cp /tmp/Image0000.tif $(DIR_BUILD)/image.tif
+	$(BLENDER_BIN) $(DIR_BUILD)/blender_mesh.blend --background -f 0
+	mv $(DIR_BUILD)/Normals0000.exr $(DIR_BUILD)/normals.exr
+	mv $(DIR_BUILD)/Image0000.tif $(DIR_BUILD)/image.tif
 
 $(DIR_BUILD)/projection_matrix.npy: $(DIR_BUILD)/blender_mesh.blend $(DIR_BLENDER)/export_projection_matrix.py
 	@echo "Running blender P matrix exporter"
