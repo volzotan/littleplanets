@@ -61,64 +61,9 @@ def _blur_raster(raster: np.ndarray, perc: float) -> np.ndarray:
         return raster
 
 
-def _split_linestring(ls: LineString, max_length: float) -> list[LineString]:
-    ls = shapely.segmentize(ls, max_length)
-    coords = list(ls.coords)
-
-    split_ls = []
-
-    if len(coords) < 2:
-        return []
-
-    candidate = [coords[0]]
-    candidate_length = 0
-
-    for i in range(1, len(coords)):
-        p1 = coords[i - 1]
-        p2 = coords[i]
-        p1_p2_length = math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
-
-        if candidate_length + p1_p2_length > max_length:
-            split_ls.append(LineString(candidate))
-            candidate = [coords[i - 1], coords[i]]
-            candidate_length = p1_p2_length
-        else:
-            candidate.append(coords[i])
-            candidate_length += p1_p2_length
-
-        if i == len(coords) - 1:
-            split_ls.append(LineString(candidate))
-
-    return split_ls
-
-
-def _match_linestrings_to_palette(
-    linestrings: list[LineString], mapping: np.ndarray, palette: np.ndarray, scaling_factor: float = 1.0
-) -> list[list[LineString]]:
-    linestrings_split_by_palette: list[list[LineString]] = [[] for _ in range(len(palette))]
-
-    if len(palette) == 1:
-        return [linestrings]
-
-    for ls in linestrings:
-        if len(ls.coords) < 2:
-            continue
-
-        all_pixels = np.nan_to_num(np.array([mapping[int(p[1] * 1 / scaling_factor), int(p[0] * 1 / scaling_factor)] for p in ls.coords]))
-        mean = np.mean(all_pixels, axis=0)
-        palette_color_index = 0
-
-        if np.sum(mean) > 0.1:
-            palette_color_index = random.choices(range(palette.shape[0]), mean)[0]
-
-        linestrings_split_by_palette[palette_color_index].append(ls)
-
-    return linestrings_split_by_palette
-
-
 def _check_linestrings_within_bounds(linestrings: list[LineString], xmin: float, ymin: float, xmax: float, ymax: float) -> list[LineString]:
     checked_linestrings = []
-    box = shapely.box(xmin, ymin, xmax, ymax)
+    box = shapely.box(xmin, ymin, xmax-1, ymax-1)
 
     for ls in linestrings:
         if ls.within(box):
