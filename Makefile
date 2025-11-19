@@ -110,14 +110,25 @@ $(DIR_BUILD)/normals_clouds.exr $(DIR_BUILD)/image_clouds.tif &: $(DIR_BUILD)/bl
 	mv $(DIR_BUILD)/Normals0000.exr $(DIR_BUILD)/normals_clouds.exr
 	mv $(DIR_BUILD)/Image0000.tif $(DIR_BUILD)/image_clouds.tif
 
-$(DIR_BUILD)/overlay_clouds.npz: $(DIR_SRC)/overlay_clouds.py $(DIR_BUILD)/normals_clouds.exr $(DIR_BUILD)/raytrace_clouds.npy $(DIR_DATA)/clouds.tif $(DIR_BUILD)/overlay_clouds.toml
+$(DIR_BUILD)/clouds_mapping_angle.png $(DIR_BUILD)/clouds_mapping_distance.png $(DIR_BUILD)/clouds_mapping_background.png: $(DIR_SRC)/overlay_clouds.py $(DIR_BUILD)/normals_clouds.exr $(DIR_BUILD)/raytrace_clouds.npy $(DIR_DATA)/clouds.tif $(DIR_BUILD)/overlay_clouds.toml
 	@echo "Create clouds overlay"
 	uv run $(DIR_SRC)/overlay_clouds.py 						\
 		$(DIR_BUILD)/normals_clouds.exr 						\
 		$(DIR_BUILD)/raytrace_clouds.npy 						\
 		$(DIR_DATA)/clouds.tif 									\
-		--output $@ 											\
+		--output $(DIR_BUILD)									\
 		--config $(DIR_BUILD)/overlay_clouds.toml
+
+$(DIR_BUILD)/overlay_clouds.npz: $(DIR_SRC)/hatch.py $(DIR_BUILD)/clouds_mapping_angle.png $(DIR_BUILD)/clouds_mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_background.png $(DIR_BUILD)/hatch.toml
+	@echo "Hatch clouds overlay"
+	uv run $(DIR_SRC)/hatch.py													\
+		--mapping-angle $(DIR_BUILD)/clouds_mapping_angle.png 					\
+		--mapping-distance $(DIR_BUILD)/clouds_mapping_distance.png 			\
+		--mapping-background $(DIR_BUILD)/clouds_mapping_background.png 		\
+		--config $(DIR_BUILD)/overlay_clouds_hatch.toml 							\
+		--output $@ \
+		--debug
+
 
 # Overlays
 
@@ -189,12 +200,12 @@ $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_brightness_difference.png &:
 
 $(DIR_BUILD)/hatchlines.npz: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_angle.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_background.png $(DIR_BUILD)/hatch.toml
 	@echo "Hatch"
-	uv run $(DIR_SRC)/hatch.py									\
-		$(DIR_BUILD)/mapping_angle.png 							\
-		$(DIR_BUILD)/mapping_distance.png 						\
-		$(DIR_BUILD)/mapping_line_length.png 					\
-		$(DIR_BUILD)/mapping_background.png 					\
-		--config $(DIR_BUILD)/hatch.toml 						\
+	uv run $(DIR_SRC)/hatch.py											\
+		--mapping-angle $(DIR_BUILD)/mapping_angle.png 					\
+		--mapping-distance $(DIR_BUILD)/mapping_distance.png 			\
+		--mapping-line-length $(DIR_BUILD)/mapping_line_length.png 		\
+		--mapping-background $(DIR_BUILD)/mapping_background.png 		\
+		--config $(DIR_BUILD)/hatch.toml 								\
 		--output $@
 
 
@@ -225,7 +236,7 @@ run_palette: $(DIR_SRC)/combine.py
 		$(DIR_BUILD)/mapping_background.png 					\
 		--hatchlines $(DIR_BUILD)/hatchlines.npz				\
 		--cutouts $(DIR_BUILD)/overlay_grid_cropped.npz 		\
-		--overlays $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz 		\
+		--overlays $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz $(DIR_BUILD)/overlay_clouds.npz 		\
 		--projection-matrix $(DIR_BUILD)/projection_matrix.npy  \
 		--contours $(DIR_BUILD)/contours.npz					\
 		--config $(DIR_BUILD)/combine.toml 						\
