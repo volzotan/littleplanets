@@ -12,11 +12,13 @@ import cv2
 import toml
 from pydantic import BaseModel, Field
 
+from loguru import logger
 
 class ModifyDemConfig(BaseModel):
     scaling_factor: float | None = None
     floor: float | None = None
     ceil: float | None = None
+    threshold: float | None = None
 
 
 # def reproject(src: Path, dst: Path) -> None:
@@ -48,7 +50,13 @@ def _read(input_path: Path) -> np.ndarray:
 
 
 def _rescale(data: np.ndarray, scaling_factor: float) -> np.ndarray:
-    return cv2.resize(data, (int(data.shape[1] * scaling_factor), int(data.shape[0] * scaling_factor)), interpolation=cv2.INTER_AREA).astype(
+
+    new_size = (
+        max(int(data.shape[1] * scaling_factor), 1),
+        max(int(data.shape[0] * scaling_factor), 1)
+    )
+
+    return cv2.resize(data, new_size, interpolation=cv2.INTER_AREA).astype(
         data.dtype
     )
 
@@ -77,9 +85,6 @@ def main() -> None:
     parser.add_argument("input", type=Path, help="input filename")
     parser.add_argument("output", type=Path, help="output filename")
     parser.add_argument("--config", type=Path, help="Configuration file [TOML]")
-    # parser.add_argument("--scaling-factor", type=float, help="scaling factor (float)")
-    # parser.add_argument("--floor", type=float, help="Floor cutoff (float)")
-    # parser.add_argument("--ceil", type=float, help="Ceiling cutoff (float)")
     args = parser.parse_args()
 
     config = None
@@ -89,6 +94,10 @@ def main() -> None:
             config = ModifyDemConfig(**data)
 
     os.makedirs(args.output.parent, exist_ok=True)
+
+    if args.input is None or not args.input.exists():
+        logger.warning(f"Empty input file {args.input}. Abort.")
+        return
 
     data, data_crs, data_transform = _read(args.input)
     options = {"crs": data_crs, "transform": data_transform}
@@ -100,6 +109,11 @@ def main() -> None:
 
     if config.floor is not None or config.ceil is not None:
         data = _clip(data, config.floor, config.ceil)
+
+    if config.threshold is not None:
+        mask = data > config.threshold
+        data[mask] = 255.0
+        data[~mask] = 0.0
 
     if len(data.shape) == 2:
         data = data[:, :, np.newaxis]

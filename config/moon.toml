@@ -9,10 +9,9 @@ colors = [[255, 255, 255]]
 dem_url = "https://planetarymaps.usgs.gov/mosaic/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"
 surface_color_url = "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_poles.tif"
 
-[modify_DEM]
+[modify_tiff]
 
 scaling_factor = 0.25
-floor = 0
 
 [adjust_camera]
 
