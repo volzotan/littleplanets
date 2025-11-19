@@ -26,6 +26,7 @@ all: setup run
 
 setup: $(PYPROJECT_FILE)
 	@echo "Sync Environment"
+	mkdir -p $(DIR_DATA)
 	mkdir -p $(DIR_BUILD)
 	mkdir -p $(DIR_DEBUG)
 	uv sync
@@ -43,13 +44,13 @@ $(DIR_DATA)/dem.tif $(DIR_DATA)/surface_color.tif: $(DIR_SRC)/downloader.py $(DI
 	@echo "Downloader"
 	uv run $(DIR_SRC)/downloader.py --output-dir $(DIR_DATA) --config $(DIR_BUILD)/downloader.toml
 
-$(DIR_BUILD)/dem.tif: $(DIR_SRC)/modify_DEM.py $(DIR_DATA)/dem.tif $(DIR_BUILD)/modify_DEM.toml
+$(DIR_BUILD)/dem.tif: $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/dem.tif $(DIR_BUILD)/modify_tiff.toml
 	@echo "Modify DEM $@"
-	uv run $(DIR_SRC)/modify_DEM.py $(DIR_DATA)/dem.tif $@ --config $(DIR_BUILD)/modify_DEM.toml
+	uv run $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/dem.tif $@ --config $(DIR_BUILD)/modify_tiff.toml
 
 $(DIR_BUILD)/mesh.ply: $(DIR_SRC)/mesh.py $(DIR_BUILD)/dem.tif $(DIR_DATA)/surface_color.tif $(DIR_BUILD)/mesh.toml
 	@echo "Generating mesh"
-	uv run $(DIR_SRC)/mesh.py $(DIR_BUILD)/dem.tif $(DIR_DATA)/surface_color.tif --output $@ --config $(DIR_BUILD)/mesh.toml
+	uv run $(DIR_SRC)/mesh.py --elevation $(DIR_BUILD)/dem.tif --color $(DIR_DATA)/surface_color.tif --output $@ --config $(DIR_BUILD)/mesh.toml
 
 $(DIR_BUILD)/blender_camera.blend: $(DIR_BLENDER)/$(BLENDER_FILE) $(DIR_SRC)/blender_wrapper.py $(DIR_BLENDER)/adjust_camera.py $(DIR_BUILD)/adjust_camera.toml
 	@echo "Running blender camera update"
@@ -78,6 +79,35 @@ $(DIR_BUILD)/projection_matrix.npy: $(DIR_BUILD)/blender_mesh.blend $(DIR_BLENDE
 $(DIR_BUILD)/mesh_blender.ply: $(DIR_BUILD)/blender_mesh.blend $(DIR_BLENDER)/export_ply.py
 	@echo "Running blender mesh export"
 	$(BLENDER_BIN) $(DIR_BUILD)/blender_mesh.blend --background --python $(DIR_BLENDER)/export_ply.py -- --output $@
+
+# Clouds
+
+$(DIR_BUILD)/clouds.tif: $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/clouds.tif $(DIR_BUILD)/modify_tiff_clouds.toml
+	@echo "Modify TIFF $@"
+	uv run $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/clouds.tif $@ --config $(DIR_BUILD)/modify_tiff_clouds.toml
+
+$(DIR_BUILD)/mesh_clouds.ply: $(DIR_SRC)/mesh.py $(DIR_BUILD)/empty_dem.tif $(DIR_BUILD)/clouds.tif $(DIR_BUILD)/mesh_clouds.toml
+	@echo "Generating mesh $@"
+	uv run $(DIR_SRC)/mesh.py --color $(DIR_BUILD)/clouds.tif --output $@ --config $(DIR_BUILD)/mesh_clouds.toml
+
+$(DIR_BUILD)/blender_mesh_clouds.blend: $(DIR_BUILD)/blender_camera.blend $(DIR_SRC)/blender_wrapper.py $(DIR_BLENDER)/import_ply.py $(DIR_BUILD)/mesh_clouds.ply $(DIR_BUILD)/import_ply_clouds.toml
+	@echo "Running blender mesh update"
+	cp $(DIR_BUILD)/blender_camera.blend $@
+	uv run $(DIR_SRC)/blender_wrapper.py $(BLENDER_BIN) $@ $(DIR_BLENDER)/import_ply.py --config $(DIR_BUILD)/import_ply_clouds.toml --params "--input $(DIR_BUILD)/mesh_clouds.ply"
+
+$(DIR_BUILD)/raytrace_clouds.npy: $(DIR_BUILD)/blender_mesh_clouds.blend $(DIR_BLENDER)/raytracing.py
+	@echo "Running blender raytracer"
+	$(BLENDER_BIN) $(DIR_BUILD)/blender_mesh_clouds.blend --background --python $(DIR_BLENDER)/raytracing.py -- --output $@
+
+$(DIR_BUILD)/normals_clouds.exr $(DIR_BUILD)/image_clouds.tif &: $(DIR_BUILD)/blender_mesh_clouds.blend
+	@echo "Running blender renderer"
+	$(BLENDER_BIN) $(DIR_BUILD)/blender_mesh_clouds.blend --background -f 0 || true
+	cp /tmp/Normals0000.exr $(DIR_BUILD)/normals_clouds.exr
+	cp /tmp/Image0000.tif $(DIR_BUILD)/image_clouds.tif
+
+$(DIR_BUILD)/overlay_clouds.npz: $(DIR_SRC)/overlay_clouds.py $(DIR_BUILD)/normals_clouds.exr $(DIR_BUILD)/raytrace_clouds.npy $(DIR_DATA)/clouds.tif $(DIR_BUILD)/overlay_clouds.toml
+	@echo "Create clouds overlay"
+	uv run $(DIR_SRC)/overlay_clouds.py --output $@ --config $(DIR_BUILD)/overlay_clouds.toml
 
 # Overlays
 
