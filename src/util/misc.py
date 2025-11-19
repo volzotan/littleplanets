@@ -17,8 +17,8 @@ def linestring_to_coordinate_pairs(linestring: LineString) -> list[list[tuple[fl
     return pairs
 
 
-def write_linestrings_to_npz(filename: Path, linestrings: list[LineString]) -> None:
-    arrays = [shapely.get_coordinates(l, include_z=True) for l in linestrings]
+def write_linestrings_to_npz(filename: Path, linestrings: list[LineString], include_z=True) -> None:
+    arrays = [shapely.get_coordinates(l, include_z=include_z) for l in linestrings]
     np.savez(filename, *arrays)
 
 
@@ -113,6 +113,32 @@ def rotate_linestrings(lines: list[LineString], x: float, y: float, z: float) ->
         lines_rotated.append(transform(lambda x, y, z: R_z @ R_y @ R_x @ np.array([x, y, z]), line))
 
     return lines_rotated
+
+
+def rotate_points(points: list[np.ndarray], x: float, y: float, z: float) -> list[np.ndarray]:
+    R_x = np.array(
+        [
+            [1, 0, 0],
+            [0, np.cos(x), -np.sin(x)],
+            [0, np.sin(x), np.cos(x)],
+        ]
+    )
+    R_y = np.array(
+        [
+            [np.cos(y), 0, np.sin(y)],
+            [0, 1, 0],
+            [-np.sin(y), 0, np.cos(y)],
+        ]
+    )
+    R_z = np.array(
+        [
+            [np.cos(z), -np.sin(z), 0],
+            [np.sin(z), np.cos(z), 0],
+            [0, 0, 1],
+        ]
+    )
+
+    return [R_z @ R_y @ R_x @ p for p in points]
 
 
 def visualize_linestrings(linestrings: list[LineString]) -> pv.Plotter:

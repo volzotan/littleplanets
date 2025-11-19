@@ -16,6 +16,8 @@ import cv2
 import toml
 from pydantic import BaseModel, Field
 
+from loguru import logger
+
 # since the magnitude of the elevation direction vector is so small
 # a strong weight is required in order to have _any_ noticeable effect
 # compared to the light axis direction unit vector
@@ -689,14 +691,15 @@ def write_obj(plotter: pv.Plotter, filename: Path) -> None:
 
 class MeshConfig(BaseModel):
     scale: float = Field(default=0.10, description="Scaling factor")
+    fixed_elevation_scale: float | None = Field(default=None, description="A fixed scale value [-1, +1] that uniformly overrides elevation raster data")
     blur: int = Field(default=100, description="Elevation raster blurring kernel size")
     subdivision: int = Field(default=10, description="Number of subdivision steps")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("elevation_raster", type=Path, help="Elevation raster data in the GeoTiff format")
-    parser.add_argument("color_raster", type=Path, help="Surface color raster data in the Tiff format")
+    parser.add_argument("--elevation", type=Path, help="Elevation raster data in the GeoTiff format")
+    parser.add_argument("--color", type=Path, help="Surface color raster data in the Tiff format")
     parser.add_argument("--output", type=Path, default="mesh.ply", help="Output filename [PLY]")
     parser.add_argument("--config", type=Path, help="Configuration file [TOML]")
     parser.add_argument("--debug", action="store_true", default=False, help="Write debug output")
@@ -715,10 +718,18 @@ def main() -> None:
 
     timer_start = datetime.datetime.now()
 
-    dem_raster = normalize_elevation(load_raster(args.elevation_raster))
-    dem_raster = dem_raster[0, :, :]
-    color_raster = load_raster(args.color_raster)
+    if args.elevation is not None:
+        dem_raster = normalize_elevation(load_raster(args.elevation))
+        dem_raster = dem_raster[0, :, :]
+
+    if config.fixed_elevation_scale is not None:
+        dem_raster = np.full([1, 1, 1], config.fixed_elevation_scale)
+
+    color_raster = load_raster(args.color)
     color_raster = np.transpose(color_raster[0:3, :, :], (1, 2, 0))  # from [3, rows, cols] to [rows, cols, 3]
+
+    if color_raster.shape[2] == 1: # grayscale color image, i.e. cloud cover map
+        color_raster = np.dstack([color_raster, color_raster, color_raster])
 
     dem_raster = shift_center_to_origin(dem_raster)
     color_raster = shift_center_to_origin(color_raster)

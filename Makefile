@@ -37,7 +37,7 @@ clean:
 # ----------
 
 $(DIR_BUILD)/%.toml: $(DIR_SRC)/configurator.py $(CONFIG_FILE)
-	@echo "Configurator for file $(CONFIG)"
+	@echo "Configurator for file $@"
 	uv run $^ --output $(DIR_BUILD)
 
 $(DIR_DATA)/dem.tif $(DIR_DATA)/surface_color.tif: $(DIR_SRC)/downloader.py $(DIR_BUILD)/downloader.toml
@@ -91,7 +91,7 @@ $(DIR_BUILD)/clouds.tif: $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/clouds.tif $(DIR_
 	@echo "Modify TIFF $@"
 	uv run $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/clouds.tif $@ --config $(DIR_BUILD)/modify_tiff_clouds.toml
 
-$(DIR_BUILD)/mesh_clouds.ply: $(DIR_SRC)/mesh.py $(DIR_BUILD)/empty_dem.tif $(DIR_BUILD)/clouds.tif $(DIR_BUILD)/mesh_clouds.toml
+$(DIR_BUILD)/mesh_clouds.ply: $(DIR_SRC)/mesh.py $(DIR_BUILD)/clouds.tif $(DIR_BUILD)/mesh_clouds.toml
 	@echo "Generating mesh $@"
 	uv run $(DIR_SRC)/mesh.py --color $(DIR_BUILD)/clouds.tif --output $@ --config $(DIR_BUILD)/mesh_clouds.toml
 
@@ -107,12 +107,17 @@ $(DIR_BUILD)/raytrace_clouds.npy: $(DIR_BUILD)/blender_mesh_clouds.blend $(DIR_B
 $(DIR_BUILD)/normals_clouds.exr $(DIR_BUILD)/image_clouds.tif &: $(DIR_BUILD)/blender_mesh_clouds.blend
 	@echo "Running blender renderer"
 	$(BLENDER_BIN) $(DIR_BUILD)/blender_mesh_clouds.blend --background -f 0 || true
-	cp /tmp/Normals0000.exr $(DIR_BUILD)/normals_clouds.exr
-	cp /tmp/Image0000.tif $(DIR_BUILD)/image_clouds.tif
+	mv $(DIR_BUILD)/Normals0000.exr $(DIR_BUILD)/normals_clouds.exr
+	mv $(DIR_BUILD)/Image0000.tif $(DIR_BUILD)/image_clouds.tif
 
 $(DIR_BUILD)/overlay_clouds.npz: $(DIR_SRC)/overlay_clouds.py $(DIR_BUILD)/normals_clouds.exr $(DIR_BUILD)/raytrace_clouds.npy $(DIR_DATA)/clouds.tif $(DIR_BUILD)/overlay_clouds.toml
 	@echo "Create clouds overlay"
-	uv run $(DIR_SRC)/overlay_clouds.py --output $@ --config $(DIR_BUILD)/overlay_clouds.toml
+	uv run $(DIR_SRC)/overlay_clouds.py 						\
+		$(DIR_BUILD)/normals_clouds.exr 						\
+		$(DIR_BUILD)/raytrace_clouds.npy 						\
+		$(DIR_DATA)/clouds.tif 									\
+		--output $@ 											\
+		--config $(DIR_BUILD)/overlay_clouds.toml
 
 # Overlays
 
@@ -182,6 +187,17 @@ $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_brightness_difference.png &:
 		--palette-brightness-difference $(DIR_BUILD)/mapping_brightness_difference.png \
 		--config $(DIR_BUILD)/palette.toml
 
+$(DIR_BUILD)/hatchlines.npz: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_angle.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_background.png $(DIR_BUILD)/hatch.toml
+	@echo "Hatch"
+	uv run $(DIR_SRC)/hatch.py									\
+		$(DIR_BUILD)/mapping_angle.png 							\
+		$(DIR_BUILD)/mapping_distance.png 						\
+		$(DIR_BUILD)/mapping_line_length.png 					\
+		$(DIR_BUILD)/mapping_background.png 					\
+		--config $(DIR_BUILD)/hatch.toml 						\
+		--output $@
+
+
 run: $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_background.png
 run: $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_grid_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz
 run: $(DIR_SRC)/hatch.py
@@ -200,21 +216,19 @@ run: $(DIR_SRC)/hatch.py
 		--output $(DIR_BUILD)/littleplanets.svg
 	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=$(OUTPUT_PNG) --export-width=2000 --export-background=#000000
 
-run_palette: $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_angle.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_background.png
-run_palette: $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_grid_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz $(DIR_BUILD)/hatch.toml
-run_palette: $(DIR_SRC)/hatch.py
-	@echo "Hatch Palette"
-	uv run $(DIR_SRC)/hatch.py									\
+run_palette: $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_background.png $(DIR_BUILD)/hatchlines.npz
+run_palette: $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_grid_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz $(DIR_BUILD)/combine.toml
+run_palette: $(DIR_SRC)/combine.py
+	@echo "Combine"
+	uv run $(DIR_SRC)/combine.py								\
 		$(DIR_BUILD)/mapping_color.npy 							\
-		$(DIR_BUILD)/mapping_angle.png 							\
-		$(DIR_BUILD)/mapping_distance.png 						\
-		$(DIR_BUILD)/mapping_line_length.png 					\
 		$(DIR_BUILD)/mapping_background.png 					\
+		--hatchlines $(DIR_BUILD)/hatchlines.npz				\
 		--cutouts $(DIR_BUILD)/overlay_grid_cropped.npz 		\
 		--overlays $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz 		\
 		--projection-matrix $(DIR_BUILD)/projection_matrix.npy  \
 		--contours $(DIR_BUILD)/contours.npz					\
-		--config $(DIR_BUILD)/hatch.toml 						\
+		--config $(DIR_BUILD)/combine.toml 						\
 		--output $(DIR_BUILD)/littleplanets.svg
 	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=$(OUTPUT_PNG) --export-width=2000 --export-background=#000000
 

@@ -4,6 +4,8 @@ rotZ = -23.44
 
 colors = [[65, 102, 174], [240, 126, 50], [3, 168, 115]]
 
+dimensions = [750, 750]
+
 [downloader]
 
 # source: GEBCO
@@ -51,9 +53,6 @@ mixture = [0.03, 0.07]
 
 [hatch]
 
-dimensions = [750, 750]
-
-blur_color_kernel_size_perc = 0.00
 blur_angle_kernel_size_perc = 0.40
 blur_distance_kernel_size_perc = 0.40
 
@@ -61,3 +60,23 @@ flowlines_line_distance = [0.6, 12.0]
 flowlines_line_max_length = [30, 30]
 flowlines_line_distance_end_factor = 0.5
 flowlines_max_angle_discontinuity = 1.57 # pi/2
+
+[combine]
+
+blur_color_kernel_size_perc = 0.00
+
+[modify_tiff_clouds]
+
+scaling_factor = 1.0
+#threshold = 210
+
+[mesh_clouds]
+
+scale = 0.04
+fixed_elevation_scale = 1.0
+subdivision = 10
+
+[import_ply_clouds]
+
+[overlay_clouds]
+
