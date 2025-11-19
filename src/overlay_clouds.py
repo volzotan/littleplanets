@@ -41,7 +41,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("normals", type=Path, default="normals.exr", help="Normals (EXR)")
     parser.add_argument("raytrace", type=Path, default="raytrace.npy", help="Raytracing distance raster (NPY)")
-    parser.add_argument("cloud-cover", type=Path, default="image.tif", help="Cloud grayscale coverage map (TIFF)")
+    parser.add_argument("cloud_cover", type=Path, default="cloud.tif", help="Cloud grayscale coverage map (TIFF)")
     parser.add_argument("--output", type=Path, default="build", help="Output directory")
     parser.add_argument("--config", type=Path, help="Configuration file [TOML]")
     parser.add_argument("--visualize", action="store_true", default=False, help="Enable interactive visualization")
@@ -68,7 +68,6 @@ def main() -> None:
     map_clouds = np.roll(map_clouds, int(map_clouds.shape[0] / 2), axis=1) # shift center to origin
 
     image_rotated = np.zeros_like(img_pxpos, dtype=np.uint8)
-
     for y in range(img_pxpos.shape[0]):
         for x in range(img_pxpos.shape[1]):
             p = img_pxpos[y, x]
@@ -84,10 +83,17 @@ def main() -> None:
 
             image_rotated[y, x] = _map(map_clouds, lat, lon).astype(np.uint8),
 
+    mapping_background = np.zeros(img_pxpos.shape[0:2], dtype=np.uint8)
+    mapping_background[np.isnan(np.sum(img_pxpos, axis=2))] = 255
+
+    # mask = image_rotated >= 200
+    # image_rotated[mask] = 255
+    # image_rotated[~mask] = 0
+
     if DEBUG:
         cv2.imwrite(str(DIR_DEBUG / "overlay_cloud.png"), image_rotated)
 
-    exit()
+    # exit()
 
     # CREATE HATCHLINES
 
@@ -114,12 +120,16 @@ def main() -> None:
 
     # VISUALIZE
 
-    if args.visualize:
-        visualize_linestrings([LineString([[0, 0, 0], p]) for p in ps]).show()
+    # if args.visualize:
+    #     visualize_linestrings([LineString([[0, 0, 0], p]) for p in ps]).show()
 
     # EXPORT
 
-    write_linestrings_to_npz(args.output, linestrings)
+    # write_linestrings_to_npz(args.output, linestrings)
+
+    cv2.imwrite(str(args.output / "clouds_mapping_angle.png"), np.full_like(image_rotated, 125))
+    cv2.imwrite(str(args.output / "clouds_mapping_distance.png"), image_rotated)
+    cv2.imwrite(str(args.output / "clouds_mapping_background.png"), mapping_background)
 
 
 if __name__ == "__main__":
