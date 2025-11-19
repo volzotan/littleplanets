@@ -44,6 +44,8 @@ parser = ArgumentParserForBlender()
 # parser.add_argument("--camera-z", type=float, help="Camera Z position (float)"))
 parser.add_argument("--horizontal-width", type=float, default=2.2, help="Camera Z distance to cover N units of the Y axis (float)")
 parser.add_argument("--camera-focal-length", type=float, default=50.0, help="Camera focal length (float)")
+parser.add_argument("--resolution-x", type=int, default=1000, help="Camera resolution X (int)")
+parser.add_argument("--resolution-y", type=int, default=1000, help="Camera resolution Y (int)")
 args, _ = parser.parse_known_args()
 
 cam_ob = bpy.context.scene.camera
@@ -55,6 +57,13 @@ camera_z = _calculate_z_distance_circle(args.camera_focal_length, args.horizonta
 
 cam_ob.location = (cam_ob.location[0], cam_ob.location[1], camera_z)
 cam_ob.data.lens = args.camera_focal_length
+
+scene = bpy.context.scene
+render = scene.render
+
+render.resolution_x = args.resolution_x
+render.resolution_y = args.resolution_y
+
 
 if not DEBUG:
     bpy.ops.wm.save_as_mainfile()

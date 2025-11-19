@@ -140,6 +140,31 @@ def rotate_points(points: list[np.ndarray], x: float, y: float, z: float) -> lis
 
     return [R_z @ R_y @ R_x @ p for p in points]
 
+def rotate_points_inv(points: list[np.ndarray], x: float, y: float, z: float) -> list[np.ndarray]:
+    R_x = np.array(
+        [
+            [1, 0, 0],
+            [0, np.cos(x), -np.sin(x)],
+            [0, np.sin(x), np.cos(x)],
+        ]
+    )
+    R_y = np.array(
+        [
+            [np.cos(y), 0, np.sin(y)],
+            [0, 1, 0],
+            [-np.sin(y), 0, np.cos(y)],
+        ]
+    )
+    R_z = np.array(
+        [
+            [np.cos(z), -np.sin(z), 0],
+            [np.sin(z), np.cos(z), 0],
+            [0, 0, 1],
+        ]
+    )
+
+    return [(R_z @ R_y @ R_x).T @ p for p in points]
+
 
 def visualize_linestrings(linestrings: list[LineString]) -> pv.Plotter:
     plotter = pv.Plotter()
