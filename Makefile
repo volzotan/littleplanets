@@ -116,6 +116,7 @@ $(DIR_BUILD)/clouds_mapping_angle.png $(DIR_BUILD)/clouds_mapping_distance.png $
 		$(DIR_BUILD)/normals_clouds.exr 						\
 		$(DIR_BUILD)/raytrace_clouds.npy 						\
 		$(DIR_DATA)/clouds.tif 									\
+		$(DIR_DATA)/cds_wind_direction.nc 						\
 		--output $(DIR_BUILD)									\
 		--config $(DIR_BUILD)/overlay_clouds.toml
 
@@ -127,7 +128,7 @@ $(DIR_BUILD)/overlay_clouds.npz: $(DIR_SRC)/hatch.py $(DIR_BUILD)/clouds_mapping
 		--mapping-background $(DIR_BUILD)/clouds_mapping_background.png 		\
 		--config $(DIR_BUILD)/overlay_clouds_hatch.toml 							\
 		--output $@ \
-		--debug
+		--debug --suffix "_clouds"
 
 
 # Overlays
@@ -236,8 +237,7 @@ run_palette: $(DIR_SRC)/combine.py
 		$(DIR_BUILD)/mapping_background.png 					\
 		--hatchlines $(DIR_BUILD)/hatchlines.npz				\
 		--cutouts $(DIR_BUILD)/overlay_grid_cropped.npz 		\
-		--overlays $(DIR_BUILD)/overlay_clouds.npz 				\
-		--overlays-world-space $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz \
+		--overlays $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz $(DIR_BUILD)/overlay_clouds.npz \
 		--projection-matrix $(DIR_BUILD)/projection_matrix.npy  \
 		--contours $(DIR_BUILD)/contours.npz					\
 		--config $(DIR_BUILD)/combine.toml 						\
