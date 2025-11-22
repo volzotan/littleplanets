@@ -133,7 +133,7 @@ def _check_linestrings_within_bounds(linestrings: list[LineString], xmin: float,
                 case _:
                     logger.warning(f"unexpected geometry: {g}")
 
-    logger.info(f"check_linestrings_within_bounds, failed linestrings: {len(linestrings)-len(checked_linestrings)}")
+    logger.info(f"check_linestrings_within_bounds, failed linestrings: {len(linestrings) - len(checked_linestrings)}")
 
     return checked_linestrings
 
@@ -166,11 +166,8 @@ if __name__ == "__main__":
     parser.add_argument("--hatchlines", type=Path, help="Hatchline linestrings (NPZ)")
     parser.add_argument("--cutouts", type=Path, nargs="*", default=[], help="Cutout linestrings, multiple filenames possible (NPZ)")
     parser.add_argument("--overlays", type=Path, nargs="*", default=[], help="Overlay linestrings, multiple filenames possible (NPZ)")
-    parser.add_argument("--overlays-world-space", type=Path, nargs="*", default=[], help="Overlay linestrings in world space, projection matrix required, multiple filenames possible (NPZ)")
-    parser.add_argument("--contours", type=Path, default=None, help="Contour linestrings (NPZ)")
-
     parser.add_argument("--projection-matrix", type=Path, default=None, help="3x4 projection matrix (NPY)")
-    parser.add_argument("--overlay-color", type=float, nargs=3, help="Overlay color item [R, G, B]")
+    parser.add_argument("--contours", type=Path, default=None, help="Contour linestrings (NPZ)")
 
     parser.add_argument("--config", type=Path, default=None, help="Config file (TOML)")
     parser.add_argument("--output", type=Path, default="littleplanet.svg", help="Output filename (SVG)")
@@ -217,23 +214,20 @@ if __name__ == "__main__":
             cutout_ls = [_project_linestring(l, P, scaling_factor) for l in cutout_ls]
             linestrings_cutouts += cutout_ls
 
-    linestrings_overlays = []
+    linestrings_overlays: list[list[LineString]] = []
+
+    P = np.identity(3)
+    if args.projection_matrix is not None:
+        P = np.load(args.projection_matrix)
 
     if len(args.overlays) > 0:
         for overlay_path in args.overlays:
             overlay_npz = np.load(overlay_path)
             overlay_ls = [LineString(arr) for arr in overlay_npz.values()]
+            if len(overlay_ls) > 0 and overlay_ls[0].has_z:
+                overlay_ls = [_project_linestring(l, P, scaling_factor) for l in overlay_ls]
             overlay_ls = _check_linestrings_within_bounds(overlay_ls, 0, 0, config.dimensions[0], config.dimensions[1])
-            linestrings_overlays += overlay_ls
-
-    if len(args.overlays_world_space) > 0:
-        P = np.load(args.projection_matrix)
-        for overlay_path in args.overlays_world_space:
-            overlay_npz = np.load(overlay_path)
-            overlay_ls = [LineString(arr) for arr in overlay_npz.values()]
-            overlay_ls = [_project_linestring(l, P, scaling_factor) for l in overlay_ls]
-            overlay_ls = _check_linestrings_within_bounds(overlay_ls, 0, 0, config.dimensions[0], config.dimensions[1])
-            linestrings_overlays += overlay_ls
+            linestrings_overlays.append(overlay_ls)
 
     # TODO: contours don't need to be projected, but they need to be scaled (currently missing!)
     linestrings_contours = []
@@ -253,7 +247,7 @@ if __name__ == "__main__":
     # cut buffered overlay from hatched linestrings
     timer_start = datetime.datetime.now()
     linestrings = _cut(linestrings, linestrings_cutouts, CUTOUT_STENCIL_CUT_DISTANCE / 2)
-    linestrings = _cut(linestrings, linestrings_overlays, OVERLAY_STENCIL_CUT_DISTANCE / 2)
+    linestrings = _cut(linestrings, [ls for overlay_ls in linestrings_overlays for ls in overlay_ls], OVERLAY_STENCIL_CUT_DISTANCE / 2)
     print(f"stencil time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
 
     # linestrings_stencil = []
@@ -269,7 +263,7 @@ if __name__ == "__main__":
         raise Exception(f"Palette size mismatch: {args.mapping_color} has {mapping_color.shape[2]} color(s), palette has {len(palette)}")
 
     svg = SvgWriter(args.output, config.dimensions)
-    if config.invert_color:
+    if config.invert_background:
         svg.background_color = "#000000"
 
     layer_styles: dict[str, dict[str, str]] = {}
@@ -289,29 +283,30 @@ if __name__ == "__main__":
     #     "fill-opacity": "1.0",
     # }
 
-    if args.overlay_color is not None:
-        overlay_color = args.overlay_color
+    for i, overlay_ls in enumerate(linestrings_overlays):
+        if i < len(config.layer_colors) and len(config.layer_colors[i]) == 3:
+            overlay_color = config.layer_colors[i]
 
-        layer_styles["overlay"] = {
-            "fill": "none",
-            "stroke": f"rgb({overlay_color[0]},{overlay_color[1]},{overlay_color[2]})",
-            "stroke-width": "0.30",
-            "fill-opacity": "1.0",
-        }
-
-        svg.add("overlay", linestrings_overlays)
-    else:
-        for i, color in enumerate(palette):
-            layer_styles[f"overlay_{i}"] = {
+            layer_styles["overlay"] = {
                 "fill": "none",
-                "stroke": f"rgb({color[0]},{color[1]},{color[2]})",
+                "stroke": f"rgb({overlay_color[0]},{overlay_color[1]},{overlay_color[2]})",
                 "stroke-width": "0.30",
                 "fill-opacity": "1.0",
             }
 
-        linestrings_overlay_palette = _match_linestrings_to_palette(linestrings_overlays, mapping_color, palette, scaling_factor)
-        for i, colored_linestrings in enumerate(linestrings_overlay_palette):
-            svg.add(f"overlay_{i}", colored_linestrings)
+            svg.add("overlay", overlay_ls)
+        else:
+            for i, color in enumerate(palette):
+                layer_styles[f"overlay_{i}"] = {
+                    "fill": "none",
+                    "stroke": f"rgb({color[0]},{color[1]},{color[2]})",
+                    "stroke-width": "0.30",
+                    "fill-opacity": "1.0",
+                }
+
+            linestrings_overlay_palette = _match_linestrings_to_palette(overlay_ls, mapping_color, palette, scaling_factor)
+            for i, colored_linestrings in enumerate(linestrings_overlay_palette):
+                svg.add(f"overlay_{i}", colored_linestrings)
 
     for k, v in layer_styles.items():
         svg.add_style(k, v)

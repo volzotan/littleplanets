@@ -3,6 +3,7 @@ rotY = 0
 rotZ = -23.44
 
 colors = [[65, 102, 174], [240, 126, 50], [3, 168, 115]]
+layer_colors = [[], [], [255, 255, 255]]
 invert_background = true
 
 dimensions = [750, 750]
