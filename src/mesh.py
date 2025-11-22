@@ -524,7 +524,13 @@ def field_vectors_to_image(m: Mesh, num: int = 360) -> np.ndarray:
 
 
 def shift_center_to_origin(raster: np.ndarray) -> np.ndarray:
-    return np.roll(raster, int(raster.shape[0] / 2), axis=1)
+    """
+    shift center of raster image to 1/4. This adjusts for the X/Y axis change.
+    atan2 returns angles relative to the X axis, while the default blender orientation
+    should have the zero meridian face the Y axis.
+
+    """
+    return np.roll(raster, int(raster.shape[1] / 4), axis=1)
 
 
 def display(m: Mesh) -> None:
