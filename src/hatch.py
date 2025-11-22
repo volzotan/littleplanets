@@ -30,7 +30,7 @@ CUTOUT_STENCIL_CUT_DISTANCE = 1
 
 class HatchConfig(BaseModel):
     dimensions: tuple[int, int] = (1000, 1000)
-    invert_color: bool = True
+    invert_background: bool = False
 
     colors: list[list[int]] = [[255, 255, 255]]
 
@@ -115,13 +115,7 @@ if __name__ == "__main__":
     mapping_distance = ((mapping_distance - np.min(mapping_distance[mask])) / np.ptp(mapping_distance[mask]) * 255).astype(np.uint8)
     mapping_distance[~mask] = 0
 
-    # all areas above/below a brightness threshold should be kept empty
-    # if not INVERT_COLOR:
-    #     mapping_background[mapping_distance > CUTOUT_THRESHOLD] = 255
-    # else:
-    #     mapping_background[mapping_distance < CUTOUT_THRESHOLD] = 255
-
-    if config.invert_color:  # white ink on black paper, invert grayscale image
+    if config.invert_background:  # white ink on black paper, invert grayscale image
         mapping_distance = ~mapping_distance
 
     if args.debug:

@@ -29,8 +29,11 @@ CUTOUT_STENCIL_CUT_DISTANCE = 1
 
 class CombineConfig(BaseModel):
     dimensions: tuple[int, int] = (1000, 1000)
+
     colors: list[list[int]] = [[255, 255, 255]]
-    invert_color: bool = True
+    layer_colors: list[list[int]] = []
+
+    invert_background: bool = False
 
     # Blurring kernel size, percentage of raster size(float)
     blur_color_kernel_size_perc: float = Field(0, ge=0)
