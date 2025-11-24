@@ -133,7 +133,7 @@ def _check_linestrings_within_bounds(linestrings: list[LineString], xmin: float,
                 case _:
                     logger.warning(f"unexpected geometry: {g}")
 
-    logger.info(f"check_linestrings_within_bounds, failed linestrings: {len(linestrings) - len(checked_linestrings)}")
+    logger.debug(f"check_linestrings_within_bounds, failed linestrings: {len(linestrings) - len(checked_linestrings)}")
 
     return checked_linestrings
 
@@ -242,8 +242,6 @@ if __name__ == "__main__":
     )
     linestrings += linestrings_contours_split
 
-    print(f"num linestrings: {len(linestrings)}")
-
     # cut buffered overlay from hatched linestrings
     timer_start = datetime.datetime.now()
     linestrings = _cut(linestrings, linestrings_cutouts, CUTOUT_STENCIL_CUT_DISTANCE / 2)
@@ -283,21 +281,24 @@ if __name__ == "__main__":
     #     "fill-opacity": "1.0",
     # }
 
-    for i, overlay_ls in enumerate(linestrings_overlays):
-        if i < len(config.layer_colors) and len(config.layer_colors[i]) == 3:
-            overlay_color = config.layer_colors[i]
+    print(config.layer_colors)
+    print(len(linestrings_overlays))
 
-            layer_styles["overlay"] = {
+    for io, overlay_ls in enumerate(linestrings_overlays):
+        if io < len(config.layer_colors) and len(config.layer_colors[io]) == 3:
+            overlay_color = config.layer_colors[io]
+
+            layer_styles[f"overlay_{io}"] = {
                 "fill": "none",
                 "stroke": f"rgb({overlay_color[0]},{overlay_color[1]},{overlay_color[2]})",
                 "stroke-width": "0.30",
                 "fill-opacity": "1.0",
             }
 
-            svg.add("overlay", overlay_ls)
+            svg.add(f"overlay_{io}", overlay_ls)
         else:
-            for i, color in enumerate(palette):
-                layer_styles[f"overlay_{i}"] = {
+            for ic, color in enumerate(palette):
+                layer_styles[f"overlay_color_{ic}"] = {
                     "fill": "none",
                     "stroke": f"rgb({color[0]},{color[1]},{color[2]})",
                     "stroke-width": "0.30",
@@ -305,8 +306,8 @@ if __name__ == "__main__":
                 }
 
             linestrings_overlay_palette = _match_linestrings_to_palette(overlay_ls, mapping_color, palette, scaling_factor)
-            for i, colored_linestrings in enumerate(linestrings_overlay_palette):
-                svg.add(f"overlay_{i}", colored_linestrings)
+            for ic, colored_linestrings in enumerate(linestrings_overlay_palette):
+                svg.add(f"overlay_color_{ic}", colored_linestrings)
 
     for k, v in layer_styles.items():
         svg.add_style(k, v)
