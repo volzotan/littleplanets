@@ -122,10 +122,12 @@ def _visualize(centers: np.ndarray, vectors: list[np.ndarray], points: list[np.n
 
     return plotter
 
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("normals", type=Path, default="normals.exr", help="Normals (EXR)")
     parser.add_argument("raytrace", type=Path, default="raytrace.npy", help="Raytracing distance raster (NPY)")
+    parser.add_argument("raytrace_backface", type=Path, default="raytrace_backface.npy", help="Raytracing backface distance raster (NPY)")
     # parser.add_argument("cloud_cover", type=Path, default="cloud.tif", help="Cloud grayscale coverage map (TIFF)")
     parser.add_argument("netcdf", type=Path, default="data.nc", help="Cloud coverage and wind direction data (netCDF4)")
     parser.add_argument("projection_matrix", type=Path, help="3x4 projection matrix (NPY)")

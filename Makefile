@@ -45,7 +45,7 @@ $(DIR_DATA)/dem.tif $(DIR_DATA)/surface_color.tif: $(DIR_SRC)/downloader.py $(DI
 	uv run $(DIR_SRC)/downloader.py --output-dir $(DIR_DATA) --config $(DIR_BUILD)/downloader.toml
 
 $(DIR_BUILD)/dem.tif: $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/dem.tif $(DIR_BUILD)/modify_tiff.toml
-	@echo "Modify DEM $@"
+	@echo "Modify TIFF $@"
 	uv run $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/dem.tif $@ --config $(DIR_BUILD)/modify_tiff.toml
 
 $(DIR_BUILD)/mesh.ply: $(DIR_SRC)/mesh.py $(DIR_BUILD)/dem.tif $(DIR_DATA)/surface_color.tif $(DIR_BUILD)/mesh.toml
@@ -95,14 +95,14 @@ $(DIR_BUILD)/mesh_clouds.ply: $(DIR_SRC)/mesh.py $(DIR_BUILD)/clouds.tif $(DIR_B
 	@echo "Generating mesh $@"
 	uv run $(DIR_SRC)/mesh.py --color $(DIR_BUILD)/clouds.tif --output $@ --config $(DIR_BUILD)/mesh_clouds.toml
 
-$(DIR_BUILD)/blender_mesh_clouds.blend: $(DIR_BUILD)/blender_camera.blend $(DIR_SRC)/blender_wrapper.py $(DIR_BLENDER)/import_ply.py $(DIR_BUILD)/mesh_clouds.ply $(DIR_BUILD)/import_ply_clouds.toml
+$(DIR_BUILD)/blender_mesh_clouds.blend: $(DIR_BUILD)/blender_mesh.blend $(DIR_SRC)/blender_wrapper.py $(DIR_BLENDER)/import_ply.py $(DIR_BUILD)/mesh_clouds.ply $(DIR_BUILD)/import_ply_clouds.toml
 	@echo "Running blender mesh update"
-	cp $(DIR_BUILD)/blender_camera.blend $@
+	cp $(DIR_BUILD)/blender_mesh.blend $@
 	uv run $(DIR_SRC)/blender_wrapper.py $(BLENDER_BIN) $@ $(DIR_BLENDER)/import_ply.py --config $(DIR_BUILD)/import_ply_clouds.toml --params "--input $(DIR_BUILD)/mesh_clouds.ply"
 
-$(DIR_BUILD)/raytrace_clouds.npy: $(DIR_BUILD)/blender_mesh_clouds.blend $(DIR_BLENDER)/raytracing.py
+$(DIR_BUILD)/raytrace_clouds.npy $(DIR_BUILD)/raytrace_backface_clouds.npy: $(DIR_BUILD)/blender_mesh_clouds.blend $(DIR_BLENDER)/raytracing.py
 	@echo "Running blender raytracer"
-	$(BLENDER_BIN) $(DIR_BUILD)/blender_mesh_clouds.blend --background --python $(DIR_BLENDER)/raytracing.py -- --output $@
+	$(BLENDER_BIN) $(DIR_BUILD)/blender_mesh_clouds.blend --background --python $(DIR_BLENDER)/raytracing.py -- --output $(DIR_BUILD)/raytrace_clouds.npy --output-backface $(DIR_BUILD)/raytrace_backface_clouds.npy
 
 $(DIR_BUILD)/normals_clouds.exr $(DIR_BUILD)/image_clouds.tif &: $(DIR_BUILD)/blender_mesh_clouds.blend
 	@echo "Running blender renderer"
@@ -110,11 +110,12 @@ $(DIR_BUILD)/normals_clouds.exr $(DIR_BUILD)/image_clouds.tif &: $(DIR_BUILD)/bl
 	mv $(DIR_BUILD)/Normals0000.exr $(DIR_BUILD)/normals_clouds.exr
 	mv $(DIR_BUILD)/Image0000.tif $(DIR_BUILD)/image_clouds.tif
 
-$(DIR_BUILD)/clouds_mapping_angle.png $(DIR_BUILD)/clouds_mapping_distance.png $(DIR_BUILD)/clouds_mapping_background.png: $(DIR_SRC)/overlay_clouds.py $(DIR_BUILD)/normals_clouds.exr $(DIR_BUILD)/raytrace_clouds.npy $(DIR_DATA)/clouds.tif $(DIR_BUILD)/overlay_clouds.toml
+$(DIR_BUILD)/clouds_mapping_angle.png $(DIR_BUILD)/clouds_mapping_distance.png $(DIR_BUILD)/clouds_mapping_background.png: $(DIR_SRC)/overlay_clouds.py $(DIR_BUILD)/normals_clouds.exr $(DIR_BUILD)/raytrace_clouds.npy $(DIR_BUILD)/raytrace_backface_clouds.npy $(DIR_DATA)/cds_clouds.nc $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/overlay_clouds.toml
 	@echo "Create clouds overlay"
 	uv run $(DIR_SRC)/overlay_clouds.py 						\
 		$(DIR_BUILD)/normals_clouds.exr 						\
 		$(DIR_BUILD)/raytrace_clouds.npy 						\
+		$(DIR_BUILD)/raytrace_backface_clouds.npy 				\
 		$(DIR_DATA)/cds_clouds.nc								\
 		$(DIR_BUILD)/projection_matrix.npy 						\
 		--output $(DIR_BUILD)									\
@@ -238,6 +239,21 @@ run_palette: $(DIR_SRC)/combine.py
 		--hatchlines $(DIR_BUILD)/hatchlines.npz				\
 		--cutouts $(DIR_BUILD)/overlay_grid_cropped.npz 		\
 		--overlays $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz $(DIR_BUILD)/overlay_clouds.npz \
+		--projection-matrix $(DIR_BUILD)/projection_matrix.npy  \
+		--contours $(DIR_BUILD)/contours.npz					\
+		--config $(DIR_BUILD)/combine.toml 						\
+		--output $(DIR_BUILD)/littleplanets.svg
+	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=$(OUTPUT_PNG) --export-width=2000 --export-background=#000000
+
+run_palette_no_pois: $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_background.png $(DIR_BUILD)/hatchlines.npz
+run_palette_no_pois: $(DIR_BUILD)/overlay_clouds.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz $(DIR_BUILD)/combine.toml
+run_palette_no_pois: $(DIR_SRC)/combine.py
+	@echo "Combine"
+	uv run $(DIR_SRC)/combine.py								\
+		$(DIR_BUILD)/mapping_color.npy 							\
+		$(DIR_BUILD)/mapping_background.png 					\
+		--hatchlines $(DIR_BUILD)/hatchlines.npz				\
+		--overlays $(DIR_BUILD)/overlay_clouds.npz 				\
 		--projection-matrix $(DIR_BUILD)/projection_matrix.npy  \
 		--contours $(DIR_BUILD)/contours.npz					\
 		--config $(DIR_BUILD)/combine.toml 						\

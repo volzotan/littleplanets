@@ -13,6 +13,8 @@ from mathutils import Vector
 # https://blender.stackexchange.com/a/177530
 # https://blender.stackexchange.com/a/120063
 
+BACKFACE_RAYCAST_STEP_DISTANCE = 1e-3
+
 DEBUG = False
 
 
@@ -32,7 +34,13 @@ class ArgumentParserForBlender(argparse.ArgumentParser):
 
 parser = ArgumentParserForBlender()
 parser.add_argument("--output", type=Path, default="Raytrace.npy", help="Output filename [NPY]")
+parser.add_argument(
+    "--filter-object-name", type=str, nargs="*", default=[], help="Filter only for raycasting collisions with objects of the given name(s)"
+)
+parser.add_argument("--output-backface", type=Path, default="RaytraceTransparent.npy", help="Output filename for back-face raycasting [NPY]")
 args = parser.parse_args()
+
+filter_names = args.filter_object_name
 
 context = bpy.context
 scene = context.scene
@@ -67,19 +75,36 @@ y_range = np.linspace(top_left[1], bottom_left[1], resolution_y)
 
 timer_start = datetime.now()
 
-values = np.full([resolution_y, resolution_x, 3], np.nan, dtype=float)
+collisions = np.full([resolution_y, resolution_x, 3], np.nan, dtype=float)
+collisions_backface = np.full([resolution_y, resolution_x, 3], np.nan, dtype=float)
 origin = cam.matrix_world.translation
 
 for x in range(resolution_x):
+    print(f"> progress: {x / resolution_x * 100:5.2f} %", end="\r")
+
     for y in range(resolution_y):
         direction = Vector((x_range[x], y_range[y], top_left[2]))
         direction.rotate(cam.matrix_world.to_quaternion())
-        hit, location, norm, idx, obj, mw = scene.ray_cast(vl.depsgraph, origin, direction.normalized())
-
-        print(f"> progress: {x / resolution_x * 100:5.2f} %", end="\r")
+        direction = direction.normalized()
+        hit, location, normal, face_index, obj, mw = scene.ray_cast(vl.depsgraph, origin, direction)
 
         if hit:
-            values[y, x, :] = location
+            if len(filter_names) > 0 and obj.name not in filter_names:
+                continue
+
+            collisions[y, x, :] = location
+
+            # shoot second ray
+            if args.output_backface is not None:
+                new_origin = location + direction * BACKFACE_RAYCAST_STEP_DISTANCE
+                hit, location, normal, face_index, obj, mw = scene.ray_cast(vl.depsgraph, new_origin, direction)
+
+                if hit:
+                    if len(filter_names) > 0 and obj.name not in filter_names:
+                        continue
+
+                    if direction.dot(normal) > 0:  # Back face
+                        collisions_backface[y, x, :] = location
 
         if DEBUG:
             curve_data = bpy.data.curves.new("debug_curve", "CURVE")
@@ -97,7 +122,11 @@ for x in range(resolution_x):
 
 
 with open(args.output, "wb") as f:
-    np.save(f, values)
+    np.save(f, collisions)
+
+if args.output_backface is not None:
+    with open(args.output_backface, "wb") as f:
+        np.save(f, collisions_backface)
 
 print("Completed in: {:.3f}s".format((datetime.now() - timer_start).total_seconds()))
 
