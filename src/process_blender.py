@@ -14,6 +14,8 @@ from scipy import ndimage
 
 import matplotlib.pyplot as plt
 
+from util.misc import project_to_image_space, normalize_vector, project_vectors_to_image_space, normalize_vectors
+
 CROSS_FLOW = True
 
 CONTRAST_ENHANCEMENT = True
@@ -26,8 +28,6 @@ MAGNITUDE_THRESHOLD = 0.06
 
 CUTOUT_THRESHOLD = 10
 
-IMAGE_SPACE_DIRECTION_STEP_DISTANCE = 0.01
-
 # EXPORT = False
 
 
@@ -38,28 +38,7 @@ class ProcessBlenderConfig(BaseModel):
     mixture: list[float] = [0.035, 0.06]
 
 
-def _normalize_vector(v: np.array) -> np.array:
-    return v / np.linalg.norm(v)
-
-
-def _normalize_vectors(v: np.ndarray) -> np.array:
-    return v / np.linalg.norm(v, axis=2)[:, :, np.newaxis]
-
-
-def _project_to_image_space(points: np.ndarray, projection_matrix: np.ndarray) -> np.ndarray:
-    """
-    Project an array of 3d points [n, 3] to 2d image space [n, 2] using a projection matrix [3, 4].
-    """
-
-    points_is = points.reshape([-1, 3])
-    points_is = np.hstack([points_is, np.full([points_is.shape[0], 1], 1)])  # [n, XYZW]
-    points_is = (projection_matrix @ points_is.T).T
-    points_is = points_is[:, 0:2] / points_is[:, 2][:, np.newaxis]  # divide by w
-
-    return points_is
-
-
-def visualize(centers: np.ndarray, vectors: list[np.ndarray], points: list[np.ndarray], light_axis: np.array) -> pv.Plotter:
+def _visualize(centers: np.ndarray, vectors: list[np.ndarray], points: list[np.ndarray], light_axis: np.array) -> pv.Plotter:
     plotter = pv.Plotter()
 
     plotter.camera.position = (0.0, 0.0, 5.0)
@@ -137,20 +116,6 @@ def _compute_intersections(centers: np.ndarray, normals: np.ndarray, axis: np.ar
         intersections[i, :] = _line_plane_intersection(normals[i], centers[i], line_point, axis)
 
     return intersections
-
-
-def _project_vectors_to_image_space(vector_positions: np.ndarray, vector_directions: np.ndarray, projection_matrix: np.ndarray) -> np.ndarray:
-    positions = vector_positions.reshape([-1, 3])
-    directions = _normalize_vectors(vector_directions).reshape([-1, 3]) * IMAGE_SPACE_DIRECTION_STEP_DISTANCE
-
-    p_image_space = _project_to_image_space(positions, projection_matrix)
-    p2_image_space = _project_to_image_space(positions + directions, projection_matrix)
-
-    vectors_image_space = p2_image_space - p_image_space
-    vectors_image_space = np.hstack([vectors_image_space, np.full([vectors_image_space.shape[0], 1], 0)])
-    vectors_image_space = vectors_image_space.reshape(vector_positions.shape)
-
-    return vectors_image_space
 
 
 def _export_angles(arr: np.ndarray, adjust_y_axis: bool = False) -> np.ndarray:
@@ -251,7 +216,7 @@ def main() -> None:
         math.sin(math.radians(polar_angle)) * math.sin(math.radians(azimuthal_angle)),
         math.cos(math.radians(polar_angle)),
     ]
-    light_axis = _normalize_vector(np.array(light_pos))
+    light_axis = normalize_vector(np.array(light_pos))
 
     if args.scaling_factor is not None:
         resize_size = (int(img_normals.shape[1] * args.scaling_factor), int(img_normals.shape[0] * args.scaling_factor))
@@ -286,7 +251,7 @@ def main() -> None:
     opposite_directions[np.dot(img_direction, light_axis) < 0] = -1
     img_direction *= opposite_directions
 
-    img_elevation_vector = _normalize_vectors(img_pxpos)
+    img_elevation_vector = normalize_vectors(img_pxpos)
     dot = np.sum(img_elevation_vector * img_normals, axis=2, keepdims=True)  # vectorized dot product
     img_elevation_direction = img_elevation_vector - dot * img_normals
     img_elevation_magnitude = np.arccos(dot)
@@ -307,8 +272,8 @@ def main() -> None:
         img_direction_ws = np.cross(img_direction_ws, img_normals)
         img_elevation_direction_ws = np.cross(img_elevation_direction_ws, img_normals)
 
-    img_direction_is = _project_vectors_to_image_space(img_pxpos, img_direction_ws, projection_matrix)
-    img_elevation_direction_is = _project_vectors_to_image_space(img_pxpos, img_elevation_direction_ws, projection_matrix)
+    img_direction_is = project_vectors_to_image_space(img_pxpos, img_direction_ws, projection_matrix)
+    img_elevation_direction_is = project_vectors_to_image_space(img_pxpos, img_elevation_direction_ws, projection_matrix)
 
     # ---
 
@@ -442,9 +407,9 @@ def main() -> None:
         centers = img_pxpos.reshape([-1, 3])
         normals = img_normals.reshape([-1, 3])
         direction = img_direction.reshape([-1, 3])  # relative to (0, 0)
-        elevation_direction = _normalize_vectors(img_elevation_direction).reshape([-1, 3])
+        elevation_direction = normalize_vectors(img_elevation_direction).reshape([-1, 3])
 
-        visualize(centers, [normals, direction, img_field_elevation_vectors_1.reshape([-1, 3])], [], light_axis).show()
+        _visualize(centers, [normals, direction, img_field_elevation_vectors_1.reshape([-1, 3])], [], light_axis).show()
         # visualize(centers, [direction], [], light_axis).show()
         # visualize(centers, [normals, elevation_direction], [], light_axis).show()
 

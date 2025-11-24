@@ -200,3 +200,43 @@ def visualize_linestrings(linestrings: list[LineString]) -> pv.Plotter:
             plotter.add_mesh(spline, color=colors[li % 3])
 
     return plotter
+
+
+def project_to_image_space(points: np.ndarray, projection_matrix: np.ndarray) -> np.ndarray:
+    """
+    Project an array of 3d points [n, 3] to 2d image space [n, 2] using a projection matrix [3, 4].
+    """
+
+    points_is = points.reshape([-1, 3])
+    points_is = np.hstack([points_is, np.full([points_is.shape[0], 1], 1)])  # [n, XYZW]
+    points_is = (projection_matrix @ points_is.T).T
+    points_is = points_is[:, 0:2] / points_is[:, 2][:, np.newaxis]  # divide by w
+
+    return points_is
+
+
+def project_vectors_to_image_space(
+    vector_positions: np.ndarray, vector_directions: np.ndarray, projection_matrix: np.ndarray, step_distance: float = 0.01
+) -> np.ndarray:
+    if vector_positions.shape != vector_directions.shape:
+        raise Exception(f"Unequal vector ndarray shapes: vector_positions {vector_positions.shape} != vector_directions {vector_directions}")
+
+    positions = vector_positions.reshape([-1, 3])
+    directions = normalize_vectors(vector_directions).reshape([-1, 3]) * step_distance
+
+    p_image_space = project_to_image_space(positions, projection_matrix)
+    p2_image_space = project_to_image_space(positions + directions, projection_matrix)
+
+    vectors_image_space = p2_image_space - p_image_space
+    vectors_image_space = np.hstack([vectors_image_space, np.full([vectors_image_space.shape[0], 1], 0)])
+    vectors_image_space = vectors_image_space.reshape(vector_positions.shape)
+
+    return vectors_image_space
+
+
+def normalize_vector(v: np.array) -> np.array:
+    return v / np.linalg.norm(v)
+
+
+def normalize_vectors(v: np.ndarray) -> np.array:
+    return v / np.linalg.norm(v, axis=2)[:, :, np.newaxis]

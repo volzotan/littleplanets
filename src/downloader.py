@@ -3,6 +3,7 @@ Python wrapper for wget to load files specified in a TOML configuration file.
 """
 
 import argparse
+import datetime
 import subprocess
 from pathlib import Path
 
@@ -10,6 +11,7 @@ import toml
 from pydantic import BaseModel
 import numpy as np
 import tifffile
+import cdsapi
 
 from loguru import logger
 
@@ -17,6 +19,8 @@ from loguru import logger
 class DownloaderConfig(BaseModel):
     dem_url: str
     surface_color_url: str
+    clouds_download: bool = False
+    clouds_datetime: datetime.date = datetime.date.fromisoformat("2025-07-01")
 
 
 def _run(cmd: list) -> None:
@@ -45,6 +49,30 @@ def download(url: str, filename: Path) -> None:
             subprocess.run(["magick", str(original_filename), str(filename)], check=True)
 
 
+def retrieve_from_cdsapi(timestamp: datetime.date, filename: Path) -> None:
+    if filename.exists():
+        logger.info(f"Skipping download: file {filename} already exists")
+        return
+
+    dataset = "reanalysis-era5-single-levels"
+    request = {
+        "product_type": ["reanalysis"],
+        "variable": ["10m_u_component_of_wind", "10m_v_component_of_wind", "total_cloud_cover", "land_sea_mask"],
+        "year": [str(timestamp.year)],
+        "month": [str(timestamp.month)],
+        "day": [str(timestamp.day)],
+        "time": ["00:00"],
+        "data_format": "netcdf",
+        "download_format": "unarchived",
+    }
+
+    try:
+        client = cdsapi.Client()
+        client.retrieve(dataset, request).download(target=filename)
+    except Exception as e:
+        logger.error(f"Retrieval from the Copernicus Climate Data Store API failed: {e}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=Path, help="Output directory")
@@ -59,6 +87,9 @@ def main() -> None:
 
     download(config.dem_url, args.output_dir / "dem.tif")
     download(config.surface_color_url, args.output_dir / "surface_color.tif")
+
+    if config.clouds_download:
+        retrieve_from_cdsapi(config.clouds_datetime, args.output_dir / "cds_clouds.nc")
 
 
 if __name__ == "__main__":

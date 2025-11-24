@@ -115,8 +115,8 @@ $(DIR_BUILD)/clouds_mapping_angle.png $(DIR_BUILD)/clouds_mapping_distance.png $
 	uv run $(DIR_SRC)/overlay_clouds.py 						\
 		$(DIR_BUILD)/normals_clouds.exr 						\
 		$(DIR_BUILD)/raytrace_clouds.npy 						\
-		$(DIR_DATA)/clouds.tif 									\
-		$(DIR_DATA)/cds_wind_direction.nc 						\
+		$(DIR_DATA)/cds_clouds.nc								\
+		$(DIR_BUILD)/projection_matrix.npy 						\
 		--output $(DIR_BUILD)									\
 		--config $(DIR_BUILD)/overlay_clouds.toml
 
