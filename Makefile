@@ -102,7 +102,12 @@ $(DIR_BUILD)/blender_mesh_clouds.blend: $(DIR_BUILD)/blender_mesh.blend $(DIR_SR
 
 $(DIR_BUILD)/raytrace_clouds.npy $(DIR_BUILD)/raytrace_backface_clouds.npy: $(DIR_BUILD)/blender_mesh_clouds.blend $(DIR_BLENDER)/raytracing.py
 	@echo "Running blender raytracer"
-	$(BLENDER_BIN) $(DIR_BUILD)/blender_mesh_clouds.blend --background --python $(DIR_BLENDER)/raytracing.py -- --output $(DIR_BUILD)/raytrace_clouds.npy --output-backface $(DIR_BUILD)/raytrace_backface_clouds.npy
+	$(BLENDER_BIN) $(DIR_BUILD)/blender_mesh_clouds.blend 		\
+		--background --python $(DIR_BLENDER)/raytracing.py 		\
+		-- 														\
+		--output $(DIR_BUILD)/raytrace_clouds.npy 				\
+		--output-backface $(DIR_BUILD)/raytrace_backface_clouds.npy \
+		--filter-object-name mesh_clouds
 
 $(DIR_BUILD)/normals_clouds.exr $(DIR_BUILD)/image_clouds.tif &: $(DIR_BUILD)/blender_mesh_clouds.blend
 	@echo "Running blender renderer"
@@ -110,7 +115,7 @@ $(DIR_BUILD)/normals_clouds.exr $(DIR_BUILD)/image_clouds.tif &: $(DIR_BUILD)/bl
 	mv $(DIR_BUILD)/Normals0000.exr $(DIR_BUILD)/normals_clouds.exr
 	mv $(DIR_BUILD)/Image0000.tif $(DIR_BUILD)/image_clouds.tif
 
-$(DIR_BUILD)/clouds_mapping_angle.png $(DIR_BUILD)/clouds_mapping_distance.png $(DIR_BUILD)/clouds_mapping_background.png: $(DIR_SRC)/overlay_clouds.py $(DIR_BUILD)/normals_clouds.exr $(DIR_BUILD)/raytrace_clouds.npy $(DIR_BUILD)/raytrace_backface_clouds.npy $(DIR_DATA)/cds_clouds.nc $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/overlay_clouds.toml
+$(DIR_BUILD)/clouds_mapping_front_angle.png $(DIR_BUILD)/clouds_mapping_front_distance.png $(DIR_BUILD)/clouds_mapping_front_background.png $(DIR_BUILD)/clouds_mapping_back_angle.png $(DIR_BUILD)/clouds_mapping_back_distance.png $(DIR_BUILD)/clouds_mapping_back_background.png: $(DIR_SRC)/overlay_clouds.py $(DIR_BUILD)/normals_clouds.exr $(DIR_BUILD)/raytrace_clouds.npy $(DIR_BUILD)/raytrace_backface_clouds.npy $(DIR_DATA)/cds_clouds.nc $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/overlay_clouds.toml
 	@echo "Create clouds overlay"
 	uv run $(DIR_SRC)/overlay_clouds.py 						\
 		$(DIR_BUILD)/normals_clouds.exr 						\
@@ -121,15 +126,23 @@ $(DIR_BUILD)/clouds_mapping_angle.png $(DIR_BUILD)/clouds_mapping_distance.png $
 		--output $(DIR_BUILD)									\
 		--config $(DIR_BUILD)/overlay_clouds.toml
 
-$(DIR_BUILD)/overlay_clouds.npz: $(DIR_SRC)/hatch.py $(DIR_BUILD)/clouds_mapping_angle.png $(DIR_BUILD)/clouds_mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_background.png $(DIR_BUILD)/hatch.toml
-	@echo "Hatch clouds overlay"
+$(DIR_BUILD)/overlay_clouds_front.npz: $(DIR_SRC)/hatch.py $(DIR_BUILD)/clouds_mapping_front_angle.png $(DIR_BUILD)/clouds_mapping_front_distance.png $(DIR_BUILD)/clouds_mapping_front_background.png $(DIR_BUILD)/hatch.toml
+	@echo "Hatch clouds overlay front"
 	uv run $(DIR_SRC)/hatch.py													\
-		--mapping-angle $(DIR_BUILD)/clouds_mapping_angle.png 					\
-		--mapping-distance $(DIR_BUILD)/clouds_mapping_distance.png 			\
-		--mapping-background $(DIR_BUILD)/clouds_mapping_background.png 		\
+		--mapping-angle $(DIR_BUILD)/clouds_mapping_front_angle.png 			\
+		--mapping-distance $(DIR_BUILD)/clouds_mapping_front_distance.png 		\
+		--mapping-background $(DIR_BUILD)/clouds_mapping_front_background.png 	\
 		--config $(DIR_BUILD)/overlay_clouds_hatch.toml 							\
-		--output $@ \
-		--debug --suffix "_clouds"
+		--output $@
+
+$(DIR_BUILD)/overlay_clouds_back.npz: $(DIR_SRC)/hatch.py $(DIR_BUILD)/clouds_mapping_back_angle.png $(DIR_BUILD)/clouds_mapping_back_distance.png $(DIR_BUILD)/clouds_mapping_back_background.png $(DIR_BUILD)/hatch.toml
+	@echo "Hatch clouds overlay back"
+	uv run $(DIR_SRC)/hatch.py													\
+		--mapping-angle $(DIR_BUILD)/clouds_mapping_back_angle.png 				\
+		--mapping-distance $(DIR_BUILD)/clouds_mapping_back_distance.png 		\
+		--mapping-background $(DIR_BUILD)/clouds_mapping_back_background.png 	\
+		--config $(DIR_BUILD)/overlay_clouds_hatch.toml 							\
+		--output $@
 
 
 # Overlays
@@ -246,14 +259,14 @@ run_palette: $(DIR_SRC)/combine.py
 	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=$(OUTPUT_PNG) --export-width=2000 --export-background=#000000
 
 run_palette_no_pois: $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_background.png $(DIR_BUILD)/hatchlines.npz
-run_palette_no_pois: $(DIR_BUILD)/overlay_clouds.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz $(DIR_BUILD)/combine.toml
+run_palette_no_pois: $(DIR_BUILD)/overlay_clouds_front.npz $(DIR_BUILD)/overlay_clouds_back.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz $(DIR_BUILD)/combine.toml
 run_palette_no_pois: $(DIR_SRC)/combine.py
 	@echo "Combine"
 	uv run $(DIR_SRC)/combine.py								\
 		$(DIR_BUILD)/mapping_color.npy 							\
 		$(DIR_BUILD)/mapping_background.png 					\
 		--hatchlines $(DIR_BUILD)/hatchlines.npz				\
-		--overlays $(DIR_BUILD)/overlay_clouds.npz 				\
+		--overlays $(DIR_BUILD)/overlay_clouds_back.npz $(DIR_BUILD)/overlay_clouds_front.npz 		\
 		--projection-matrix $(DIR_BUILD)/projection_matrix.npy  \
 		--contours $(DIR_BUILD)/contours.npz					\
 		--config $(DIR_BUILD)/combine.toml 						\
