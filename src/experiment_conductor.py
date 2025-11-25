@@ -11,7 +11,7 @@ import tomllib
 import toml
 from loguru import logger
 
-NUM_WORKERS = 3
+NUM_WORKERS = 1
 
 PLANET = "earth"
 
@@ -21,7 +21,8 @@ DIR_OUTPUT = Path("experiment_output")
 DIR_BUILD_BASE = None  # Path(f"build_{PLANET}")  # base build dir from which initial files are copied
 DIR_DATA = Path(f"data_{PLANET}")
 
-MAKEFILE_TARGET = "run_palette"
+# MAKEFILE_TARGET = "run_palette"
+MAKEFILE_TARGET = "run_palette_no_pois"
 
 VARIABLES = {
     #     "blur_angle_kernel_size_perc": [0.1, 0.2, 0.3, 0.4, 0.5],
@@ -47,8 +48,17 @@ VARIABLES = {
     #     [0.03, 0.090],
     #     [0.03, 0.100],
     # ],
-    "adjust_camera|camera_focal_length": [10, 15, 20, 30, 50, 90, 150, 300],
-    "mesh|scale": [0.01, 0.02, 0.04, 0.06, 0.08],
+    # "adjust_camera|camera_focal_length": [10, 15, 20, 30, 50, 90, 150, 300],
+    # "mesh|scale": [0.01, 0.02, 0.04, 0.06, 0.08],
+    "downloader|clouds_datetime": [
+        "2025-07-01 12:00",
+        "2025-07-02 12:00",
+        "2025-07-03 12:00",
+        "2025-07-04 12:00",
+        "2025-07-05 12:00",
+        "2025-07-06 12:00",
+        "2025-07-07 12:00"
+    ],
 }
 
 
@@ -59,29 +69,35 @@ def worker_get_build_dir() -> Path:
 def process(num_experiment: int, config_override: dict[str, Any]) -> None:
     # logger.info(f"Executing experiment {num_experiment:> 5}")
 
-    filename = f"experiment_{num_experiment}"
-    config_file = DIR_OUTPUT / (filename + ".toml")
-    image_file = DIR_OUTPUT / (filename + ".png")
-
-    # restructure "foo|bar: 3" to [foo] bar: 3, i.e. split off 'bar' into a sub-dict
-    config_override_restructured = {}
-    for key, value in config_override.items():
-        if "|" in key:
-            parent, child = key.split("|")[0:2]
-
-            if parent not in config_override_restructured:
-                config_override_restructured[parent] = {child: value}
-            else:
-                config_override_restructured[parent][child] = value
-        else:
-            config_override_restructured[key] = value
-
-    with open(config_file, "w") as f:
-        toml.dump(config_override_restructured, f)
-
-    build_dir = worker_get_build_dir()
-
     try:
+        filename = f"experiment_{num_experiment}"
+        config_file = DIR_OUTPUT / (filename + ".toml")
+        image_file = DIR_OUTPUT / (filename + ".png")
+
+        # restructure "foo|bar: 3" to [foo] bar: 3, i.e. split off 'bar' into a sub-dict
+        config_override_restructured = {}
+        for key, value in config_override.items():
+            if "|" in key:
+                parent, child = key.split("|")[0:2]
+
+                if parent not in config_override_restructured:
+                    config_override_restructured[parent] = {child: value}
+                else:
+                    config_override_restructured[parent][child] = value
+            else:
+                config_override_restructured[key] = value
+
+        with open(config_file, "w") as f:
+            toml.dump(config_override_restructured, f)
+
+        build_dir = worker_get_build_dir()
+
+        # delete the cloud netCDF file so a redownload is required
+        # TODO: issue: the data dir is shared across workers
+        clouds_file = DIR_DATA / "cds_clouds.nc"
+        if clouds_file.exists():
+            clouds_file.unlink()
+
         subprocess.run(
             [
                 "make",  # "-j4",
@@ -101,7 +117,7 @@ def process(num_experiment: int, config_override: dict[str, Any]) -> None:
         # shutil.copy(build_dir.parent / Path(str(build_dir.stem) + "_debug") / "mixture.png", image_file)
 
     except Exception as e:
-        logger.error(f"Subprocess failed: {e}")
+        logger.error(f"process failed: {e}")
         raise e
 
 
