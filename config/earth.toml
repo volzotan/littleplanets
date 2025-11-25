@@ -17,6 +17,7 @@ dem_url = ""
 surface_color_url = "https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57730/land_ocean_ice_8192.png"
 
 clouds_download = true
+clouds_datetime = "2025-07-01 00:00"
 
 [modify_tiff]
 

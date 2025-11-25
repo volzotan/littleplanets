@@ -20,7 +20,7 @@ class DownloaderConfig(BaseModel):
     dem_url: str
     surface_color_url: str
     clouds_download: bool = False
-    clouds_datetime: datetime.date = datetime.date.fromisoformat("2025-07-01")
+    clouds_datetime: datetime.datetime = datetime.datetime.fromisoformat("2025-07-01 00:00")
 
 
 def _run(cmd: list) -> None:
@@ -49,7 +49,7 @@ def download(url: str, filename: Path) -> None:
             subprocess.run(["magick", str(original_filename), str(filename)], check=True)
 
 
-def retrieve_from_cdsapi(timestamp: datetime.date, filename: Path) -> None:
+def retrieve_from_cdsapi(timestamp: datetime.datetime, filename: Path) -> None:
     if filename.exists():
         logger.info(f"Skipping download: file {filename} already exists")
         return
@@ -61,7 +61,7 @@ def retrieve_from_cdsapi(timestamp: datetime.date, filename: Path) -> None:
         "year": [str(timestamp.year)],
         "month": [str(timestamp.month)],
         "day": [str(timestamp.day)],
-        "time": ["00:00"],
+        "time": [timestamp.strftime("%H:00")],
         "data_format": "netcdf",
         "download_format": "unarchived",
     }
