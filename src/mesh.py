@@ -733,8 +733,11 @@ def main() -> None:
     if config.fixed_elevation_scale is not None:
         dem_raster = np.full([1, 1, 1], config.fixed_elevation_scale)
 
-    color_raster = load_raster(args.color)
-    color_raster = np.transpose(color_raster[0:3, :, :], (1, 2, 0))  # from [3, rows, cols] to [rows, cols, 3]
+    if args.color is not None:
+        color_raster = load_raster(args.color)
+        color_raster = np.transpose(color_raster[0:3, :, :], (1, 2, 0))  # from [3, rows, cols] to [rows, cols, 3]
+    else:
+        color_raster = np.full([1, 1, 3], 255, dtype=np.uint8)
 
     if color_raster.shape[2] == 1:  # grayscale color image, i.e. cloud cover map
         color_raster = np.dstack([color_raster, color_raster, color_raster])

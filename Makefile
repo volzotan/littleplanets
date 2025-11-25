@@ -40,7 +40,7 @@ $(DIR_BUILD)/%.toml: $(DIR_SRC)/configurator.py $(CONFIG_FILE)
 	@echo "Configurator for file $@"
 	uv run $^ --output $(DIR_BUILD)
 
-$(DIR_DATA)/dem.tif $(DIR_DATA)/surface_color.tif: $(DIR_SRC)/downloader.py $(DIR_BUILD)/downloader.toml
+$(DIR_DATA)/dem.tif $(DIR_DATA)/surface_color.tif $(DIR_DATA)/cds_clouds.nc: $(DIR_SRC)/downloader.py $(DIR_BUILD)/downloader.toml
 	@echo "Downloader"
 	uv run $(DIR_SRC)/downloader.py --output-dir $(DIR_DATA) --config $(DIR_BUILD)/downloader.toml
 
@@ -87,13 +87,13 @@ $(DIR_BUILD)/mesh_blender.ply: $(DIR_BUILD)/blender_mesh.blend $(DIR_BLENDER)/ex
 
 # Clouds
 
-$(DIR_BUILD)/clouds.tif: $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/clouds.tif $(DIR_BUILD)/modify_tiff_clouds.toml
-	@echo "Modify TIFF $@"
-	uv run $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/clouds.tif $@ --config $(DIR_BUILD)/modify_tiff_clouds.toml
+#$(DIR_BUILD)/clouds.tif: $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/clouds.tif $(DIR_BUILD)/modify_tiff_clouds.toml
+#	@echo "Modify TIFF $@"
+#	uv run $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/clouds.tif $@ --config $(DIR_BUILD)/modify_tiff_clouds.toml
 
-$(DIR_BUILD)/mesh_clouds.ply: $(DIR_SRC)/mesh.py $(DIR_BUILD)/clouds.tif $(DIR_BUILD)/mesh_clouds.toml
+$(DIR_BUILD)/mesh_clouds.ply: $(DIR_SRC)/mesh.py $(DIR_BUILD)/mesh_clouds.toml
 	@echo "Generating mesh $@"
-	uv run $(DIR_SRC)/mesh.py --color $(DIR_BUILD)/clouds.tif --output $@ --config $(DIR_BUILD)/mesh_clouds.toml
+	uv run $(DIR_SRC)/mesh.py --output $@ --config $(DIR_BUILD)/mesh_clouds.toml
 
 $(DIR_BUILD)/blender_mesh_clouds.blend: $(DIR_BUILD)/blender_mesh.blend $(DIR_SRC)/blender_wrapper.py $(DIR_BLENDER)/import_ply.py $(DIR_BUILD)/mesh_clouds.ply $(DIR_BUILD)/import_ply_clouds.toml
 	@echo "Running blender mesh update"
