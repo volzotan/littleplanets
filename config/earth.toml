@@ -1,9 +1,10 @@
-rotX = -90
+rotX = -66.56
 rotY = 0
-rotZ = -23.44
+rotZ = 0
 
 colors = [[65, 102, 174], [240, 126, 50], [3, 168, 115]]
-layer_colors = [[], [], [255, 255, 255]]
+# layer_colors = [[], [], [255, 255, 255]]
+layer_colors = [[255, 255, 255], [255, 255, 255]]
 invert_background = true
 
 dimensions = [750, 750]
@@ -63,7 +64,7 @@ mixture = [0.03, 0.07]
 blur_angle_kernel_size_perc = 0.40
 blur_distance_kernel_size_perc = 0.40
 
-flowlines_line_distance = [0.6, 12.0]
+flowlines_line_distance = [0.6, 8.0]
 flowlines_line_max_length = [30, 30]
 flowlines_line_distance_end_factor = 0.5
 flowlines_max_angle_discontinuity = 1.57 # pi/2
@@ -79,7 +80,7 @@ scaling_factor = 1.0
 
 [mesh_clouds]
 
-scale = 0.11
+scale = 0.06
 fixed_elevation_scale = 1.0
 subdivision = 10
 
@@ -87,9 +88,11 @@ subdivision = 10
 
 [overlay_clouds]
 
+threshold = 200
+
 [overlay_clouds_hatch]
 
-flowlines_line_distance = [0.6, 12.0]
+flowlines_line_distance = [1.0, 10.0]
 flowlines_line_max_length = [30, 30]
 flowlines_line_distance_end_factor = 0.5
 flowlines_max_angle_discontinuity = 1.57 # pi/2
