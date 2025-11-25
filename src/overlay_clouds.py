@@ -316,12 +316,16 @@ def main() -> None:
     # mapping_background = np.zeros_like(mapping_background)
     # mapping_background[bgmask] = 255
 
+    def _clip_and_rescale(raster: np.ndarray, min_value: float | int) -> np.ndarray:
+        return (np.clip(raster, min_value, 255) - min_value) / (255 - min_value) * 255
+
+
     cv2.imwrite(str(args.output / "clouds_mapping_front_angle.png"), angles_rotated_is_front)
-    cv2.imwrite(str(args.output / "clouds_mapping_front_distance.png"), clouds_rotated_front)
+    cv2.imwrite(str(args.output / "clouds_mapping_front_distance.png"), _clip_and_rescale(clouds_rotated_front, config.threshold))
     cv2.imwrite(str(args.output / "clouds_mapping_front_background.png"), mapping_background_front)
 
     cv2.imwrite(str(args.output / "clouds_mapping_back_angle.png"), angles_rotated_is_back)
-    cv2.imwrite(str(args.output / "clouds_mapping_back_distance.png"), clouds_rotated_back)
+    cv2.imwrite(str(args.output / "clouds_mapping_back_distance.png"), _clip_and_rescale(clouds_rotated_back, config.threshold))
     cv2.imwrite(str(args.output / "clouds_mapping_back_background.png"), mapping_background_back)
 
 
