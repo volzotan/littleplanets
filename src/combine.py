@@ -12,7 +12,7 @@ import numpy as np
 import shapely
 import shapely.ops
 from pydantic import BaseModel, Field
-from shapely import LineString, MultiLineString
+from shapely import LineString, MultiLineString, Geometry, Point
 
 from loguru import logger
 
@@ -138,8 +138,12 @@ def _check_linestrings_within_bounds(linestrings: list[LineString], xmin: float,
     return checked_linestrings
 
 
-def _cut(objects: list[LineString], tools: list[LineString], buffer_radius: float) -> list[LineString]:
+def _cut(objects: list[LineString], tools: list[Geometry], buffer_radius: float) -> list[LineString]:
     linestrings_cut = []
+
+    if len(tools) == 0:
+        return objects
+
     stencil = shapely.ops.unary_union(tools).buffer(buffer_radius)
 
     for ls in objects:
@@ -246,7 +250,16 @@ if __name__ == "__main__":
     timer_start = datetime.datetime.now()
     linestrings = _cut(linestrings, linestrings_cutouts, CUTOUT_STENCIL_CUT_DISTANCE / 2)
     linestrings = _cut(linestrings, [ls for overlay_ls in linestrings_overlays for ls in overlay_ls], OVERLAY_STENCIL_CUT_DISTANCE / 2)
-    print(f"stencil time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
+    logger.debug(f"Combination stencil time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
+
+    # cut each overlay from all underlying ones
+    timer_start = datetime.datetime.now()
+    combined_stencil = Point()
+    for i in reversed(range(len(linestrings_overlays))):
+        if not combined_stencil.is_empty:
+            linestrings_overlays[i] = _cut(linestrings_overlays[i], [combined_stencil], OVERLAY_STENCIL_CUT_DISTANCE / 2)
+        combined_stencil = shapely.unary_union([combined_stencil] + linestrings_overlays[i])
+    logger.debug(f"Overlay cascade stencil time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
 
     # linestrings_stencil = []
     # for g in stencil.boundary.geoms:
@@ -280,9 +293,6 @@ if __name__ == "__main__":
     #     "stroke-width": "0.30",
     #     "fill-opacity": "1.0",
     # }
-
-    print(config.layer_colors)
-    print(len(linestrings_overlays))
 
     for io, overlay_ls in enumerate(linestrings_overlays):
         if io < len(config.layer_colors) and len(config.layer_colors[io]) == 3:
