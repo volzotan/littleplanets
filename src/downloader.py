@@ -6,6 +6,7 @@ import argparse
 import datetime
 import subprocess
 from pathlib import Path
+import os
 
 import toml
 from pydantic import BaseModel
@@ -14,6 +15,8 @@ import tifffile
 import cdsapi
 
 from loguru import logger
+
+DATETIME_FORMAT = "%Y-%m-%d-%H-%M"
 
 
 class DownloaderConfig(BaseModel):
@@ -89,8 +92,17 @@ def main() -> None:
     download(config.surface_color_url, args.output_dir / "surface_color.tif")
 
     if config.clouds_download:
-        retrieve_from_cdsapi(config.clouds_datetime, args.output_dir / "cds_clouds.nc")
-
+        path_generic_file = args.output_dir / "cds_clouds.nc"
+        path_unique_file = args.output_dir / f"cds_clouds_{config.clouds_datetime.strftime(DATETIME_FORMAT)}.nc"
+        retrieve_from_cdsapi(config.clouds_datetime, path_unique_file)
+        if path_generic_file.exists() or path_generic_file.is_symlink():
+            if os.readlink(path_generic_file) != path_unique_file:
+                # the symlink has pointed to another unique file beforehand
+                # make only checks the mtime of the unique file and will not detect that data has changed
+                # due to a different symlink.
+                os.utime(path_unique_file, (os.stat(path_unique_file).st_atime, datetime.datetime.now().timestamp()))
+            path_generic_file.unlink()
+        os.symlink(path_unique_file.name, path_generic_file)
 
 if __name__ == "__main__":
     main()
