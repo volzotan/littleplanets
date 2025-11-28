@@ -189,7 +189,7 @@ class FlowlineHatcher:
             dir = -1
 
         x2 = x1 + self.config.LINE_STEP_DISTANCE * math.cos(a1) * dir
-        y2 = y1 + self.config.LINE_STEP_DISTANCE * math.sin(a1) * dir
+        y2 = y1 + self.config.LINE_STEP_DISTANCE * math.sin(a1) * dir * -1
 
         if x2 < 0 or x2 >= self.dimensions[0] or y2 < 0 or y2 >= self.dimensions[1]:
             return None
