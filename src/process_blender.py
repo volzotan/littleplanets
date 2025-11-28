@@ -123,7 +123,9 @@ def _export_angles(arr: np.ndarray, adjust_y_axis: bool = False) -> np.ndarray:
         arr[:, :, 1] *= -1
 
     mapping_angle = np.atan2(arr[:, :, 1], arr[:, :, 0])
-    mapping_angle = (mapping_angle + np.pi) / (np.pi * 2)
+
+    mapping_angle = mapping_angle / math.tau
+
     mapping_angle = (mapping_angle * 255).astype(np.uint8)
     return mapping_angle
 
@@ -476,7 +478,7 @@ def main() -> None:
 
     cv2.imwrite(str(args.output / "mapping_distance.png"), mapping_distance)
 
-    cv2.imwrite(str(args.output / "mapping_angle.png"), _export_angles(img_field_elevation_vectors_10))
+    cv2.imwrite(str(args.output / "mapping_angle.png"), _export_angles(img_field_elevation_vectors_10, adjust_y_axis=True))
 
     cv2.imwrite(str(args.output / "mapping_line_length.png"), mapping_line_length)
 

@@ -61,7 +61,7 @@ class FlowlineHatcher:
         self.scale_y = mapping_distance.shape[0] / dimensions[1]
 
         self.distance = mapping_distance
-        self.angles = (mapping_angles.astype(float) / 255.0) * math.tau - math.pi
+        self.angles = (mapping_angles.astype(float) / 255.0) * math.tau
         self.max_length = mapping_max_length
         self.flat = mapping_flat
 

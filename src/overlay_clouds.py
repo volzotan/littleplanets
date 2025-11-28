@@ -246,8 +246,7 @@ def main() -> None:
     )
 
     angles_rotated_is_front = np.atan2(direction_is_front[:, :, 1], direction_is_front[:, :, 0])
-    angles_rotated_is_front = (angles_rotated_is_front + np.pi) / (np.pi * 2)  # shift by 180° as per convention for mapping_angle
-    angles_rotated_is_front = (angles_rotated_is_front * 255).astype(np.uint8)
+    angles_rotated_is_front = (angles_rotated_is_front / math.tau * 255).astype(np.uint8)
 
     direction_is_back = project_vectors_to_image_space(
         img_pxpos_back,
@@ -256,7 +255,7 @@ def main() -> None:
     )
 
     angles_rotated_is_back = np.atan2(direction_is_back[:, :, 1], direction_is_back[:, :, 0])
-    angles_rotated_is_back = (angles_rotated_is_back + np.pi) / (np.pi * 2)  # shift by 180° as per convention for mapping_angle
+    angles_rotated_is_back = angles_rotated_is_back / math.tau
     angles_rotated_is_back = (angles_rotated_is_back * 255).astype(np.uint8)
 
     if DEBUG:
