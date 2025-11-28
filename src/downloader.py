@@ -110,5 +110,6 @@ def main() -> None:
             path_generic_file.unlink()
             os.symlink(path_unique_file.name, path_generic_file)
 
+
 if __name__ == "__main__":
     main()
