@@ -200,7 +200,8 @@ class FlowlineHatcher:
         if self.config.MAX_ANGLE_DISCONTINUITY > 0:
             a2 = self._map_angle(x2, y2)
 
-            if abs(a2 - a1) > self.config.MAX_ANGLE_DISCONTINUITY:
+            diff_angle = abs(a2 - a1)
+            if min(diff_angle, math.tau-diff_angle) > self.config.MAX_ANGLE_DISCONTINUITY:
                 # print("MAX_ANGLE_DISCONTINUITY")
                 return None
 
