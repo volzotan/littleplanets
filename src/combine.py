@@ -161,11 +161,11 @@ def _cut(objects: list[LineString], tools: list[Geometry], buffer_radius: float)
     return linestrings_cut
 
 
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("mapping_color", type=Path, default="mapping_color.npy", help="Mapping color (NPY)")
-    parser.add_argument("mapping_background", type=Path, default="mapping_background.png", help="Mapping background (PNG)")
+    parser.add_argument("--mapping-color", type=Path, help="Mapping color (NPY)")
+    parser.add_argument("--mapping-background", type=Path, help="Mapping background (PNG)")
 
     parser.add_argument("--hatchlines", type=Path, help="Hatchline linestrings (NPZ)")
     parser.add_argument("--cutouts", type=Path, nargs="*", default=[], help="Cutout linestrings, multiple filenames possible (NPZ)")
@@ -188,19 +188,25 @@ if __name__ == "__main__":
 
     random.seed(PSEUDO_RANDOM_SEED)
 
-    mapping_background = cv2.imread(args.mapping_background, cv2.IMREAD_GRAYSCALE)
+    mapping_background = (
+        cv2.imread(args.mapping_background, cv2.IMREAD_GRAYSCALE)
+        if args.mapping_background is not None
+        else np.zeros(list(config.dimensions), dtype=np.uint8)
+    )
 
     mapping_color = None
-    if args.mapping_color.suffix == ".npy":
-        mapping_color = np.load(args.mapping_color)
-        mapping_color[mapping_background > 0] = np.nan
+    if args.mapping_color is not None:
+        if args.mapping_color.suffix == ".npy":
+            mapping_color = np.load(args.mapping_color)
+            mapping_color[mapping_background > 0] = np.nan
+        else:
+            mapping_color = cv2.imread(args.mapping_color)
     else:
-        mapping_color = cv2.imread(args.mapping_color)
+        mapping_color = np.zeros(list(config.dimensions) + [1], dtype=np.uint8)
 
     mapping_color = _blur_raster(mapping_color, config.blur_color_kernel_size_perc)
 
     scaling_factor = config.dimensions[0] / mapping_background.shape[1]
-
     linestrings = []
 
     if args.hatchlines is not None:

@@ -247,8 +247,8 @@ run_palette: $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_grid_cro
 run_palette: $(DIR_SRC)/combine.py
 	@echo "Combine"
 	uv run $(DIR_SRC)/combine.py								\
-		$(DIR_BUILD)/mapping_color.npy 							\
-		$(DIR_BUILD)/mapping_background.png 					\
+		--mapping-color $(DIR_BUILD)/mapping_color.npy 					\
+		--mapping-background $(DIR_BUILD)/mapping_background.png 		\
 		--hatchlines $(DIR_BUILD)/hatchlines.npz				\
 		--cutouts $(DIR_BUILD)/overlay_grid_cropped.npz 		\
 		--overlays $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz $(DIR_BUILD)/overlay_clouds.npz \
@@ -263,8 +263,8 @@ run_palette_no_pois: $(DIR_BUILD)/overlay_clouds_front.npz $(DIR_BUILD)/overlay_
 run_palette_no_pois: $(DIR_SRC)/combine.py
 	@echo "Combine"
 	uv run $(DIR_SRC)/combine.py								\
-		$(DIR_BUILD)/mapping_color.npy 							\
-		$(DIR_BUILD)/mapping_background.png 					\
+		--mapping-color $(DIR_BUILD)/mapping_color.npy 					\
+		--mapping-background $(DIR_BUILD)/mapping_background.png 		\
 		--hatchlines $(DIR_BUILD)/hatchlines.npz				\
 		--overlays $(DIR_BUILD)/overlay_clouds_back.npz $(DIR_BUILD)/overlay_clouds_front.npz 		\
 		--projection-matrix $(DIR_BUILD)/projection_matrix.npy  \

@@ -77,10 +77,10 @@ def _check_linestrings_within_bounds(linestrings: list[LineString], xmin: float,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--mapping-angle", type=Path, default="mapping_angle.png", help="Mapping angle (PNG)")
-    parser.add_argument("--mapping-distance", type=Path, default="mapping_distance.png", help="Mapping distance (PNG)")
+    parser.add_argument("--mapping-angle", type=Path, help="Mapping angle (PNG)")
+    parser.add_argument("--mapping-distance", type=Path, help="Mapping distance (PNG)")
     parser.add_argument("--mapping-line-length", type=Path, help="Mapping line length (PNG)")
-    parser.add_argument("--mapping-background", type=Path, default="mapping_background.png", help="Mapping background (PNG)")
+    parser.add_argument("--mapping-background", type=Path, help="Mapping background (PNG)")
 
     parser.add_argument("--config", type=Path, default=None, help="Config file (TOML)")
 
@@ -97,14 +97,13 @@ if __name__ == "__main__":
             config = HatchConfig.model_validate(data)
 
     mapping_angle = cv2.imread(args.mapping_angle, cv2.IMREAD_GRAYSCALE)  # uint8 image must be centered around 128 to deal with negative values
-    mapping_distance = cv2.imread(args.mapping_distance, cv2.IMREAD_GRAYSCALE)
-
-    if args.mapping_line_length is not None:
-        mapping_line_length = cv2.imread(args.mapping_line_length, cv2.IMREAD_GRAYSCALE)
-    else:
-        mapping_line_length = np.zeros_like(mapping_angle)
-
-    mapping_background = cv2.imread(args.mapping_background, cv2.IMREAD_GRAYSCALE)
+    mapping_distance = cv2.imread(args.mapping_distance, cv2.IMREAD_GRAYSCALE) if args.mapping_distance is not None else np.zeros_like(mapping_angle)
+    mapping_line_length = (
+        cv2.imread(args.mapping_line_length, cv2.IMREAD_GRAYSCALE) if args.mapping_line_length is not None else np.zeros_like(mapping_angle)
+    )
+    mapping_background = (
+        cv2.imread(args.mapping_background, cv2.IMREAD_GRAYSCALE) if args.mapping_background is not None else np.zeros_like(mapping_angle)
+    )
 
     mapping_angle = _blur_raster(mapping_angle, config.blur_angle_kernel_size_perc)
     mapping_distance = _blur_raster(mapping_distance, config.blur_distance_kernel_size_perc)
