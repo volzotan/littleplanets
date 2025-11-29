@@ -240,3 +240,11 @@ def normalize_vector(v: np.array) -> np.array:
 
 def normalize_vectors(v: np.ndarray) -> np.array:
     return v / np.linalg.norm(v, axis=2)[:, :, np.newaxis]
+
+
+def export_angles(arr: np.ndarray, adjust_y_axis: bool = False) -> np.ndarray:
+    factor = -1 if adjust_y_axis else 1 # blender Y up / numpy Y down
+
+    mapping_angle = np.atan2(arr[:, :, 1] * factor, arr[:, :, 0])
+    mapping_angle = (mapping_angle / math.tau * 255).astype(np.uint8)
+    return mapping_angle

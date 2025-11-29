@@ -14,7 +14,8 @@ from scipy import ndimage
 
 import matplotlib.pyplot as plt
 
-from util.misc import project_to_image_space, normalize_vector, project_vectors_to_image_space, normalize_vectors
+from util.misc import project_to_image_space, normalize_vector, project_vectors_to_image_space, normalize_vectors, \
+    export_angles
 
 CROSS_FLOW = True
 
@@ -116,18 +117,6 @@ def _compute_intersections(centers: np.ndarray, normals: np.ndarray, axis: np.ar
         intersections[i, :] = _line_plane_intersection(normals[i], centers[i], line_point, axis)
 
     return intersections
-
-
-def _export_angles(arr: np.ndarray, adjust_y_axis: bool = False) -> np.ndarray:
-    if adjust_y_axis:  # blender Y up / numpy Y down
-        arr[:, :, 1] *= -1
-
-    mapping_angle = np.atan2(arr[:, :, 1], arr[:, :, 0])
-
-    mapping_angle = mapping_angle / math.tau
-
-    mapping_angle = (mapping_angle * 255).astype(np.uint8)
-    return mapping_angle
 
 
 def _apply_clipping(m: np.ndarray, start_percentile: float, end_percentile: float) -> np.ndarray:
@@ -357,8 +346,8 @@ def main() -> None:
     img_field_elevation_vectors_10 = img_direction_is * (1 - mixture)[:, :, np.newaxis] + img_elevation_direction_is * mixture[:, :, np.newaxis]
 
     if args.debug:
-        cv2.imwrite(str(dir_debug / "img_direction_is.png"), _apply_colormap(_export_angles(img_direction_is)))
-        cv2.imwrite(str(dir_debug / "img_elevation_direction_is.png"), _apply_colormap(_export_angles(img_elevation_direction_is)))
+        cv2.imwrite(str(dir_debug / "img_direction_is.png"), _apply_colormap(export_angles(img_direction_is)))
+        cv2.imwrite(str(dir_debug / "img_elevation_direction_is.png"), _apply_colormap(export_angles(img_elevation_direction_is)))
         cv2.imwrite(str(dir_debug / "mixture.png"), _apply_colormap(mixture))
 
     # ---
@@ -478,7 +467,7 @@ def main() -> None:
 
     cv2.imwrite(str(args.output / "mapping_distance.png"), mapping_distance)
 
-    cv2.imwrite(str(args.output / "mapping_angle.png"), _export_angles(img_field_elevation_vectors_10, adjust_y_axis=True))
+    cv2.imwrite(str(args.output / "mapping_angle.png"), export_angles(img_field_elevation_vectors_10, adjust_y_axis=True))
 
     cv2.imwrite(str(args.output / "mapping_line_length.png"), mapping_line_length)
 
@@ -488,57 +477,57 @@ def main() -> None:
 
     cv2.imwrite(
         str(args.output / "mapping_angle_0.png"),
-        _export_angles(img_field_elevation_vectors_0, adjust_y_axis=True),
+        export_angles(img_field_elevation_vectors_0, adjust_y_axis=True),
     )
 
     cv2.imwrite(
         str(args.output / "mapping_angle_1.png"),
-        _export_angles(img_field_elevation_vectors_1, adjust_y_axis=True),
+        export_angles(img_field_elevation_vectors_1, adjust_y_axis=True),
     )
 
     cv2.imwrite(
         str(args.output / "mapping_angle_2.png"),
-        _export_angles(img_field_elevation_vectors_2, adjust_y_axis=True),
+        export_angles(img_field_elevation_vectors_2, adjust_y_axis=True),
     )
 
     cv2.imwrite(
         str(args.output / "mapping_angle_3.png"),
-        _export_angles(img_field_elevation_vectors_3, adjust_y_axis=True),
+        export_angles(img_field_elevation_vectors_3, adjust_y_axis=True),
     )
 
     cv2.imwrite(
         str(args.output / "mapping_angle_4.png"),
-        _export_angles(img_field_elevation_vectors_4, adjust_y_axis=True),
+        export_angles(img_field_elevation_vectors_4, adjust_y_axis=True),
     )
 
     cv2.imwrite(
         str(args.output / "mapping_angle_5.png"),
-        _export_angles(img_field_elevation_vectors_5, adjust_y_axis=True),
+        export_angles(img_field_elevation_vectors_5, adjust_y_axis=True),
     )
 
     cv2.imwrite(
         str(args.output / "mapping_angle_6.png"),
-        _export_angles(img_field_elevation_vectors_6, adjust_y_axis=True),
+        export_angles(img_field_elevation_vectors_6, adjust_y_axis=True),
     )
 
     cv2.imwrite(
         str(args.output / "mapping_angle_7.png"),
-        _export_angles(img_field_elevation_vectors_7, adjust_y_axis=True),
+        export_angles(img_field_elevation_vectors_7, adjust_y_axis=True),
     )
 
     cv2.imwrite(
         str(args.output / "mapping_angle_8.png"),
-        _export_angles(img_field_elevation_vectors_8),
+        export_angles(img_field_elevation_vectors_8),
     )
 
     cv2.imwrite(
         str(args.output / "mapping_angle_9.png"),
-        _export_angles(img_field_elevation_vectors_9),
+        export_angles(img_field_elevation_vectors_9),
     )
 
     cv2.imwrite(
         str(args.output / "mapping_angle_10.png"),
-        _export_angles(img_field_elevation_vectors_10),
+        export_angles(img_field_elevation_vectors_10),
     )
 
     print(f"total time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")

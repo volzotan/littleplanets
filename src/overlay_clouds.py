@@ -10,7 +10,7 @@ import math
 import pyvista as pv
 
 from process_blender import project_vectors_to_image_space
-from util.misc import rotate_points_inv, project_to_image_space
+from util.misc import rotate_points_inv, project_to_image_space, export_angles
 
 DEBUG = True
 DIR_DEBUG = Path("debug")
@@ -240,34 +240,23 @@ def main() -> None:
     # PROJECT TO IMAGE SPACE
 
     direction_is_front = project_vectors_to_image_space(
-        img_pxpos_front,
-        _rotate_unit_vectors(img_pxpos_front, angles_rotated_front) - img_pxpos_front,
-        projection_matrix
+        img_pxpos_front, _rotate_unit_vectors(img_pxpos_front, angles_rotated_front) - img_pxpos_front, projection_matrix
     )
-
-    angles_rotated_is_front = np.atan2(direction_is_front[:, :, 1], direction_is_front[:, :, 0])
-    angles_rotated_is_front = (angles_rotated_is_front / math.tau * 255).astype(np.uint8)
 
     direction_is_back = project_vectors_to_image_space(
-        img_pxpos_back,
-        _rotate_unit_vectors(img_pxpos_back, angles_rotated_back) - img_pxpos_back,
-        projection_matrix
+        img_pxpos_back, _rotate_unit_vectors(img_pxpos_back, angles_rotated_back) - img_pxpos_back, projection_matrix
     )
-
-    angles_rotated_is_back = np.atan2(direction_is_back[:, :, 1], direction_is_back[:, :, 0])
-    angles_rotated_is_back = angles_rotated_is_back / math.tau
-    angles_rotated_is_back = (angles_rotated_is_back * 255).astype(np.uint8)
 
     if DEBUG:
         cv2.imwrite(str(DIR_DEBUG / "overlay_clouds.png"), clouds_rotated_front)
         cv2.imwrite(str(DIR_DEBUG / "overlay_clouds_back.png"), clouds_rotated_back)
 
         cv2.imwrite(str(DIR_DEBUG / "clouds_angles_rotated.png"), (angles_rotated_front / math.tau * 255).astype(np.uint8))
-        cv2.imwrite(str(DIR_DEBUG / "clouds_angles_rotated_is.png"), angles_rotated_is_front)
+        cv2.imwrite(str(DIR_DEBUG / "clouds_angles_rotated_is.png"), export_angles(direction_is_front, adjust_y_axis=True))
         cv2.imwrite(str(DIR_DEBUG / "clouds_landseamask_rotated.png"), (lsm_rotated_front * 255).astype(np.uint8))
 
         cv2.imwrite(str(DIR_DEBUG / "clouds_angles_rotated_back.png"), (angles_rotated_back / math.tau * 255).astype(np.uint8))
-        cv2.imwrite(str(DIR_DEBUG / "clouds_angles_rotated_is_back.png"), angles_rotated_is_back)
+        cv2.imwrite(str(DIR_DEBUG / "clouds_angles_rotated_is_back.png"), export_angles(direction_is_back, adjust_y_axis=True))
         cv2.imwrite(str(DIR_DEBUG / "clouds_landseamask_rotated_back.png"), (lsm_rotated_back * 255).astype(np.uint8))
 
     # BACKGROUND
@@ -319,11 +308,11 @@ def main() -> None:
         return (np.clip(raster, min_value, 255) - min_value) / (255 - min_value) * 255
 
 
-    cv2.imwrite(str(args.output / "clouds_mapping_front_angle.png"), angles_rotated_is_front)
+    cv2.imwrite(str(args.output / "clouds_mapping_front_angle.png"), export_angles(direction_is_front, adjust_y_axis=True))
     cv2.imwrite(str(args.output / "clouds_mapping_front_distance.png"), _clip_and_rescale(clouds_rotated_front, config.threshold))
     cv2.imwrite(str(args.output / "clouds_mapping_front_background.png"), mapping_background_front)
 
-    cv2.imwrite(str(args.output / "clouds_mapping_back_angle.png"), angles_rotated_is_back)
+    cv2.imwrite(str(args.output / "clouds_mapping_back_angle.png"), export_angles(direction_is_back, adjust_y_axis=True))
     cv2.imwrite(str(args.output / "clouds_mapping_back_distance.png"), _clip_and_rescale(clouds_rotated_back, config.threshold))
     cv2.imwrite(str(args.output / "clouds_mapping_back_background.png"), mapping_background_back)
 
