@@ -95,6 +95,73 @@ def _rotate_unit_vectors(vectors: np.ndarray, angles_2d: np.ndarray, step_distan
     rotated_v = np.einsum("nij,nj->ni", R, v)
     return rotated_v.reshape(vectors.shape)
 
+def _rotate_raster2(vectors: np.ndarray, raster: np.ndarray, euler_rotation: np.ndarray) -> np.ndarray:
+
+    x, y, z = euler_rotation
+    v = vectors.reshape([-1, 3])
+
+    R_x = np.array(
+        [
+            [1, 0, 0],
+            [0, np.cos(x), -np.sin(x)],
+            [0, np.sin(x), np.cos(x)],
+        ]
+    )
+    R_y = np.array(
+        [
+            [np.cos(y), 0, np.sin(y)],
+            [0, 1, 0],
+            [-np.sin(y), 0, np.cos(y)],
+        ]
+    )
+    R_z = np.array(
+        [
+            [np.cos(z), -np.sin(z), 0],
+            [np.sin(z), np.cos(z), 0],
+            [0, 0, 1],
+        ]
+    )
+
+    v_rot = (R_z @ R_y @ R_x).T @ vectors.reshape([3, -1])
+    v_rot = v_rot.reshape(vectors.shape)
+
+    d = np.sqrt(np.sum(np.power(v_rot, 2), axis=2))
+
+    lats = np.acos(v_rot[:, :, 2] / d)
+    lons = np.atan2(v_rot[:, :, 1] / d, v_rot[:, :, 0] / d)
+
+    print(lats)
+    print(lons)
+
+    height, width = raster.shape
+
+    I = ((lats / math.pi) * height).astype(np.uint)
+    J = ((lons / math.tau) * width).astype(np.uint)
+
+    print(I)
+    print(J)
+
+    return raster[I, J]
+
+
+def _rotate_raster(vectors: np.ndarray, raster: np.ndarray, euler_rotation: np.ndarray) -> np.ndarray:
+
+    output = np.zeros(vectors.shape[0:2], dtype=raster.dtype)
+
+    for y in range(vectors.shape[0]):
+        for x in range(vectors.shape[1]):
+            p = vectors[y, x]
+            if not np.isnan(np.sum(p)):
+                p = rotate_points_inv([p], *(euler_rotation))[0]
+
+                d = math.sqrt(np.sum(np.power(p, 2)))
+                lat = math.acos(p[2] / d)
+                lon = math.atan2(p[1] / d, p[0] / d)
+
+                output[y, x] = _map(raster, lat, lon)
+
+    return output
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -141,6 +208,20 @@ def main() -> None:
         if VISUALIZE:
             _visualize(u, v)
 
+    mapping_angle = (mapping_angle * -1) % math.tau
+
+    mapping_angle = np.zeros_like(mapping_angle)
+
+    mapping_angle[300:360, 0:120] = math.radians(45)
+    mapping_angle[361:420, 0:120] = math.radians(-45)
+    mapping_angle[300:360, mapping_angle.shape[1] - 120 : mapping_angle.shape[1]] = math.radians(135)
+    mapping_angle[361:420, mapping_angle.shape[1] - 120 : mapping_angle.shape[1]] = math.radians(-135)
+
+    mapping_angle[300 - 120 : 360 - 120, 0:120] = math.radians(90)
+    mapping_angle[361 - 120 : 420 - 120, 0:120] = math.radians(-45)
+    mapping_angle[300 - 120 : 360 - 120, mapping_angle.shape[1] - 120 : mapping_angle.shape[1]] = math.radians(135)
+    mapping_angle[361 - 120 : 420 - 120, mapping_angle.shape[1] - 120 : mapping_angle.shape[1]] = math.radians(-135)
+
     if config.blur_kernel_size is not None and config.blur_kernel_size >= 3:
         mapping_clouds = cv2.blur(mapping_clouds, (config.blur_kernel_size, config.blur_kernel_size))
 
@@ -156,41 +237,26 @@ def main() -> None:
 
     # ROTATE
 
-    clouds_rotated_front = np.zeros(img_pxpos_front.shape[0:2], dtype=np.uint8)
-    angles_rotated_front = np.zeros(img_pxpos_front.shape[0:2], dtype=float)  # in radians
-    lsm_rotated_front = np.zeros(img_pxpos_front.shape[0:2])
+    # clouds_rotated_front = np.zeros(img_pxpos_front.shape[0:2], dtype=np.uint8)
+    # angles_rotated_front = np.zeros(img_pxpos_front.shape[0:2], dtype=float)  # in radians
+    # lsm_rotated_front = np.zeros(img_pxpos_front.shape[0:2])
+    #
+    # clouds_rotated_back = np.zeros(img_pxpos_front.shape[0:2], dtype=np.uint8)
+    # angles_rotated_back = np.zeros(img_pxpos_front.shape[0:2], dtype=float)  # in radians
+    # lsm_rotated_back = np.zeros(img_pxpos_front.shape[0:2])
 
-    clouds_rotated_back = np.zeros(img_pxpos_front.shape[0:2], dtype=np.uint8)
-    angles_rotated_back = np.zeros(img_pxpos_front.shape[0:2], dtype=float)  # in radians
-    lsm_rotated_back = np.zeros(img_pxpos_front.shape[0:2])
+    clouds_rotated_front = _rotate_raster(img_pxpos_front, mapping_clouds, blender_rotation)
+    angles_rotated_front = _rotate_raster(img_pxpos_front, mapping_angle, blender_rotation)
+    lsm_rotated_front = _rotate_raster(img_pxpos_front, lsm, blender_rotation)
 
-    for y in range(img_pxpos_front.shape[0]):
-        for x in range(img_pxpos_front.shape[1]):
-            pf = img_pxpos_front[y, x]
-            if not np.isnan(np.sum(pf)):
-                pf = rotate_points_inv([pf], *(blender_rotation))[0]
-
-                d = math.sqrt(np.sum(np.power(pf, 2)))
-                lat = math.acos(pf[2] / d)
-                lon = math.atan2(pf[1] / d, pf[0] / d)  # - math.pi/2
-
-                clouds_rotated_front[y, x] = _map(mapping_clouds, lat, lon)
-                angles_rotated_front[y, x] = _map(mapping_angle, lat, lon)
-                lsm_rotated_front[y, x] = _map(lsm, lat, lon)
-
-            pb = img_pxpos_back[y, x]
-            if not np.isnan(np.sum(pb)):
-                pb = rotate_points_inv([pb], *(blender_rotation))[0]
-
-                d = math.sqrt(np.sum(np.power(pb, 2)))
-                lat = math.acos(pb[2] / d)
-                lon = math.atan2(pb[1] / d, pb[0] / d)  # - math.pi/2
-
-                clouds_rotated_back[y, x] = _map(mapping_clouds, lat, lon)
-                angles_rotated_back[y, x] = _map(mapping_angle, lat, lon)
-                lsm_rotated_back[y, x] = _map(lsm, lat, lon)
+    clouds_rotated_back = _rotate_raster(img_pxpos_back, mapping_clouds, blender_rotation)
+    angles_rotated_back = _rotate_raster(img_pxpos_back, mapping_angle, blender_rotation)
+    lsm_rotated_back = _rotate_raster(img_pxpos_back, lsm, blender_rotation)
 
     # PROJECT TO IMAGE SPACE
+
+    # foo = angles_rotated_front.copy()
+    # foo = (foo - math.pi/2 ) % math.tau
 
     direction_is_front = project_vectors_to_image_space(
         img_pxpos_front, _rotate_unit_vectors(img_pxpos_front, angles_rotated_front) - img_pxpos_front, projection_matrix
@@ -218,22 +284,22 @@ def main() -> None:
         mapping_background = np.zeros(raycast.shape[0:2], dtype=np.uint8)
         mapping_background[np.isnan(np.sum(raycast, axis=2))] = 255
 
-        mask = clouds_mapping >= config.threshold
-        if config.morph_kernel_size is not None and config.morph_kernel_size >= 3:
-            mask_uint8 = np.zeros_like(mask, dtype=np.uint8)
-            mask_uint8[mask] = 255
-
-            # cv2.imwrite(str(DIR_DEBUG / "overlay_clouds_mask.png"), mask_uint8)
-
-            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (config.morph_kernel_size, config.morph_kernel_size))
-            mask_uint8 = cv2.morphologyEx(mask_uint8, cv2.MORPH_CLOSE, kernel)
-            mask_uint8 = cv2.morphologyEx(mask_uint8, cv2.MORPH_OPEN, kernel)
-
-            # cv2.imwrite(str(DIR_DEBUG / "overlay_clouds_mask_morph.png"), mask_uint8)
-
-            mapping_background[mask_uint8 == 0] = 255
-        else:
-            mapping_background[~mask] = 255
+        # mask = clouds_mapping >= config.threshold
+        # if config.morph_kernel_size is not None and config.morph_kernel_size >= 3:
+        #     mask_uint8 = np.zeros_like(mask, dtype=np.uint8)
+        #     mask_uint8[mask] = 255
+        #
+        #     # cv2.imwrite(str(DIR_DEBUG / "overlay_clouds_mask.png"), mask_uint8)
+        #
+        #     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (config.morph_kernel_size, config.morph_kernel_size))
+        #     mask_uint8 = cv2.morphologyEx(mask_uint8, cv2.MORPH_CLOSE, kernel)
+        #     mask_uint8 = cv2.morphologyEx(mask_uint8, cv2.MORPH_OPEN, kernel)
+        #
+        #     # cv2.imwrite(str(DIR_DEBUG / "overlay_clouds_mask_morph.png"), mask_uint8)
+        #
+        #     mapping_background[mask_uint8 == 0] = 255
+        # else:
+        #     mapping_background[~mask] = 255
 
         return mapping_background
 
@@ -243,9 +309,14 @@ def main() -> None:
     # EXPORT
 
     def _clip_and_rescale(raster: np.ndarray, min_value: float | int) -> np.ndarray:
-        return (np.clip(raster, min_value, 255) - min_value) / (255 - min_value) * 255
+        # return (np.clip(raster, min_value, 255) - min_value) / (255 - min_value) * 255
 
-    cv2.imwrite(str(args.output / "clouds_mapping_front_angle.png"), export_angles(direction_is_front, adjust_y_axis=True))
+        tmp = np.full_like(raster, 255)
+        tmp[500, 500] = 0
+        tmp[501, 500] = 255
+        return tmp
+
+    cv2.imwrite(str(args.output / "clouds_mapping_front_angle.png"), export_angles(direction_is_front, adjust_y_axis=False))
     cv2.imwrite(str(args.output / "clouds_mapping_front_distance.png"), _clip_and_rescale(clouds_rotated_front, config.threshold))
     cv2.imwrite(str(args.output / "clouds_mapping_front_background.png"), mapping_background_front)
 
@@ -253,6 +324,41 @@ def main() -> None:
     cv2.imwrite(str(args.output / "clouds_mapping_back_distance.png"), _clip_and_rescale(clouds_rotated_back, config.threshold))
     cv2.imwrite(str(args.output / "clouds_mapping_back_background.png"), mapping_background_back)
 
+    # DEBUG
+    # cv2.imwrite(str(args.output / "clouds_mapping_front_angle.png"), (angles_rotated_front / math.tau * 255).astype(np.uint8))
+
+
+def test_rotate_raster():
+
+    vectors = np.zeros([5, 1, 3], dtype=float)
+    vectors[0:5, 0] = [0, -1, 0]
+
+    euler_rotation = np.array([math.pi/2, 0, 0])
+
+    raster = np.full([100, 100], 255, dtype=np.uint8)
+
+    vectors_rotated = _rotate_raster(vectors, raster, euler_rotation)
+
+    print(vectors_rotated)
+
+def test_rotate_unit_vectors():
+    vectors = np.zeros([5, 1, 3], dtype=float)
+
+    vectors[0:5, 0] = [0, 0, 1]
+
+    angles = np.zeros([vectors.shape[0], vectors.shape[1]], dtype=float)
+    angles[0, 0] = 0
+
+    for i in range(5):
+        angles[i, 0] = math.radians(10 * i)
+
+    vec_rot = _rotate_unit_vectors(vectors, angles)
+
+    visualize([], [], [vec_rot]).show()
+
 
 if __name__ == "__main__":
     main()
+
+    # test_rotate_unit_vectors()
+    # test_rotate_raster()
