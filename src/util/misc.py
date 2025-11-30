@@ -202,6 +202,59 @@ def visualize_linestrings(linestrings: list[LineString]) -> pv.Plotter:
     return plotter
 
 
+def visualize(centers: np.ndarray, vectors: list[np.ndarray], points: list[np.ndarray], light_axis: np.ndarray = None) -> pv.Plotter:
+    plotter = pv.Plotter()
+
+    plotter.camera.position = (0.0, 0.0, 5.0)
+    plotter.camera.focal_point = (0.0, 0.0, 0.0)
+    plotter.camera.up = (0, 1, 0)
+
+    # X, Y, Z axes
+    plotter.add_mesh(
+        pv.Spline(np.array([[0, 0, 0], [1, 0, 0]]), 10).tube(radius=0.005),
+        color=[255, 0, 0],
+    )
+    plotter.add_mesh(
+        pv.Spline(np.array([[0, 0, 0], [0, 1, 0]]), 10).tube(radius=0.005),
+        color=[0, 255, 0],
+    )
+    plotter.add_mesh(
+        pv.Spline(np.array([[0, 0, 0], [0, 0, 1]]), 10).tube(radius=0.005),
+        color=[0, 0, 255],
+    )
+
+    # light axis
+    if light_axis is not None:
+        spline = pv.Spline(np.array([[0, 0, 0], light_axis], dtype=np.float32)).tube(radius=0.005)
+        plotter.add_mesh(spline, color=[255, 255, 0])
+
+    colors = ["red", "green", "blue"]
+
+    for vi, vector in enumerate(vectors):
+        for i in range(len(vector)):
+            if np.isnan(np.sum(centers[i])):
+                continue
+
+            if np.isnan(np.sum(vector[i])):
+                continue
+
+            if np.sum(np.abs(vector[i])) == 0.0:
+                continue
+
+            arrow = pv.Arrow(centers[i], vector[i], scale=0.05)
+            plotter.add_mesh(arrow, color=colors[vi])
+
+            # line = pv.Line(centers[i], centers[i] + vector[i])
+            # plotter.add_mesh(line)
+
+    for pi, point_set in enumerate(points):
+        for point in point_set:
+            sphere = pv.Sphere(0.005, point)
+            plotter.add_mesh(sphere, color=colors[pi])
+
+    return plotter
+
+
 def project_to_image_space(points: np.ndarray, projection_matrix: np.ndarray) -> np.ndarray:
     """
     Project an array of 3d points [n, 3] to 2d image space [n, 2] using a projection matrix [3, 4].
@@ -243,7 +296,7 @@ def normalize_vectors(v: np.ndarray) -> np.array:
 
 
 def export_angles(arr: np.ndarray, adjust_y_axis: bool = False) -> np.ndarray:
-    factor = -1 if adjust_y_axis else 1 # blender Y up / numpy Y down
+    factor = -1 if adjust_y_axis else 1  # blender Y up / numpy Y down
 
     mapping_angle = np.atan2(arr[:, :, 1] * factor, arr[:, :, 0])
     mapping_angle = (mapping_angle / math.tau * 255).astype(np.uint8)

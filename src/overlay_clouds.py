@@ -7,11 +7,10 @@ import toml
 from pydantic import BaseModel
 import numpy as np
 import math
-import pyvista as pv
 import matplotlib.pyplot as plt
 
 from process_blender import project_vectors_to_image_space
-from util.misc import rotate_points_inv, project_to_image_space, export_angles
+from util.misc import rotate_points_inv, export_angles, visualize
 
 VISUALIZE = False
 DEBUG = True
@@ -22,6 +21,9 @@ class OverlayCloudsConfig(BaseModel):
     rotX: float = 0
     rotY: float = 0
     rotZ: float = 0
+
+    light_angle_xy: float = 0
+    light_angle_z: float = 0
 
     blur_kernel_size: int | None = 6
     morph_kernel_size: int | None = 5

@@ -1,6 +1,9 @@
 rotX = -66.56
 rotY = 0
-rotZ = 0
+rotZ = 10
+
+light_angle_xy = 67.5
+light_angle_z = 90 #50
 
 colors = [[65, 102, 174], [240, 126, 50], [3, 168, 115]]
 # layer_colors = [[], [], [255, 255, 255]]
@@ -53,8 +56,6 @@ grid_lines_lon = 8
 
 [process_blender]
 
-light_angle_xy = 67.5
-light_angle_z = 90 #50
 mixture = [0.03, 0.07]
 
 [palette]

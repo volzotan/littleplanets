@@ -14,8 +14,7 @@ from scipy import ndimage
 
 import matplotlib.pyplot as plt
 
-from util.misc import project_to_image_space, normalize_vector, project_vectors_to_image_space, normalize_vectors, \
-    export_angles
+from util.misc import project_to_image_space, normalize_vector, project_vectors_to_image_space, normalize_vectors, export_angles
 
 CROSS_FLOW = True
 

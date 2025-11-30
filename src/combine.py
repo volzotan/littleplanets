@@ -335,7 +335,12 @@ def main() -> None:
         svg.add(f"lines_{i}", colored_linestrings)
 
     svg.write()
+
     # try:
     #     convert_svg_to_png(svg, svg.dimensions[0] * 10)
     # except Exception as e:
     #     print(f"SVG to PNG conversion failed: {e}")
+
+
+if __name__ == "__main__":
+    main()
