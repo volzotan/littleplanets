@@ -10,7 +10,7 @@ import math
 import matplotlib.pyplot as plt
 
 from process_blender import project_vectors_to_image_space
-from util.misc import rotate_points_inv, export_angles, visualize, normalize_vector
+from util.misc import rotate_points_inv, export_angles, visualize, normalize_vector, project_to_image_space
 
 VISUALIZE = False
 DEBUG = True
@@ -52,7 +52,7 @@ def _visualize(u: np.ndarray, v: np.ndarray, path_base_image: Path = Path("outpu
     plt.show()
 
 
-def _map(raster: np.ndarray, lat: float, lon: float) -> np.ndarray:
+def _map(raster: np.ndarray, lat: float, lon: float) -> int | float:
     height, width = raster.shape
 
     y = int((lat / math.pi) * height)
@@ -97,7 +97,6 @@ def _rotate_unit_vectors(vectors: np.ndarray, angles_2d: np.ndarray, step_distan
 
 
 def _rotate_raster(vectors: np.ndarray, raster: np.ndarray, euler_rotation: np.ndarray) -> np.ndarray:
-
     output = np.zeros(vectors.shape[0:2], dtype=raster.dtype)
 
     for y in range(vectors.shape[0]):
@@ -115,9 +114,7 @@ def _rotate_raster(vectors: np.ndarray, raster: np.ndarray, euler_rotation: np.n
     return output
 
 
-
-def _rotate_vector_backwards(vectors: np.ndarray, euler_rotation: np.ndarray) -> np.ndarray:
-
+def _rotate_vector(vectors: np.ndarray, euler_rotation: np.ndarray, backwards: bool = False) -> np.ndarray:
     x, y, z = euler_rotation
     v = vectors.reshape([-1, 3])
 
@@ -143,7 +140,10 @@ def _rotate_vector_backwards(vectors: np.ndarray, euler_rotation: np.ndarray) ->
         ]
     )
 
-    v_rot = v @ (R_z @ R_y @ R_x) # multiplying from the right inverses the rotation, no transpose required
+    R = (R_z @ R_y @ R_x).T
+    if backwards:
+        R = R.T
+    v_rot = v @ R  # multiplying from the right inverses the rotation, no transpose required
 
     return v_rot.reshape(vectors.shape)
 
@@ -196,26 +196,62 @@ def main() -> None:
         if VISUALIZE:
             _visualize(u, v)
 
-
-
-    new_size = (30,30)
+    # new_size = (30,30)
+    new_size = (60, 60)
     img_pxpos_front = cv2.resize(img_pxpos_front, new_size)
-    img_pxpos_front_orig = _rotate_vector_backwards(img_pxpos_front, blender_rotation)
-    # img_pxpos_front_orig = rotate_points_inv(img_pxpos_front.reshape([-1, 3]).tolist(), *blender_rotation)
 
-    points = [img_pxpos_front.reshape([-1, 3]), img_pxpos_front_orig.reshape([-1, 3])]
-    visualize([], [], points, light_axis=light_axis).show()
+    img_pxpos_front_orig = _rotate_vector(img_pxpos_front, blender_rotation, backwards=True)
 
+    # points = [img_pxpos_front.reshape([-1, 3]), img_pxpos_front_orig.reshape([-1, 3])]
+    # visualize([], [], points, light_axis=light_axis).show()
 
-    # 1) ich nehme den raygecasteten Punkt in Weltkoordinaten (img_pxpos_front)
+    direction_orig = np.zeros_like(img_pxpos_front_orig)
+    for y in range(img_pxpos_front_orig.shape[0]):
+        for x in range(img_pxpos_front_orig.shape[1]):
+            p = img_pxpos_front_orig[y, x]
+            if not np.isnan(np.sum(p)):
+                d = math.sqrt(np.sum(np.power(p, 2)))
+                lat = math.acos(p[2] / d)
+                lon = math.atan2(p[1] / d, p[0] / d)
+                angle = _map(mapping_angle, lat, lon)
+                step_distance = math.radians(0.01)
+
+                deg_z = step_distance * math.cos(angle)
+                deg_x = step_distance * math.sin(angle)
+
+                rot = np.array([deg_x, 0, deg_z])
+                p2 = _rotate_vector(p, rot)
+
+                direction_orig[y, x] = normalize_vector(p2 - p)
+
+    centers = img_pxpos_front_orig.reshape([-1, 3])
+    vectors = [direction_orig.reshape([-1, 3])]
+    visualize(centers, vectors, [], light_axis=light_axis).show()
+
+    direction = _rotate_vector(direction_orig, blender_rotation)
+    direction_is = project_vectors_to_image_space(img_pxpos_front, direction, projection_matrix)
+    direction_is[:, :, 1] *= -1  # after projection, the Y axis is flipped
+
+    centers = img_pxpos_front.reshape([-1, 3])
+    vectors = [direction.reshape([-1, 3]), direction_is.reshape([-1, 3])]
+    # vectors = [direction_is.reshape([-1, 3])]
+    visualize(centers, vectors, [], light_axis=light_axis, sphere=False).show()
+
+    # centers_is = project_to_image_space(img_pxpos_front, projection_matrix)
+    # centers_is /= 300
+    # centers_is = np.hstack([centers_is, np.zeros([centers_is.shape[0], 1])])
+    # vectors = [direction_is.reshape([-1, 3])]
+    # visualize(centers_is, vectors, [], light_axis=light_axis).show()
+
+    cv2.imwrite("foo.png", export_angles(direction_is))
+
+    # 1) ich nehme den raycasting Punkt in Weltkoordinaten (img_pxpos_front)
     # 2) rotiere ihn rückwärts auf seine ursprüngliche Weltkoordinate (Frontal Blick auf die Y-Achse, world coordinates)
     # 3) berechne die Lat/Lon pos dieses Punktes auf der Sphäre und mache das Mapping zum Winkel (Winkel ist relativ zur Kugeloberfläche mit oben als Z-Achse)
     # 4) Umrechnung dieses Winkels in einen World Coordinate Vector -> Resultat: Winkelvektor
     # 5) rotiere Winkelvektor vorwärts auf seine endgültige Weltkoordinate
     # 6) Rechne nun den Winkelvektor in Image Space um (startpunkt im IS ist bereits bekannt (der index im ndarray ist der pixel),
     #       dann kleinen schritt in richtung des winkels gehen (im WS), neuen Punkt als endpunkt in IS konvertieren, winkel berechnen
-
-
 
 
 if __name__ == "__main__":
