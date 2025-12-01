@@ -9,7 +9,6 @@ from src.util.misc import visualize
 RESIZE_FACTOR = 0.05
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument("raytrace", type=Path, default="raytrace.npy", help="Raytracing distance raster (NPY)")
     args = parser.parse_args()
