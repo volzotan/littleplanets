@@ -99,7 +99,6 @@ def main() -> None:
         if path_generic_file.exists() and not path_generic_file.is_symlink():
             logger.debug(f"removing generic CDS cloud data file: {path_generic_file} (expected a symlink, not a file)")
             os.remove(path_generic_file)
-            os.symlink(path_unique_file.name, path_generic_file)
 
         if path_generic_file.is_symlink():
             if os.readlink(path_generic_file) != path_unique_file:
@@ -108,7 +107,8 @@ def main() -> None:
                 # due to a different symlink.
                 os.utime(path_unique_file, (os.stat(path_unique_file).st_atime, datetime.datetime.now().timestamp()))
             path_generic_file.unlink()
-            os.symlink(path_unique_file.name, path_generic_file)
+
+        os.symlink(path_unique_file.name, path_generic_file)
 
 
 if __name__ == "__main__":
