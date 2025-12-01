@@ -255,21 +255,17 @@ def main() -> None:
     # cut buffered overlay from hatched linestrings
     timer_start = datetime.datetime.now()
     linestrings = _cut(linestrings, linestrings_cutouts, CUTOUT_STENCIL_CUT_DISTANCE / 2)
-    # linestrings = _cut(linestrings, [ls for overlay_ls in linestrings_overlays for ls in overlay_ls], OVERLAY_STENCIL_CUT_DISTANCE / 2)
+    linestrings = _cut(linestrings, [ls for overlay_ls in linestrings_overlays for ls in overlay_ls], OVERLAY_STENCIL_CUT_DISTANCE / 2)
     logger.debug(f"Combination stencil time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
 
-    # # cut each overlay from all underlying ones
-    # timer_start = datetime.datetime.now()
-    # combined_stencil = Point()
-    # for i in reversed(range(len(linestrings_overlays))):
-    #     if not combined_stencil.is_empty:
-    #         linestrings_overlays[i] = _cut(linestrings_overlays[i], [combined_stencil], OVERLAY_STENCIL_CUT_DISTANCE / 2)
-    #     combined_stencil = shapely.unary_union([combined_stencil] + linestrings_overlays[i])
-    # logger.debug(f"Overlay cascade stencil time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
-
-    # linestrings_stencil = []
-    # for g in stencil.boundary.geoms:
-    #     linestrings_stencil.append(g)
+    # cut each overlay from all underlying ones
+    timer_start = datetime.datetime.now()
+    combined_stencil = Point()
+    for i in reversed(range(len(linestrings_overlays))):
+        if not combined_stencil.is_empty:
+            linestrings_overlays[i] = _cut(linestrings_overlays[i], [combined_stencil], OVERLAY_STENCIL_CUT_DISTANCE / 2)
+        combined_stencil = shapely.unary_union([combined_stencil] + linestrings_overlays[i])
+    logger.debug(f"Overlay cascade stencil time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
 
     # Coloring
     palette = np.array(config.colors, dtype=int)
