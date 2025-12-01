@@ -115,7 +115,7 @@ def rotate_linestrings(lines: list[LineString], x: float, y: float, z: float) ->
     return lines_rotated
 
 
-def rotate_points(points: list[np.ndarray], x: float, y: float, z: float) -> list[np.ndarray]:
+def rotate_points(points: list[np.ndarray], x: float, y: float, z: float, backwards: bool = False) -> list[np.ndarray]:
     R_x = np.array(
         [
             [1, 0, 0],
@@ -138,33 +138,12 @@ def rotate_points(points: list[np.ndarray], x: float, y: float, z: float) -> lis
         ]
     )
 
-    return [R_z @ R_y @ R_x @ p for p in points]
+    R = R_z @ R_y @ R_x
 
+    if backwards:
+        R = R.T
 
-def rotate_points_inv(points: list[np.ndarray], x: float, y: float, z: float) -> list[np.ndarray]:
-    R_x = np.array(
-        [
-            [1, 0, 0],
-            [0, np.cos(x), -np.sin(x)],
-            [0, np.sin(x), np.cos(x)],
-        ]
-    )
-    R_y = np.array(
-        [
-            [np.cos(y), 0, np.sin(y)],
-            [0, 1, 0],
-            [-np.sin(y), 0, np.cos(y)],
-        ]
-    )
-    R_z = np.array(
-        [
-            [np.cos(z), -np.sin(z), 0],
-            [np.sin(z), np.cos(z), 0],
-            [0, 0, 1],
-        ]
-    )
-
-    return [(R_z @ R_y @ R_x).T @ p for p in points]
+    return [R @ p for p in points]
 
 
 def visualize_linestrings(linestrings: list[LineString]) -> pv.Plotter:
@@ -202,7 +181,9 @@ def visualize_linestrings(linestrings: list[LineString]) -> pv.Plotter:
     return plotter
 
 
-def visualize(centers: np.ndarray, vectors: list[np.ndarray], points: list[np.ndarray], light_axis: np.ndarray = None) -> pv.Plotter:
+def visualize(
+    centers: np.ndarray, vectors: list[np.ndarray], points: list[np.ndarray], light_axis: np.ndarray | None = None, sphere: bool = False
+) -> pv.Plotter:
     plotter = pv.Plotter()
 
     plotter.camera.position = (0.0, 0.0, 5.0)
@@ -241,7 +222,7 @@ def visualize(centers: np.ndarray, vectors: list[np.ndarray], points: list[np.nd
             if np.sum(np.abs(vector[i])) == 0.0:
                 continue
 
-            arrow = pv.Arrow(centers[i], vector[i], scale=0.05)
+            arrow = pv.Arrow(centers[i], vector[i], scale=0.05, tip_resolution=8, shaft_resolution=8)
             plotter.add_mesh(arrow, color=colors[vi])
 
             # line = pv.Line(centers[i], centers[i] + vector[i])
@@ -249,8 +230,12 @@ def visualize(centers: np.ndarray, vectors: list[np.ndarray], points: list[np.nd
 
     for pi, point_set in enumerate(points):
         for point in point_set:
-            sphere = pv.Sphere(0.005, point)
-            plotter.add_mesh(sphere, color=colors[pi])
+            s = pv.Sphere(0.005, point)
+            plotter.add_mesh(s, color=colors[pi])
+
+    if sphere:
+        s = pv.Sphere(0.999, [0, 0, 0])
+        plotter.add_mesh(s)
 
     return plotter
 
@@ -271,6 +256,9 @@ def project_to_image_space(points: np.ndarray, projection_matrix: np.ndarray) ->
 def project_vectors_to_image_space(
     vector_positions: np.ndarray, vector_directions: np.ndarray, projection_matrix: np.ndarray, step_distance: float = 0.01
 ) -> np.ndarray:
+    """
+    Caveat: in image space, Y points downwards
+    """
     if vector_positions.shape != vector_directions.shape:
         raise Exception(f"Unequal vector ndarray shapes: vector_positions {vector_positions.shape} != vector_directions {vector_directions}")
 
@@ -298,6 +286,6 @@ def normalize_vectors(v: np.ndarray) -> np.array:
 def export_angles(arr: np.ndarray, adjust_y_axis: bool = False) -> np.ndarray:
     factor = -1 if adjust_y_axis else 1  # blender Y up / numpy Y down
 
-    mapping_angle = np.atan2(arr[:, :, 1] * factor, arr[:, :, 0])
-    mapping_angle = (mapping_angle / math.tau * 255).astype(np.uint8)
-    return mapping_angle
+    angle = np.atan2(arr[:, :, 1] * factor, arr[:, :, 0])
+    angle = (angle / math.tau * 255).astype(np.uint8)
+    return angle
