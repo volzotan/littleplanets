@@ -134,13 +134,12 @@ for lines in overlay_npz.values():
 np.savez(args.output, *visibility_list)
 
 layer_collection = find_layer_collection(bpy.context.view_layer.layer_collection, collection_name)
-
 if layer_collection:
     layer_collection.exclude = True
 
 if not DEBUG:
     if args.save_to is not None:
-        bpy.ops.wm.save_as_mainfile(filepath=args.save_to)
-    else:
-        bpy.ops.wm.save_as_mainfile()
+        bpy.ops.wm.save_as_mainfile(filepath=str(args.save_to))
+    # else:
+    #     bpy.ops.wm.save_as_mainfile()
     bpy.ops.wm.quit_blender()
