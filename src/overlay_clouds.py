@@ -40,7 +40,10 @@ def _map(raster: np.ndarray, lat: float, lon: float) -> np.ndarray:
     return raster[y, x]
 
 
-def _rotate_vectors_2d(V: np.ndarray, A: np.ndarray) -> np.ndarray:
+def _rotate_vectors_2d(vectors: np.ndarray, euler_rotations: np.ndarray) -> np.ndarray:
+    V = vectors
+    A = euler_rotations
+
     ax, ay, az = A[..., 0], A[..., 1], A[..., 2]
     sx, sy, sz = np.sin(ax), np.sin(ay), np.sin(az)
     cx, cy, cz = np.cos(ax), np.cos(ay), np.cos(az)
@@ -118,12 +121,13 @@ def _rotate_and_map_nonvectorized(vectors: np.ndarray, raster: np.ndarray, euler
 
 
 def _rotate_and_map(vectors: np.ndarray, raster: np.ndarray, euler_rotation: np.ndarray) -> np.ndarray:
-    """rotates an array of vectors and maps it against a raster"""
+    """rotates an array of vectors and maps it against a raster representing the surface of a sphere"""
 
     output = np.full(vectors.shape[0:2], 0, dtype=raster.dtype)
 
     v_rot = _rotate_vectors(vectors, euler_rotation, backwards=True)
     v_rot_norm = normalize_vectors(v_rot)
+    mask_nan = np.isnan(np.sum(v_rot, axis=2))
 
     # caveat: NaNs vectors will be mapped to 0, 0 indices in the raster image
 
@@ -134,10 +138,13 @@ def _rotate_and_map(vectors: np.ndarray, raster: np.ndarray, euler_rotation: np.
     I = ((lats / math.pi) * height).astype(int)
     J = ((lons / math.tau) * width).astype(int)
 
+    I[mask_nan] = 0
+    J[mask_nan] = 0
+
     output[:, :] = raster[I, J]
 
     # set NaN vector pixels to zero
-    output[np.isnan(np.sum(v_rot, axis=2))] = 0
+    output[mask_nan] = 0
 
     return output
 
@@ -185,15 +192,13 @@ def _visualize_points(points: np.ndarray | list[np.ndarray], scaling_factor: flo
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("normals", type=Path, default="normals.exr", help="Normals (EXR)")
-    parser.add_argument("raytrace", type=Path, default="raytrace.npy", help="Raytracing distance raster (NPY)")
-    parser.add_argument("raytrace_backface", type=Path, default="raytrace_backface.npy", help="Raytracing backface distance raster (NPY)")
-    # parser.add_argument("cloud_cover", type=Path, default="cloud.tif", help="Cloud grayscale coverage map (TIFF)")
-    parser.add_argument("netcdf", type=Path, default="data.nc", help="Cloud coverage and wind direction data (netCDF4)")
+    parser.add_argument("raytrace", type=Path, help="Raytracing distance raster (NPY)")
+    parser.add_argument("raytrace_backface", type=Path, help="Raytracing backface distance raster (NPY)")
+    parser.add_argument("netcdf", type=Path, help="Cloud coverage and wind direction data (netCDF4)")
     parser.add_argument("projection_matrix", type=Path, help="3x4 projection matrix (NPY)")
     parser.add_argument("--output", type=Path, default="build", help="Output directory")
     parser.add_argument("--config", type=Path, help="Configuration file [TOML]")
-    parser.add_argument("--visualize", action="store_true", default=False, help="Enable interactive visualization")
+    parser.add_argument("--visualize", action="store_true", default=VISUALIZE, help="Enable interactive visualization")
     args = parser.parse_args()
 
     config = OverlayCloudsConfig()
@@ -225,7 +230,7 @@ def main() -> None:
         v = data.variables["v10"][:].filled(0)[0, :, :]
         mapping_angle = np.atan2(v, u)
 
-        if VISUALIZE:
+        if args.visualize:
             _visualize_uv(u, v, path_base_image=DIR_DEBUG / "land_sea_mask.png")
 
     if config.blur_kernel_size is not None and config.blur_kernel_size >= 3:
@@ -236,7 +241,7 @@ def main() -> None:
         cv2.imwrite(str(DIR_DEBUG / "clouds_mapping_clouds.png"), mapping_clouds)
         cv2.imwrite(str(DIR_DEBUG / "clouds_mapping_angle.png"), (mapping_angle / math.tau * 255).astype(np.uint8))
 
-    if VISUALIZE:
+    if args.visualize:
         resize_size = (40, 40)
         img_pxpos_front = cv2.resize(img_pxpos_front, resize_size)
         img_pxpos_back = cv2.resize(img_pxpos_back, resize_size)
@@ -275,7 +280,7 @@ def main() -> None:
     angles_rotated_back = _rotate_and_map(img_pxpos_back, mapping_angle, blender_rotation)
     lsm_rotated_back = _rotate_and_map(img_pxpos_back, lsm, blender_rotation)
 
-    if VISUALIZE:
+    if args.visualize:
         _visualize_points([img_pxpos_front, img_pxpos_front_orig])
 
     def calculate_direction_vector(vectors, mapping, step_distance: float = 0.01):
@@ -320,7 +325,7 @@ def main() -> None:
     direction_is_front = project_vectors_to_image_space(img_pxpos_front, direction_front, projection_matrix)
     direction_is_back = project_vectors_to_image_space(img_pxpos_back, direction_back, projection_matrix)
 
-    if VISUALIZE:
+    if args.visualize:
         _visualize_vectors(img_pxpos_front_orig, [direction_front_orig])
         _visualize_vectors(img_pxpos_front, [direction_front])
         # _visualize_vectors(img_pxpos_front, [direction_front, direction_is_front])

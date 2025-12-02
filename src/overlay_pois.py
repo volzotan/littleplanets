@@ -68,9 +68,9 @@ def _linestrings_flip_ud(linestrings: list[LineString]) -> list[LineString]:
 def main() -> None:
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("pois", type=Path, help="Position of interest data [JSON]")
-    parser.add_argument("--output", type=Path, default="overlay.npz", help="Output filename [NPZ]")
-    parser.add_argument("--config", type=Path, help="Configuration file [TOML]")
+    parser.add_argument("pois", type=Path, help="Position of interest data (JSON)")
+    parser.add_argument("--output", type=Path, default="overlay_pois.npz", help="Output filename (NPZ)")
+    parser.add_argument("--config", type=Path, help="Configuration file (TOML)")
     parser.add_argument("--visualize", action="store_true", default=False, help="Enable interactive visualization")
 
     args = parser.parse_args()
@@ -83,7 +83,7 @@ def main() -> None:
 
     # PLY exported from Blender is already correctly rotated with regard to Z axis up
     # but Lat/Lon needs to be adjusted for any additional rotation
-    BLENDER_ROTATION = np.array([np.radians(c) for c in [config.rotX, config.rotY, config.rotZ]])
+    blender_rotation = np.array([np.radians(c) for c in [config.rotX, config.rotY, config.rotZ]])
 
     linestrings = []
 
@@ -191,7 +191,7 @@ def main() -> None:
 
     # ROTATE
 
-    linestrings = rotate_linestrings(linestrings, *BLENDER_ROTATION)
+    linestrings = rotate_linestrings(linestrings, *blender_rotation)
 
     # FILTER
 

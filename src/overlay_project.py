@@ -36,9 +36,9 @@ def project_vertices(tree: rtree.Index, points: np.ndarray, scale: float) -> np.
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("mesh", type=Path, help="Input mesh path [PLY]")
-    parser.add_argument("linestrings", type=Path, help="Input LineStrings of overlay [NPZ]")
-    parser.add_argument("--output", type=Path, default="overlay_projected.npz", help="Output filename [NPZ]")
+    parser.add_argument("mesh", type=Path, help="Input mesh path (PLY)")
+    parser.add_argument("linestrings", type=Path, help="Input LineStrings of overlay (NPZ)")
+    parser.add_argument("--output", type=Path, default="overlay_projected.npz", help="Output filename (NPZ)")
     args = parser.parse_args()
 
     timer_start = datetime.now()

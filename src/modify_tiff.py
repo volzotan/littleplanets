@@ -45,7 +45,7 @@ class ModifyDemConfig(BaseModel):
 #                 )
 
 
-def _read(input_path: Path) -> np.ndarray:
+def _read(input_path: Path) -> tuple[np.ndarray, Any, Any]:
     with rasterio.open(input_path) as src:
         return src.read(), src.crs, src.transform
 

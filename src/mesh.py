@@ -706,9 +706,9 @@ class MeshConfig(BaseModel):
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--elevation", type=Path, help="Elevation raster data in the GeoTiff format")
-    parser.add_argument("--color", type=Path, help="Surface color raster data in the Tiff format")
-    parser.add_argument("--output", type=Path, default="mesh.ply", help="Output filename [PLY]")
+    parser.add_argument("--elevation", type=Path, help="Elevation raster data in the (Geo)Tiff format (TIF)")
+    parser.add_argument("--color", type=Path, help="Surface color raster data in the Tiff format (TIF)")
+    parser.add_argument("--output", type=Path, default="mesh.ply", help="Output filename (PLY)")
     parser.add_argument("--config", type=Path, help="Configuration file [TOML]")
     parser.add_argument("--debug", action="store_true", default=False, help="Write debug output")
 
