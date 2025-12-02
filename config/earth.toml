@@ -87,6 +87,10 @@ subdivision = 10
 
 [import_ply_clouds]
 
+[overlay_coastlines]
+
+radius = 1.2
+
 [overlay_clouds]
 
 threshold = 200

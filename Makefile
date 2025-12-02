@@ -85,11 +85,62 @@ $(DIR_BUILD)/mesh_blender.ply: $(DIR_BUILD)/blender_mesh.blend $(DIR_BLENDER)/ex
 	@echo "Running blender mesh export"
 	$(BLENDER_BIN) $(DIR_BUILD)/blender_mesh.blend --background --python $(DIR_BLENDER)/export_ply.py -- --output $@
 
-# Clouds
+$(DIR_BUILD)/contours.npz: $(DIR_SRC)/contours.py $(DIR_BUILD)/normals.exr $(DIR_BUILD)/raytrace.npy
+	@echo "Computing contours"
+	uv run $^ --output $@
 
-#$(DIR_BUILD)/clouds.tif: $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/clouds.tif $(DIR_BUILD)/modify_tiff_clouds.toml
-#	@echo "Modify TIFF $@"
-#	uv run $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/clouds.tif $@ --config $(DIR_BUILD)/modify_tiff_clouds.toml
+# Overlay Coastlines
+
+$(DIR_BUILD)/overlay_coastlines.npz: $(DIR_SRC)/overlay_coastlines.py $(DIR_BUILD)/dem.tif $(DIR_BUILD)/overlay_coastlines.toml
+	@echo "Create overlay Coastlines"
+	uv run $(DIR_SRC)/overlay_coastlines.py $(DIR_BUILD)/dem.tif --output $@ --config $(DIR_BUILD)/overlay_coastlines.toml
+
+$(DIR_BUILD)/overlay_coastlines_cropped.npz: $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_coastlines.npz $(DIR_SRC)/overlay_project.py $(DIR_BLENDER)/export_overlay_lines.py $(DIR_SRC)/overlay_crop.py
+	@echo "Cropping visible overlay lines: Coastlines"
+	rsync -au $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/blender_overlays.blend
+	uv run $(DIR_SRC)/overlay_project.py $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_coastlines.npz --output $(DIR_BUILD)/overlay_coastlines_projected.npz
+	$(BLENDER_BIN) $(DIR_BUILD)/blender_overlays.blend --background --python $(DIR_BLENDER)/export_overlay_lines.py -- --input $(DIR_BUILD)/overlay_coastlines_projected.npz --output $(DIR_BUILD)/overlay_coastlines_visible.npz
+	uv run $(DIR_SRC)/overlay_crop.py $(DIR_BUILD)/overlay_coastlines_projected.npz $(DIR_BUILD)/overlay_coastlines_visible.npz --output $(DIR_BUILD)/overlay_coastlines_cropped.npz
+
+# Overlay POIs
+
+$(DIR_BUILD)/overlay_pois.npz: $(DIR_SRC)/overlay_pois.py $(POI_FILE) $(DIR_BUILD)/overlay_pois.toml
+	@echo "Create overlay POIs"
+	uv run $(DIR_SRC)/overlay_pois.py $(POI_FILE) --output $@ --config $(DIR_BUILD)/overlay_pois.toml
+
+$(DIR_BUILD)/overlay_pois_cropped.npz: $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_pois.npz $(DIR_SRC)/overlay_project.py $(DIR_BLENDER)/export_overlay_lines.py $(DIR_SRC)/overlay_crop.py
+	@echo "Cropping visible overlay lines: POIs"
+	rsync -au $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/blender_overlays.blend
+	uv run $(DIR_SRC)/overlay_project.py $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_pois.npz --output $(DIR_BUILD)/overlay_pois_projected.npz
+	$(BLENDER_BIN) $(DIR_BUILD)/blender_overlays.blend --background --python $(DIR_BLENDER)/export_overlay_lines.py -- --input $(DIR_BUILD)/overlay_pois_projected.npz --output $(DIR_BUILD)/overlay_pois_visible.npz
+	uv run $(DIR_SRC)/overlay_crop.py $(DIR_BUILD)/overlay_pois_projected.npz $(DIR_BUILD)/overlay_pois_visible.npz --output $(DIR_BUILD)/overlay_pois_cropped.npz
+
+# Overlay Grid
+
+$(DIR_BUILD)/overlay_grid.npz: $(DIR_SRC)/overlay_grid.py $(DIR_BUILD)/overlay_grid.toml
+	@echo "Create overlay Grid"
+	uv run $(DIR_SRC)/overlay_grid.py --output $@ --config $(DIR_BUILD)/overlay_grid.toml
+
+$(DIR_BUILD)/overlay_grid_cropped.npz: $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_grid.npz $(DIR_SRC)/overlay_project.py $(DIR_BLENDER)/export_overlay_lines.py $(DIR_SRC)/overlay_crop.py
+	@echo "Cropping visible overlay lines: GRID"
+	rsync -au $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/blender_overlays.blend
+	uv run $(DIR_SRC)/overlay_project.py $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_grid.npz --output $(DIR_BUILD)/overlay_grid_projected.npz
+	$(BLENDER_BIN) $(DIR_BUILD)/blender_overlays.blend --background --python $(DIR_BLENDER)/export_overlay_lines.py -- --input $(DIR_BUILD)/overlay_grid_projected.npz --output $(DIR_BUILD)/overlay_grid_visible.npz
+	uv run $(DIR_SRC)/overlay_crop.py $(DIR_BUILD)/overlay_grid_projected.npz $(DIR_BUILD)/overlay_grid_visible.npz --output $(DIR_BUILD)/overlay_grid_cropped.npz
+
+# Overlay Axis
+
+$(DIR_BUILD)/overlay_axis.npz: $(DIR_SRC)/overlay_axis.py $(DIR_BUILD)/overlay_axis.toml
+	@echo "Create overlay Axis"
+	uv run $(DIR_SRC)/overlay_axis.py --output $@ --config $(DIR_BUILD)/overlay_axis.toml
+
+$(DIR_BUILD)/overlay_axis_cropped.npz: $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_axis.npz $(DIR_SRC)/overlay_project.py $(DIR_BLENDER)/export_overlay_lines.py $(DIR_SRC)/overlay_crop.py
+	@echo "Cropping visible overlay lines: AXIS"
+	rsync -au $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/blender_overlays.blend
+	$(BLENDER_BIN) $(DIR_BUILD)/blender_overlays.blend --background --python $(DIR_BLENDER)/export_overlay_lines.py -- --input $(DIR_BUILD)/overlay_axis.npz --output $(DIR_BUILD)/overlay_axis_visible.npz
+	uv run $(DIR_SRC)/overlay_crop.py $(DIR_BUILD)/overlay_axis.npz $(DIR_BUILD)/overlay_axis_visible.npz --output $(DIR_BUILD)/overlay_axis_cropped.npz
+
+# Overlay Clouds
 
 $(DIR_BUILD)/mesh_clouds.ply: $(DIR_SRC)/mesh.py $(DIR_BUILD)/mesh_clouds.toml
 	@echo "Generating mesh $@"
@@ -115,10 +166,9 @@ $(DIR_BUILD)/normals_clouds.exr $(DIR_BUILD)/image_clouds.tif &: $(DIR_BUILD)/bl
 	mv $(DIR_BUILD)/Normals0000.exr $(DIR_BUILD)/normals_clouds.exr
 	mv $(DIR_BUILD)/Image0000.tif $(DIR_BUILD)/image_clouds.tif
 
-$(DIR_BUILD)/clouds_mapping_front_angle.png $(DIR_BUILD)/clouds_mapping_front_distance.png $(DIR_BUILD)/clouds_mapping_front_background.png $(DIR_BUILD)/clouds_mapping_back_angle.png $(DIR_BUILD)/clouds_mapping_back_distance.png $(DIR_BUILD)/clouds_mapping_back_background.png: $(DIR_SRC)/overlay_clouds.py $(DIR_BUILD)/normals_clouds.exr $(DIR_BUILD)/raytrace_clouds.npy $(DIR_BUILD)/raytrace_backface_clouds.npy $(DIR_DATA)/cds_clouds.nc $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/overlay_clouds.toml
+$(DIR_BUILD)/clouds_mapping_front_angle.png $(DIR_BUILD)/clouds_mapping_front_distance.png $(DIR_BUILD)/clouds_mapping_front_background.png $(DIR_BUILD)/clouds_mapping_back_angle.png $(DIR_BUILD)/clouds_mapping_back_distance.png $(DIR_BUILD)/clouds_mapping_back_background.png: $(DIR_SRC)/overlay_clouds.py $(DIR_BUILD)/raytrace_clouds.npy $(DIR_BUILD)/raytrace_backface_clouds.npy $(DIR_DATA)/cds_clouds.nc $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/overlay_clouds.toml
 	@echo "Create clouds overlay"
 	uv run $(DIR_SRC)/overlay_clouds.py 						\
-		$(DIR_BUILD)/normals_clouds.exr 						\
 		$(DIR_BUILD)/raytrace_clouds.npy 						\
 		$(DIR_BUILD)/raytrace_backface_clouds.npy 				\
 		$(DIR_DATA)/cds_clouds.nc								\
@@ -144,56 +194,7 @@ $(DIR_BUILD)/overlay_clouds_back.npz: $(DIR_SRC)/hatch.py $(DIR_BUILD)/clouds_ma
 		--config $(DIR_BUILD)/overlay_clouds_hatch.toml 							\
 		--output $@
 
-
-# Overlays
-
-$(DIR_BUILD)/overlay_pois.npz: $(DIR_SRC)/overlay_pois.py $(POI_FILE) $(DIR_BUILD)/overlay_pois.toml
-	@echo "Create POI overlay"
-	uv run $(DIR_SRC)/overlay_pois.py $(POI_FILE) --output $@ --config $(DIR_BUILD)/overlay_pois.toml
-
-$(DIR_BUILD)/overlay_grid.npz: $(DIR_SRC)/overlay_grid.py $(DIR_BUILD)/overlay_grid.toml
-	@echo "Create grid overlay"
-	uv run $(DIR_SRC)/overlay_grid.py --output $@ --config $(DIR_BUILD)/overlay_grid.toml
-
-$(DIR_BUILD)/overlay_axis.npz: $(DIR_SRC)/overlay_axis.py $(DIR_BUILD)/overlay_axis.toml
-	@echo "Create axis overlay"
-	uv run $(DIR_SRC)/overlay_axis.py --output $@ --config $(DIR_BUILD)/overlay_axis.toml
-
-
-#$(DIR_BUILD)/overlay_visible_%.npz: $(DIR_BUILD)/$(BLENDER_FILE) $(DIR_BLENDER)/export_overlay_lines.py $(DIR_BUILD)/overlay_%.npz
-#	@echo "Running blender overlay visibility detection"
-#	$(BLENDER_BIN) $(DIR_BUILD)/$(BLENDER_FILE) --background --python $(DIR_BLENDER)/export_overlay_lines.py -- --input $(DIR_BUILD)/overlay.npz --output $@
-#
-#$(DIR_BUILD)/overlay_%_cropped.npz: $(DIR_SRC)/overlay_crop.py $(DIR_BUILD)/overlay_%.npz $(DIR_BUILD)/overlay_visible_%.npz
-#	@echo "Cropping visible overlay lines"
-#	uv run $^ --output $@
-
-
-$(DIR_BUILD)/overlay_pois_cropped.npz: $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_pois.npz $(DIR_SRC)/overlay_project.py $(DIR_BLENDER)/export_overlay_lines.py $(DIR_SRC)/overlay_crop.py
-	@echo "Cropping visible overlay lines: POIs"
-	rsync -au $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/blender_overlays.blend
-	uv run $(DIR_SRC)/overlay_project.py $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_pois.npz --output $(DIR_BUILD)/overlay_pois_projected.npz
-	$(BLENDER_BIN) $(DIR_BUILD)/blender_overlays.blend --background --python $(DIR_BLENDER)/export_overlay_lines.py -- --input $(DIR_BUILD)/overlay_pois_projected.npz --output $(DIR_BUILD)/overlay_pois_visible.npz
-	uv run $(DIR_SRC)/overlay_crop.py $(DIR_BUILD)/overlay_pois_projected.npz $(DIR_BUILD)/overlay_pois_visible.npz --output $(DIR_BUILD)/overlay_pois_cropped.npz
-
-$(DIR_BUILD)/overlay_grid_cropped.npz: $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_grid.npz $(DIR_SRC)/overlay_project.py $(DIR_BLENDER)/export_overlay_lines.py $(DIR_SRC)/overlay_crop.py
-	@echo "Cropping visible overlay lines: GRID"
-	rsync -au $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/blender_overlays.blend
-	uv run $(DIR_SRC)/overlay_project.py $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_grid.npz --output $(DIR_BUILD)/overlay_grid_projected.npz
-	$(BLENDER_BIN) $(DIR_BUILD)/blender_overlays.blend --background --python $(DIR_BLENDER)/export_overlay_lines.py -- --input $(DIR_BUILD)/overlay_grid_projected.npz --output $(DIR_BUILD)/overlay_grid_visible.npz
-	uv run $(DIR_SRC)/overlay_crop.py $(DIR_BUILD)/overlay_grid_projected.npz $(DIR_BUILD)/overlay_grid_visible.npz --output $(DIR_BUILD)/overlay_grid_cropped.npz
-
-$(DIR_BUILD)/overlay_axis_cropped.npz: $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_axis.npz $(DIR_SRC)/overlay_project.py $(DIR_BLENDER)/export_overlay_lines.py $(DIR_SRC)/overlay_crop.py
-	@echo "Cropping visible overlay lines: AXIS"
-	rsync -au $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/blender_overlays.blend
-	$(BLENDER_BIN) $(DIR_BUILD)/blender_overlays.blend --background --python $(DIR_BLENDER)/export_overlay_lines.py -- --input $(DIR_BUILD)/overlay_axis.npz --output $(DIR_BUILD)/overlay_axis_visible.npz
-	uv run $(DIR_SRC)/overlay_crop.py $(DIR_BUILD)/overlay_axis.npz $(DIR_BUILD)/overlay_axis_visible.npz --output $(DIR_BUILD)/overlay_axis_cropped.npz
-
-
-
-$(DIR_BUILD)/contours.npz: $(DIR_SRC)/contours.py $(DIR_BUILD)/normals.exr $(DIR_BUILD)/raytrace.npy
-	@echo "Computing contours"
-	uv run $^ --output $@
+# Targets
 
 $(DIR_BUILD)/mapping_color.png $(DIR_BUILD)/mapping_angle.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_background.png &: $(DIR_SRC)/process_blender.py $(DIR_BUILD)/normals.exr $(DIR_BUILD)/image.tif $(DIR_BUILD)/raytrace.npy $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/process_blender.toml
 	@echo "Processing blender mappings: $@"
@@ -243,7 +244,7 @@ run: $(DIR_SRC)/hatch.py
 	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=$(OUTPUT_PNG) --export-width=2000 --export-background=#000000
 
 run_palette: $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_background.png $(DIR_BUILD)/hatchlines.npz
-run_palette: $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_grid_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz $(DIR_BUILD)/overlay_clouds_front.npz $(DIR_BUILD)/overlay_clouds_back.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz $(DIR_BUILD)/combine.toml
+run_palette: $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_grid_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz $(DIR_BUILD)/overlay_coastlines_cropped.npz $(DIR_BUILD)/overlay_clouds_front.npz $(DIR_BUILD)/overlay_clouds_back.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/contours.npz $(DIR_BUILD)/combine.toml
 run_palette: $(DIR_SRC)/combine.py
 	@echo "Combine"
 	uv run $(DIR_SRC)/combine.py								\
@@ -251,7 +252,7 @@ run_palette: $(DIR_SRC)/combine.py
 		--mapping-background $(DIR_BUILD)/mapping_background.png 		\
 		--hatchlines $(DIR_BUILD)/hatchlines.npz				\
 		--cutouts $(DIR_BUILD)/overlay_grid_cropped.npz 		\
-		--overlays $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz \
+		--overlays $(DIR_BUILD)/overlay_pois_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz $(DIR_BUILD)/overlay_coastlines_cropped.npz $(DIR_BUILD)/overlay_clouds_back.npz $(DIR_BUILD)/overlay_clouds_front.npz \
 		--projection-matrix $(DIR_BUILD)/projection_matrix.npy  \
 		--contours $(DIR_BUILD)/contours.npz					\
 		--config $(DIR_BUILD)/combine.toml 						\
@@ -259,14 +260,14 @@ run_palette: $(DIR_SRC)/combine.py
 	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=$(OUTPUT_PNG) --export-width=2000 --export-background=#000000
 
 run_palette_no_pois: $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_background.png $(DIR_BUILD)/hatchlines.npz
-run_palette_no_pois: $(DIR_BUILD)/overlay_clouds_front.npz $(DIR_BUILD)/overlay_clouds_back.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/overlay_grid_cropped.npz $(DIR_BUILD)/contours.npz $(DIR_BUILD)/combine.toml
+run_palette_no_pois: $(DIR_BUILD)/overlay_clouds_front.npz $(DIR_BUILD)/overlay_clouds_back.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/overlay_grid_cropped.npz $(DIR_BUILD)/overlay_coastlines.npz $(DIR_BUILD)/contours.npz $(DIR_BUILD)/combine.toml
 run_palette_no_pois: $(DIR_SRC)/combine.py
 	@echo "Combine"
 	uv run $(DIR_SRC)/combine.py								\
 		--mapping-color $(DIR_BUILD)/mapping_color.npy 					\
 		--mapping-background $(DIR_BUILD)/mapping_background.png 		\
 		--hatchlines $(DIR_BUILD)/hatchlines.npz				\
-		--overlays $(DIR_BUILD)/overlay_clouds_back.npz $(DIR_BUILD)/overlay_clouds_front.npz 		\
+		--overlays $(DIR_BUILD)/overlay_coastlines.npz $(DIR_BUILD)/overlay_clouds_back.npz $(DIR_BUILD)/overlay_clouds_front.npz 		\
 		--cutouts $(DIR_BUILD)/overlay_grid_cropped.npz 		\
 		--projection-matrix $(DIR_BUILD)/projection_matrix.npy  \
 		--contours $(DIR_BUILD)/contours.npz					\
@@ -287,6 +288,7 @@ run_palette_no_overlays: $(DIR_SRC)/combine.py
 		--output $(DIR_BUILD)/littleplanets.svg
 	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=$(OUTPUT_PNG) --export-width=2000 --export-background=#000000
 
+# Postprocessing
 
 gcode: $(DIR_BUILD)/littleplanets.svg
 	uv run svgtogcode.py $^
