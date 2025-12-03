@@ -1,4 +1,5 @@
 import argparse
+import itertools
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,7 @@ import numpy as np
 import math
 from shapely.geometry import LineString
 
+from combine import _split_linestring
 from util.misc import visualize_linestrings, write_linestrings_to_npz, rotate_linestrings
 
 VISUALIZE = False
@@ -18,6 +20,7 @@ DEBUG = True
 DIR_DEBUG = Path("debug")
 
 MIN_LINE_LENGTH = 0.05
+SEGMENTIZE_MAX_LENGTH = 10
 
 
 class OverlayCoastlinesConfig(BaseModel):
@@ -69,6 +72,8 @@ def main() -> None:
 
     blender_rotation = np.array([np.radians(c % 360) for c in [config.rotX, config.rotY, config.rotZ]])
 
+    timer_start = datetime.now()
+
     dem, _, _ = _read(args.dem)
     dem = np.transpose(dem, (1, 2, 0))
 
@@ -90,10 +95,7 @@ def main() -> None:
             continue
         linestrings.append(LineString(contour[:, 0, :]))
 
-    timer_start = datetime.now()
     linestrings = _remove_zero_meridian_lines(linestrings, mask)
-    print(f"finished in {(datetime.now() - timer_start).total_seconds():5.2f}s")
-
     linestrings = [ls.simplify(config.simplify) for ls in linestrings]
 
     def _project_to_sphere(ls: LineString, width: float, height: float, radius: float) -> LineString:
@@ -115,6 +117,10 @@ def main() -> None:
 
     linestrings = [ls for ls in linestrings if ls.length > MIN_LINE_LENGTH]
 
+    # SPLIT
+
+    linestrings = itertools.chain.from_iterable([_split_linestring(ls, SEGMENTIZE_MAX_LENGTH) for ls in linestrings])
+
     # ROTATE
 
     linestrings = rotate_linestrings(linestrings, *blender_rotation)
@@ -132,6 +138,7 @@ def main() -> None:
     # EXPORT
 
     write_linestrings_to_npz(args.output, linestrings)
+    print(f"generated overlay_coastlines in {(datetime.now() - timer_start).total_seconds():5.2f}s")
 
 
 if __name__ == "__main__":
