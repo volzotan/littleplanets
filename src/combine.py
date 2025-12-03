@@ -25,6 +25,7 @@ PSEUDO_RANDOM_SEED = "littleplanets"
 
 OVERLAY_STENCIL_CUT_DISTANCE = 4
 CUTOUT_STENCIL_CUT_DISTANCE = 1
+SEGMENTIZE_MAX_LENGTH = 15.0  # mm
 
 
 class CombineConfig(BaseModel):
@@ -247,9 +248,7 @@ def main() -> None:
         linestrings_contours = [shapely.affinity.scale(ls, xfact=scaling_factor, yfact=scaling_factor, origin=(0, 0)) for ls in linestrings_contours]
 
     # merge contours with hatchlines
-    linestrings_contours_split = itertools.chain.from_iterable(
-        [_split_linestring(ls, 10.0) for ls in linestrings_contours]  # TODO: set max_length to a sensible value
-    )
+    linestrings_contours_split = itertools.chain.from_iterable([_split_linestring(ls, SEGMENTIZE_MAX_LENGTH) for ls in linestrings_contours])
     linestrings += linestrings_contours_split
 
     # cut buffered overlay from hatched linestrings

@@ -32,7 +32,7 @@ setup: $(PYPROJECT_FILE)
 	uv sync
 
 clean:
-	rm -r $(DIR_BUILD)
+	rm -rf $(DIR_BUILD)
 
 # ----------
 

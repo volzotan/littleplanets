@@ -7,7 +7,7 @@ light_angle_z = 90 #50
 
 colors = [[65, 102, 174], [240, 126, 50], [3, 168, 115]]
 # layer_colors = [[], [], [255, 255, 255]]
-layer_colors = [[255, 255, 255], [255, 255, 255]]
+layer_colors = [[], [255, 255, 255], [], [255, 255, 255], [255, 255, 255]]
 invert_background = true
 
 dimensions = [750, 750]
@@ -81,7 +81,7 @@ scaling_factor = 1.0
 
 [mesh_clouds]
 
-scale = 0.06
+scale = 0.05
 fixed_elevation_scale = 1.0
 subdivision = 10
 
