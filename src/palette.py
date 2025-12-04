@@ -27,7 +27,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
 
     parser.add_argument("image", type=Path, default="image.tif", help="RGB image (TIFF)")
-    parser.add_argument("--palette-mixture", type=Path, default="palette_mixture.npy", help="Output filename for palette mixture ratios [NPY]")
+    parser.add_argument("--palette-mixture", type=Path, default="palette_mixture.npy", help="Output filename for palette mixture ratios (NPY)")
     parser.add_argument(
         "--palette-brightness-difference",
         type=Path,
@@ -35,7 +35,7 @@ def main() -> None:
         help="Output filename for HSV value difference mapping [PNG]",
     )
     parser.add_argument("--color-model", default="hsv", choices=["hsv", "lab"], help="Choice of color model for ink to image comparisons")
-    parser.add_argument("--config", type=Path, help="Configuration file [TOML]")
+    parser.add_argument("--config", type=Path, help="Configuration file (TOML)")
     parser.add_argument("--debug", action="store_true", default=False, help="Write debug output")
 
     args = parser.parse_args()
@@ -69,38 +69,6 @@ def main() -> None:
 
         cv2.imwrite(str(DIR_DEBUG / "palette_mapping_color.png"), mapping_color)
         cv2.imwrite(str(DIR_DEBUG / "palette_mapping_distance.png"), mapping_distance)
-
-    # palette = np.array([
-    #     [169, 103, 74],
-    #     [50, 65, 92],
-    #     # [0, 0, 0],
-    #     # [255, 255, 255]
-    # ], dtype=np.uint8)
-
-    # palette = np.array([
-    #     [220, 0, 0],
-    #     [0, 0, 220],
-    #     # [0, 0, 0],
-    #     # [255, 255, 255]
-    # ], dtype=np.uint8)
-
-    # palette = np.array([
-    #     [255, 255, 255],
-    # ], dtype=np.uint8)
-
-    # palette = np.array(
-    #     [
-    #         inks["naphtol orange"]["on_black"],
-    #         # inks["ruby red"]["on_black"],
-    #         inks["dunkelblau"]["on_black"],
-    #         # inks["phthaloblau"]["on_black"],
-    #         # inks["phthalotürkis"]["on_black"],
-    #         # inks["kobaltblau"]["on_black"],
-    #         # inks["pale grey"]["on_black"],
-    #         # [0, 0, 0],
-    #     ],
-    #     dtype=np.uint8,
-    # )
 
     palette = np.array(config.colors, dtype=int)
     palette = np.delete(palette, np.where(np.min(palette, axis=1) < 0), axis=0)  # remove invalid palette colors
