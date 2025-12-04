@@ -21,8 +21,7 @@ CONTRAST_VALUE = 1.0
 class PaletteConfig(BaseModel):
     colors: list[list[int]] = [[255, 255, 255]]
 
-
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser()
 
     parser.add_argument("image", type=Path, default="image.tif", help="RGB image (TIFF)")
@@ -40,7 +39,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config = PaletteConfig()
-    if args.config is not None:
+    if args.config is not None and args.config.exists():
         with open(args.config, "r") as f:
             data = toml.load(f)
             config = PaletteConfig.model_validate(data)
@@ -252,3 +251,7 @@ if __name__ == "__main__":
     # mapping_palette_avg_lab = rgb2lab(cv2.cvtColor(mapping_palette_avg, cv2.COLOR_BGR2RGB).astype(float) / 255.0)
     # color_distance_error = deltaE_ciede2000(mapping_palette_avg_lab, mapping_color_lab)
     # print(f"total error: {np.mean(color_distance_error):5.3f}")
+
+
+if __name__ == "__main__":
+    main()

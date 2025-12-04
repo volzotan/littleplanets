@@ -716,9 +716,14 @@ def main() -> None:
 
     config = MeshConfig()
     if args.config is not None:
-        with open(args.config, "r") as f:
-            data = toml.load(f)
-            config = MeshConfig.model_validate(data)
+        if args.config.exists():
+            with open(args.config, "r") as f:
+                data = toml.load(f)
+                config = MeshConfig.model_validate(data)
+        else:
+            logger.info("No config supplied, writing empty file")
+            write_ply(Mesh([], []), args.output)
+            return
 
     os.makedirs(args.output if args.output.is_dir() else args.output.parent, exist_ok=True)
 

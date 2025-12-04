@@ -182,7 +182,7 @@ def main() -> None:
     args = parser.parse_args()
 
     config = CombineConfig()
-    if args.config is not None:
+    if args.config is not None and args.config.exists():
         with open(args.config, "rb") as f:
             data = tomllib.load(f)
             config = CombineConfig.model_validate(data)

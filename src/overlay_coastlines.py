@@ -11,6 +11,7 @@ from pydantic import BaseModel
 import numpy as np
 import math
 from shapely.geometry import LineString
+from loguru import logger
 
 from combine import _split_linestring
 from util.misc import visualize_linestrings, write_linestrings_to_npz, rotate_linestrings
@@ -66,9 +67,14 @@ def main() -> None:
 
     config = OverlayCoastlinesConfig()
     if args.config is not None:
-        with open(args.config, "r") as f:
-            data = toml.load(f)
-            config = OverlayCoastlinesConfig.model_validate(data)
+        if args.config.exists():
+            with open(args.config, "r") as f:
+                data = toml.load(f)
+                config = OverlayCoastlinesConfig.model_validate(data)
+        else:
+            logger.info("No config supplied, writing empty file")
+            write_linestrings_to_npz(args.output, [])
+            return
 
     blender_rotation = np.array([np.radians(c % 360) for c in [config.rotX, config.rotY, config.rotZ]])
 

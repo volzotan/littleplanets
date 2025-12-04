@@ -9,6 +9,8 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 
+from loguru import logger
+
 from process_blender import project_vectors_to_image_space
 from util.misc import export_angles, visualize, normalize_vectors, normalize_vector, rotate_points
 
@@ -203,9 +205,25 @@ def main() -> None:
 
     config = OverlayCloudsConfig()
     if args.config is not None:
-        with open(args.config, "r") as f:
-            data = toml.load(f)
-            config = OverlayCloudsConfig.model_validate(data)
+        if args.config.exists():
+            with open(args.config, "r") as f:
+                data = toml.load(f)
+                config = OverlayCloudsConfig.model_validate(data)
+        else:
+            logger.info("No config supplied, writing empty file(s)")
+
+            dummy_array = np.full([1, 1], 255)
+
+            cv2.imwrite(str(args.output / "clouds_mapping_front_angle.png"), dummy_array)
+            cv2.imwrite(str(args.output / "clouds_mapping_front_distance.png"), dummy_array)
+            cv2.imwrite(str(args.output / "clouds_mapping_front_background.png"), dummy_array)
+
+            cv2.imwrite(str(args.output / "clouds_mapping_back_angle.png"), dummy_array)
+            cv2.imwrite(str(args.output / "clouds_mapping_back_distance.png"), dummy_array)
+            cv2.imwrite(str(args.output / "clouds_mapping_back_background.png"), dummy_array)
+
+            return
+
 
     blender_rotation = np.array([np.radians(c % 360) for c in [config.rotX, config.rotY, config.rotZ]])
 

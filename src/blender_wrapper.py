@@ -13,18 +13,19 @@ Required in order to detected changes in the config file with make to re-execute
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("blender_binary", type=Path, help="Path to the Blender binary")
-    parser.add_argument("blender_file", type=Path, help="Path to the Blender file [BLEND]")
+    parser.add_argument("blender_file", type=Path, help="Path to the Blender file (BLEND)")
     parser.add_argument("python_script", type=Path, help="Path to the Python script executed within Blender")
-    parser.add_argument("--config", type=Path, help="Configuration file for values passed on to the script [TOML]")
+    parser.add_argument("--config", type=Path, help="Configuration file for values passed on to the script (TOML)")
     parser.add_argument("--params", nargs="+", type=str, help="Additional strings passed as parameters")
     args = parser.parse_args()
 
     config_values = []
-    with open(args.config) as f:
-        data = toml.load(f)
-        for key, value in data.items():
-            key = key.replace("_", "-")
-            config_values += [f"--{key}", str(value)]
+    if args.config is not None and args.config.exists():
+        with open(args.config) as f:
+            data = toml.load(f)
+            for key, value in data.items():
+                key = key.replace("_", "-")
+                config_values += [f"--{key}", str(value)]
 
     params_values = []
     if args.params is not None:

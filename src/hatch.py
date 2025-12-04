@@ -91,7 +91,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config = HatchConfig()
-    if args.config is not None:
+    if args.config is not None and args.config.exists():
         with open(args.config, "rb") as f:
             data = tomllib.load(f)
             config = HatchConfig.model_validate(data)
@@ -111,7 +111,8 @@ if __name__ == "__main__":
     scaling_factor = config.dimensions[0] / mapping_angle.shape[1]
 
     mask = mapping_background == 0
-    mapping_distance = ((mapping_distance - np.min(mapping_distance[mask])) / np.ptp(mapping_distance[mask]) * 255).astype(np.uint8)
+    if np.any(mask) and np.ptp(mapping_distance[mask]) > 0: # non-empty mapping distance
+        mapping_distance = ((mapping_distance - np.min(mapping_distance[mask])) / np.ptp(mapping_distance[mask]) * 255).astype(np.uint8)
     mapping_distance[~mask] = 0
 
     if config.invert_background:  # white ink on black paper, invert grayscale image
