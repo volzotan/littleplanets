@@ -54,6 +54,8 @@ grid_lines_lon = 8
 
 [overlay_axis]
 
+axis_extent = 1.5
+
 [process_blender]
 
 mixture = [0.03, 0.07]
