@@ -76,10 +76,12 @@ def main() -> None:
     args = parser.parse_args()
 
     config = OverlayPoiConfig()
-    if args.config is not None:
+    if args.config is not None and args.config.exists():
         with open(args.config, "r") as f:
             data = toml.load(f)
             config = OverlayPoiConfig.model_validate(data)
+    else:
+        logger.warning("No config file found")
 
     # PLY exported from Blender is already correctly rotated with regard to Z axis up
     # but Lat/Lon needs to be adjusted for any additional rotation

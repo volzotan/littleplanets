@@ -83,10 +83,12 @@ def main() -> None:
     args = parser.parse_args()
 
     config = None
-    if args.config is not None:
+    if args.config is not None and args.config.exists():
         with open(args.config, "r") as f:
             data = toml.load(f)
             config = DownloaderConfig(**data)
+    else:
+        logger.warning("No config file found")
 
     download(config.dem_url, args.output_dir / "dem.tif")
     download(config.surface_color_url, args.output_dir / "surface_color.tif")

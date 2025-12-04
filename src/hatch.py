@@ -111,7 +111,7 @@ if __name__ == "__main__":
     scaling_factor = config.dimensions[0] / mapping_angle.shape[1]
 
     mask = mapping_background == 0
-    if np.any(mask) and np.ptp(mapping_distance[mask]) > 0: # non-empty mapping distance
+    if np.any(mask) and np.ptp(mapping_distance[mask]) > 0:  # non-empty mapping distance
         mapping_distance = ((mapping_distance - np.min(mapping_distance[mask])) / np.ptp(mapping_distance[mask]) * 255).astype(np.uint8)
     mapping_distance[~mask] = 0
 

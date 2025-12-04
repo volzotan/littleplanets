@@ -72,7 +72,7 @@ def main() -> None:
                 data = toml.load(f)
                 config = OverlayCoastlinesConfig.model_validate(data)
         else:
-            logger.info("No config supplied, writing empty file")
+            logger.warning("No config found, writing empty file")
             write_linestrings_to_npz(args.output, [])
             return
 

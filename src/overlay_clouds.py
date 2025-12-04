@@ -210,9 +210,9 @@ def main() -> None:
                 data = toml.load(f)
                 config = OverlayCloudsConfig.model_validate(data)
         else:
-            logger.info("No config supplied, writing empty file(s)")
+            logger.warning("No config found, writing empty file(s)")
 
-            dummy_array = np.full([1, 1], 255)
+            dummy_array = np.full([1, 1], 255, dtype=np.uint8)
 
             cv2.imwrite(str(args.output / "clouds_mapping_front_angle.png"), dummy_array)
             cv2.imwrite(str(args.output / "clouds_mapping_front_distance.png"), dummy_array)
@@ -223,7 +223,6 @@ def main() -> None:
             cv2.imwrite(str(args.output / "clouds_mapping_back_background.png"), dummy_array)
 
             return
-
 
     blender_rotation = np.array([np.radians(c % 360) for c in [config.rotX, config.rotY, config.rotZ]])
 

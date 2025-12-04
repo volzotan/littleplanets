@@ -1,7 +1,8 @@
 import argparse
-import json
 import os
 from pathlib import Path
+
+from loguru import logger
 
 import cv2
 import numpy as np
@@ -20,6 +21,7 @@ CONTRAST_VALUE = 1.0
 
 class PaletteConfig(BaseModel):
     colors: list[list[int]] = [[255, 255, 255]]
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -43,6 +45,8 @@ def main() -> None:
         with open(args.config, "r") as f:
             data = toml.load(f)
             config = PaletteConfig.model_validate(data)
+    else:
+        logger.warning("No config file found")
 
     if args.debug:
         os.makedirs(DIR_DEBUG, exist_ok=True)

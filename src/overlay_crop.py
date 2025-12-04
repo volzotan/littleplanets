@@ -6,7 +6,8 @@ from shapely import LineString
 
 from util.misc import write_linestrings_to_npz
 
-if __name__ == "__main__":
+
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("overlay", default="overlay.npz", type=Path, help="Input overlay lines [NPZ]")
     parser.add_argument("overlay_visible", default="overlay_visible.npz", type=Path, help="Input overlay visiblity info [NPZ]")
@@ -37,3 +38,7 @@ if __name__ == "__main__":
     print(f"Output Linestrings: {len(linestrings)}")
 
     write_linestrings_to_npz(args.output, linestrings)
+
+
+if __name__ == "__main__":
+    main()
