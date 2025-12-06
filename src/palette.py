@@ -26,8 +26,8 @@ class PaletteConfig(BaseModel):
 def main() -> None:
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("image", type=Path, default="image.tif", help="RGB image (TIFF)")
-    parser.add_argument("--palette-mixture", type=Path, default="palette_mixture.npy", help="Output filename for palette mixture ratios (NPY)")
+    parser.add_argument("image", type=Path, help="RGB image (TIFF)")
+    parser.add_argument("--palette-mixture", type=Path, help="Output filename for palette mixture ratios (NPY)")
     parser.add_argument(
         "--palette-brightness-difference",
         type=Path,

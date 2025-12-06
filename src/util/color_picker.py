@@ -10,16 +10,35 @@ import cv2
 import numpy as np
 from skimage.color import rgb2lab, deltaE_ciede2000, deltaE_cie76, deltaE_ciede94
 
-RESIZE_SIZE = None  # (500, 500)
+RESIZE_SIZE = (600, 600)
 DIR_DEBUG = Path("debug")
 
 MIN_RATIO_THRESHOLD = None # 0.15
 
+
+
+BASE_DIR = Path("build_earth")
+NUM_COLORS = 3
+ERROR_THRESHOLD = 0.250
+
+# BASE_DIR = Path("build_mars")
+# NUM_COLORS = 2
+
+# BASE_DIR = Path("build_jupiter")
+# NUM_COLORS = 3
+
+
+
+
+IMAGE_PATH = BASE_DIR / "image.tif"
+BACKGROUND_PATH = BASE_DIR / "mapping_background.png"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("image", type=Path, help="RGB image (TIFF)")
-    parser.add_argument("background", type=Path, help="Grayscale background mapping (PNG)")
-    parser.add_argument("--num-colors", type=int, default=3, help="Num Colors")
+    # parser.add_argument("image", type=Path, help="RGB image (TIFF)")
+    # parser.add_argument("background", type=Path, help="Grayscale background mapping (PNG)")
+    # parser.add_argument("--num-colors", type=int, default=3, help="Num Colors")
     parser.add_argument("--config", type=Path, help="Configuration file (TOML)")
     parser.add_argument("--debug", action="store_true", default=False, help="Write debug output")
     args = parser.parse_args()
@@ -27,13 +46,19 @@ def main() -> None:
     if args.debug:
         os.makedirs(DIR_DEBUG, exist_ok=True)
 
-    mapping_color = cv2.imread(str(args.image))
-    mapping_background = cv2.imread(str(args.background), cv2.IMREAD_GRAYSCALE)
-    bg_mask = mapping_background > 0
-    fg_mask = ~bg_mask
+    image_path = IMAGE_PATH
+    background_path = BACKGROUND_PATH
+    num_colors = NUM_COLORS
+
+    mapping_color = cv2.imread(str(image_path))
+    mapping_background = cv2.imread(str(background_path), cv2.IMREAD_GRAYSCALE)
 
     if RESIZE_SIZE is not None:
         mapping_color = cv2.resize(mapping_color, RESIZE_SIZE)
+        mapping_background = cv2.resize(mapping_background, RESIZE_SIZE)
+
+    bg_mask = mapping_background > 0
+    fg_mask = ~bg_mask
 
     all_colors = []
     with open(Path("inks.json"), "rb") as f:
@@ -42,7 +67,7 @@ def main() -> None:
         for key, value in inks.items():
             all_colors.append([key, value["on_black"]])
 
-    combinations = list(itertools.combinations(all_colors, args.num_colors))
+    combinations = list(itertools.combinations(all_colors, num_colors))
 
     for i_c, combination in enumerate(combinations):
 
@@ -99,7 +124,7 @@ def main() -> None:
         diff_v = np.clip(mapping_palette_avg_hsv[:, :, 2].astype(float) - mapping_color_hsv[:, :, 2], 0, 255).astype(np.uint8)
 
         # the image drawn with palette colors including V (only darker, not brighter)
-        mapping_palette_preview_hsv = mapping_palette_avg_hsv.copy()
+        mapping_palette_preview_hsv = mapping_palette_avg_hsv.copy().astype(int)
         mapping_palette_preview_hsv[:, :, 2] = np.clip(mapping_palette_preview_hsv[:, :, 2] - diff_v, 0, 255)
 
         error_h_1 = np.abs(mapping_color_hsv[:, :, 0].astype(float) - mapping_palette_avg_hsv[:, :, 0].astype(float))
@@ -111,11 +136,10 @@ def main() -> None:
 
         total_error = np.mean(np.dstack([error_h, error_s, error_v])[fg_mask])
 
-        print("----")
-        print("{} | colors: {}".format(i_c, " | ".join(color_names)))
+        msg = "{:3d} | colors: {:<60s} ".format(i_c, " | ".join(color_names))
         if MIN_RATIO_THRESHOLD is not None:
             print(f"low-value suppression affected pixels: {np.count_nonzero(mask) / (mask.shape[0] * mask.shape[1]) * 100:5.2f}%")
-        msg = f"mean error "
+        msg += f""
         msg += f"H: {np.mean(error_h[fg_mask]):.4f} | "
         msg += f"S: {np.mean(error_s[fg_mask]):.4f} | "
         msg += f"V: {np.mean(error_v[fg_mask]):.4f} | "
@@ -139,9 +163,14 @@ def main() -> None:
             for c_i in range(ratio.shape[2]):
                 cv2.imwrite(str(DIR_DEBUG / f"palette_ratio_{c_i}" + suffix + ".png"), (ratio[:, :, c_i] * 255).astype(np.uint8))
 
-        if total_error < 0.150:
-            debug_mapping = cv2.cvtColor(mapping_palette_preview_hsv, cv2.COLOR_HSV2BGR)
+        # ignore S and V for now
+
+        combined_error = np.mean(error_h[fg_mask]) + np.mean(error_s[fg_mask])
+
+        if combined_error < ERROR_THRESHOLD:
+            debug_mapping = cv2.cvtColor(mapping_palette_preview_hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
             cv2.imwrite(str(DIR_DEBUG / (prefix + "palette_mapping_hsv_preview" + suffix + ".png")), debug_mapping)
+            print("EXPORT")
 
 
 if __name__ == "__main__":
