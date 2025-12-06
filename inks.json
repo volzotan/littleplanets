@@ -4,6 +4,37 @@
         "on_white": [206, 30, 30],
         "on_black": [159, 65, 45]
     },
+    "primary yellow": {
+        "total_cover": false,
+        "on_white": [239, 206, 2],
+        "on_black": [88, 124, 63]
+    },
+    "pale grey": {
+        "total_cover": false,
+        "on_white": [103, 102, 108],
+        "on_black": [111, 115, 122]
+    },
+    "cobalt blue": {
+        "total_cover": false,
+        "on_white": [0, 131, 200],
+        "on_black": [43, 73, 114]
+    },
+     "chinese ink": {
+        "total_cover": false,
+        "on_white": [0, 0, 0],
+        "on_black": [0, 0, 0]
+    },
+
+    "brilliant yellow": {
+        "total_cover": true,
+        "on_white": [245, 233, 94],
+        "on_black": [245, 233, 94]
+    },
+    "naphtol orange": {
+        "total_cover": true,
+        "on_white": [240, 126, 50],
+        "on_black": [240, 126, 50]
+    },
     "cadmin red hue": {
         "total_cover": true,
         "on_white": [236, 95, 102],
@@ -14,60 +45,49 @@
         "on_white": [235, 89, 116],
         "on_black": [235, 89, 116]
     },
-    "naphtol orange": {
+    "dioxazine violet": {
         "total_cover": true,
-        "on_white": [240, 126, 50],
-        "on_black": [240, 126, 50]
+        "on_white": [65, 40, 105],
+        "on_black": [65, 40, 105]
     },
-    "primary yellow": {
-        "total_cover": false,
-        "on_white": [239, 206, 2],
-        "on_black": [88, 124, 63]
-    },
-    "brilliant yellow": {
+    "phthalo blue": {
         "total_cover": true,
-        "on_white": [245, 233, 94],
-        "on_black": [245, 233, 94]
+        "on_white": [15, 129, 197],
+        "on_black": [15, 129, 197]
+    },
+    "dark blue": {
+        "total_cover": true,
+        "on_white": [65, 102, 174],
+        "on_black": [65, 102, 174]
+    },
+    "phthalo turquoise": {
+        "total_cover": true,
+        "on_white": [0, 154, 194],
+        "on_black": [0, 154, 194]
+    },
+    "phthalo green": {
+        "total_cover": true,
+        "on_white": [3, 168, 115],
+        "on_black": [3, 168, 115]
+    },
+    "chromium oxide green": {
+        "total_cover": true,
+        "on_white": [174, 212, 164],
+        "on_black": [174, 212, 164]
+    },
+    "english red": {
+        "total_cover": true,
+        "on_white": [230, 147, 125],
+        "on_black": [230, 147, 125]
+    },
+    "vandyke brown": {
+        "total_cover": true,
+        "on_white": [106, 87, 80],
+        "on_black": [106, 87, 80]
     },
     "supra-white": {
         "total_cover": true,
         "on_white": [255, 255, 255],
         "on_black": [255, 255, 255]
-    },
-    "pale grey": {
-        "total_cover": false,
-        "on_white": [103, 102, 108],
-        "on_black": [111, 115, 122]
-    },   
-     "ausziehtusche": {
-        "total_cover": true,
-        "on_white": [0, 0, 0],
-        "on_black": [0, 0, 0]
-    },
-
-    "kobaltblau": {
-        "total_cover": false,
-        "on_white": [0, 131, 200],
-        "on_black": [43, 73, 114]
-    },
-    "phthaloblau": {
-        "total_cover": true,
-        "on_white": [15, 129, 197],
-        "on_black": [15, 129, 197]
-    },
-    "dunkelblau": {
-        "total_cover": true,
-        "on_white": [65, 102, 174],
-        "on_black": [65, 102, 174]
-    },
-    "phthalotürkis": {
-        "total_cover": true,
-        "on_white": [0, 154, 194],
-        "on_black": [0, 154, 194]
-    },
-    "phthalogrün": {
-        "total_cover": true,
-        "on_white": [3, 168, 115],
-        "on_black": [3, 168, 115]
     }
 }
