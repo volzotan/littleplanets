@@ -11,9 +11,9 @@ import tomllib
 import toml
 from loguru import logger
 
-NUM_WORKERS = 1
+NUM_WORKERS = 2
 
-PLANET = "earth"
+PLANET = "moon"
 
 FILE_CONFIG_BASE = Path(f"config/{PLANET}.toml")
 FILE_POI = Path(f"config/{PLANET}_poi.json")
@@ -21,16 +21,16 @@ DIR_OUTPUT = Path("experiment_output")
 DIR_BUILD_BASE = None  # Path(f"build_{PLANET}")  # base build dir from which initial files are copied
 DIR_DATA = Path(f"data_{PLANET}")
 
-# MAKEFILE_TARGET = "run_palette"
-MAKEFILE_TARGET = "run_palette_no_pois"
+# MAKEFILE_TARGET = "run"
+MAKEFILE_TARGET = "run_no_overlays"
 
 VARIABLES = {
     #     "blur_angle_kernel_size_perc": [0.1, 0.2, 0.3, 0.4, 0.5],
     #     # "blur_color_kernel_size_perc": [0.1, 0.2, 0.3, 0.4, 0.5],
     #     # "blur_distance_kernel_size_perc": [0.1, 0.2, 0.3, 0.4, 0.5],
-    #     "flowlines_line_distance_end_factor": [0.25, 0.5, 0.75, 1.0],
-    #     # "flowlines_line_distance": [(0.8, 5), (0.8, 10), (0.8, 15)],
-    #     # "flowlines_line_max_length": [(3, 9), (3, 12), (3, 16), (3, 20)],
+    "hatch|flowlines_line_distance_end_factor": [0.25, 0.5, 0.75, 1.0],
+    "hatch|flowlines_line_distance": [(0.8, 3.0),(0.8, 5.0),(0.8, 7.0),(0.8, 10.0), (0.8, 15.0), (0.8, 20.0)],
+    "hatch|flowlines_line_max_length": [(3, 9), (3, 12), (3, 16), (3, 20)],
     #     "flowlines_line_max_length": [(3, 3), (6, 6), (12, 12), (16, 16), (20, 20), (30, 30), (40, 40)],
     #     # "flowlines_line_max_length": [(1, 16), (2, 16), (3, 16), (4, 16), (5, 16), (6, 16), (7, 16), (8, 16), (10, 16), (12, 16), (14, 16), (16, 16)],
     #     "flowlines_max_angle_discontinuity": [math.pi / 16, math.pi / 8, math.pi / 4, math.pi / 2]
@@ -50,15 +50,15 @@ VARIABLES = {
     # ],
     # "adjust_camera|camera_focal_length": [10, 15, 20, 30, 50, 90, 150, 300],
     # "mesh|scale": [0.01, 0.02, 0.04, 0.06, 0.08],
-    "downloader|clouds_datetime": [
-        "2025-07-01 12:00",
-        "2025-07-02 12:00",
-        "2025-07-03 12:00",
-        "2025-07-04 12:00",
-        "2025-07-05 12:00",
-        "2025-07-06 12:00",
-        "2025-07-07 12:00",
-    ],
+    # "downloader|clouds_datetime": [
+    #     "2025-07-01 12:00",
+    #     "2025-07-02 12:00",
+    #     "2025-07-03 12:00",
+    #     "2025-07-04 12:00",
+    #     "2025-07-05 12:00",
+    #     "2025-07-06 12:00",
+    #     "2025-07-07 12:00",
+    # ],
 }
 
 

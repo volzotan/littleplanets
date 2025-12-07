@@ -42,12 +42,16 @@ def main() -> None:
         filename = args.output / f"{config_name}.toml"
         combined_config = {**global_config, **config_data}
 
-        if filename.exists() and load_toml(filename) == combined_config:
-            logger.info(f"Skip {filename}")
+        if filename.exists():
+            if load_toml(filename) == combined_config:
+                logger.info(f"Skip  {filename}")
+                continue
+            else:
+                logger.info(f"Write {filename} (new content)")
         else:
-            write_toml(filename, combined_config)
-            logger.info(f"Write {filename}")
+            logger.info(f"Write {filename} (new file)")
 
+        write_toml(filename, combined_config)
 
 if __name__ == "__main__":
     main()
