@@ -5,6 +5,7 @@ rotZ = 10
 light_angle_xy = 67.5
 light_angle_z = 90 #50
 
+# dark blue 65, 102, 174 | naphtol orange 240, 126, 50 | phthalo green 3, 168, 115 | chromium oxide green 174, 212, 164
 colors = [[65, 102, 174], [240, 126, 50], [3, 168, 115]]
 # layer_colors = [[], [], [255, 255, 255]]
 layer_colors = [[], [255, 255, 255], [], [255, 255, 255], [255, 255, 255]]
@@ -64,8 +65,8 @@ mixture = [0.03, 0.07]
 
 [hatch]
 
-blur_angle_kernel_size_perc = 0.40
-blur_distance_kernel_size_perc = 0.40
+blur_angle_kernel_size_perc = 0 # 0.40
+blur_distance_kernel_size_perc = 0 # 0.40
 
 flowlines_line_distance = [0.6, 8.0]
 flowlines_line_max_length = [30, 30]
