@@ -149,26 +149,27 @@ def main() -> None:
             # )
 
             # linear text
-            text = font.lines_for_text(poi["name"], config.font_size)
+            text = font.lines_for_text(poi["name"], config.font_size, center_vertical=True)
             angle = poi.get("label_angle", 0.0)
 
             geom = MultiLineString(text)
 
             center_x = (geom.bounds[2] - geom.bounds[0]) / 2
-            center_y = (geom.bounds[3] - geom.bounds[1]) / 2
+            offset = config.font_size * font.font_info.cap_height * 0.75
 
             x = 0
-
+            if math.isclose(angle, 0):
+                x = offset
             if math.isclose(angle, 90):
-                x += -center_x
+                x = -center_x
             elif math.isclose(angle, 270):
-                x += -center_x
+                x = -center_x
             elif 90 < angle < 270:
-                x += -(geom.bounds[2] - geom.bounds[0])
+                x = -(geom.bounds[2] - geom.bounds[0]) - offset
             else:
                 pass
 
-            text = [shapely.affinity.translate(ls, xoff=x, yoff=center_y) for ls in text]
+            text = [shapely.affinity.translate(ls, xoff=x) for ls in text]
 
             if "label_lat" in poi and "label_lon" in poi:
                 if args.visualize:
