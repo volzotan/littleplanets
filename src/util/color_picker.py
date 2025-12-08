@@ -13,8 +13,7 @@ from skimage.color import rgb2lab, deltaE_ciede2000, deltaE_cie76, deltaE_ciede9
 RESIZE_SIZE = (600, 600)
 DIR_DEBUG = Path("debug")
 
-MIN_RATIO_THRESHOLD = None # 0.15
-
+MIN_RATIO_THRESHOLD = None  # 0.15
 
 
 BASE_DIR = Path("build_earth")
@@ -26,8 +25,6 @@ ERROR_THRESHOLD = 0.250
 
 # BASE_DIR = Path("build_jupiter")
 # NUM_COLORS = 3
-
-
 
 
 IMAGE_PATH = BASE_DIR / "image.tif"
@@ -70,7 +67,6 @@ def main() -> None:
     combinations = list(itertools.combinations(all_colors, num_colors))
 
     for i_c, combination in enumerate(combinations):
-
         color_names = [c[0] for c in combination]
         colors = [c[1] for c in combination]
 
@@ -149,7 +145,6 @@ def main() -> None:
         prefix = f"{i_c}_{'_'.join(color_names)}_"
         suffix = f"_{total_error:.4f}"
         if args.debug:
-
             cv2.imwrite(str(DIR_DEBUG / (prefix + "mapping_color" + suffix + ".png")), mapping_color)
 
             debug_mapping = cv2.cvtColor(mapping_palette_avg_hsv, cv2.COLOR_HSV2BGR)

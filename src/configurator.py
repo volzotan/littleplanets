@@ -53,5 +53,6 @@ def main() -> None:
 
         write_toml(filename, combined_config)
 
+
 if __name__ == "__main__":
     main()

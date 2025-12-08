@@ -53,8 +53,8 @@ if __name__ == "__main__":
     plt.figure(figsize=(50, 50))
     # plt.imshow(mapping_angle, cmap="gray", origin="upper")
     plt.imshow(overlay_image, cmap="gray", origin="upper")
-    plt.quiver(X, Y, u, v, color="red" , headwidth=2)
+    plt.quiver(X, Y, u, v, color="red", headwidth=2)
 
     plt.axis("off")
-    plt.savefig("plot.png", bbox_inches='tight')
+    plt.savefig("plot.png", bbox_inches="tight")
     # plt.show()
