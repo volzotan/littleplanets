@@ -1,5 +1,6 @@
 import math
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -21,36 +22,44 @@ class Align(Enum):
     CENTER = "CENTER"
 
 
+@dataclass
+class FontInfo:
+    ascent: float = 800
+    descent: float = -200
+    cap_height: float = 500
+    x_height: float = 300
+
+
 class HersheyFont:
     DEFAULT_FONT = "fonts/HersheySans1.svg"
 
     def __init__(self, font_file: Path = DEFAULT_FONT):
         self.font_file = Path(font_file)
-        self.parse_svg_font(self.font_file)
+        self.font_dict, self.font_info = self.parse_svg_font(self.font_file)
 
-    def parse_svg_font(self, filename: Path) -> None:
+    def parse_svg_font(self, filename: Path) -> tuple[dict, FontInfo]:
         namespaces = {"svg": "http://www.w3.org/2000/svg"}
         tree = ET.parse(filename)
-
-        self.font_dict = {}
-        self.font_info = {}
 
         font_face = tree.find(".//svg:font-face", namespaces=namespaces)
         glyphs = tree.findall(".//svg:glyph", namespaces=namespaces)
 
+        font_dict = {}
+        font_info = FontInfo()
+
         scaler = 1 / float(font_face.get("units-per-em", "1000"))
-        self.font_info["ascent"] = float(font_face.get("ascent", "800")) * scaler
-        self.font_info["descent"] = float(font_face.get("descent", "-200")) * scaler
-        self.font_info["cap-height"] = float(font_face.get("cap-height", "500")) * scaler
-        self.font_info["x-height"] = float(font_face.get("x-height", "300")) * scaler
+        font_info.ascent = float(font_face.get("ascent", "800")) * scaler
+        font_info.descent = float(font_face.get("descent", "-200")) * scaler
+        font_info.cap_height = float(font_face.get("cap-height", "500")) * scaler
+        font_info.x_height = float(font_face.get("x-height", "300")) * scaler
 
         for glyph in glyphs:
             char = glyph.get("unicode")
-            self.font_dict[char] = {}
-            self.font_dict[char]["glyph-name"] = glyph.get("glyph-name")
-            self.font_dict[char]["horiz-adv-x"] = float(glyph.get("horiz-adv-x")) * scaler
-            self.font_dict[char]["path"] = glyph.get("d")
-            self.font_dict[char]["lines"] = []
+            font_dict[char] = {}
+            font_dict[char]["glyph-name"] = glyph.get("glyph-name")
+            font_dict[char]["horiz-adv-x"] = float(glyph.get("horiz-adv-x")) * scaler
+            font_dict[char]["path"] = glyph.get("d")
+            font_dict[char]["lines"] = []
 
             if glyph.get("d") is not None:
                 for path in parse_path(glyph.get("d")).continuous_subpaths():
@@ -77,7 +86,9 @@ class HersheyFont:
                     if len(linestring_points) > 1:
                         ls = LineString(linestring_points)
                         ls = shapely.affinity.scale(ls, xfact=scaler, yfact=-scaler, origin=(0, 0, 0))
-                        self.font_dict[char]["lines"].append(ls)
+                        font_dict[char]["lines"].append(ls)
+
+        return font_dict, font_info
 
     def glyphs_for_text(self, text: str, font_size: float) -> list[dict[str, Any]]:
         horizontal_advance = 0
@@ -193,7 +204,7 @@ class HersheyFont:
             output = [shapely.affinity.translate(ls, xoff=xoff) for ls in output]
 
         if center_vertical:
-            yoff = (self.font_info["cap-height"] * font_size) / 2
+            yoff = (self.font_info.cap_height * font_size) / 2
             output = [shapely.affinity.translate(ls, yoff=yoff) for ls in output]
 
         return output
@@ -223,9 +234,9 @@ class HersheyFont:
             # bounding box
             bbox = shapely.box(
                 0,
-                -self.font_info["descent"] * FONT_SIZE,
+                -self.font_info.descent * FONT_SIZE,
                 g["width"],
-                -self.font_info["ascent"] * FONT_SIZE,
+                -self.font_info.ascent * FONT_SIZE,
             )
             bbox = shapely.affinity.rotate(bbox, angle, origin=(0, 0, 0), use_radians=True)
             bbox = shapely.affinity.translate(bbox, xoff=matching_point[0], yoff=matching_point[1])
