@@ -17,6 +17,7 @@ from loguru import logger
 
 class ModifyDemConfig(BaseModel):
     scaling_factor: float | None = None
+    blur: float | None = None  # kernel size as percentage of the longest side of the image
     floor: float | None = None
     ceil: float | None = None
     threshold: float | None = None
@@ -79,7 +80,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("input", type=Path, help="input filename")
     parser.add_argument("output", type=Path, help="output filename")
-    parser.add_argument("--config", type=Path, help="Configuration file [TOML]")
+    parser.add_argument("--config", type=Path, help="Configuration file (TOML)")
     args = parser.parse_args()
 
     config = None
@@ -97,6 +98,10 @@ def main() -> None:
     data, data_crs, data_transform = _read(args.input)
     options = {"crs": data_crs, "transform": data_transform}
     data = np.transpose(data, (1, 2, 0))
+
+    if config.blur is not None and config.blur > 0:
+        kernel_size = int(max(*data.shape) * (config.blur / 100.0))
+        data = cv2.blur(data, (kernel_size, kernel_size))
 
     if config.scaling_factor is not None and config.scaling_factor != 1.0:
         data = _rescale(data, config.scaling_factor)
