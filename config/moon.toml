@@ -1,11 +1,18 @@
-rotX = -84.86 # -90 -5.14 lunar orbital inclination, see https://en.wikipedia.org/wiki/Orbit_of_the_Moon#/media/File:Lunar_Orbit_and_Orientation_with_respect_to_the_Ecliptic.svg
-rotY = 0
+# Moon
+
+# -90 -5.14 lunar orbital inclination,
+# see https://en.wikipedia.org/wiki/Orbit_of_the_Moon#/media/File:Lunar_Orbit_and_Orientation_with_respect_to_the_Ecliptic.svg
+
+rotX = -95.14
+rotY = -5.625 # 360 / 32 (lines) * 0.5
 rotZ = -6.68 # axial tilt
 
 light_angle_xy = 83.32
 light_angle_z = 90
 
 colors = [[255, 255, 255]]
+layer_colors = [[245, 233, 94], [255, 255, 255]]
+invert_background = true
 
 dimensions = [750, 750]
 
@@ -26,7 +33,7 @@ camera_focal_length = 50.0
 
 [mesh]
 
-scale = 0.04
+scale = 0.08
 subdivision = 10
 
 [import_ply]
@@ -43,11 +50,11 @@ grid_lines_lon = 8
 
 [overlay_axis]
 
-axis_extent = 1.15
+axis_extent = 1.25
 
 [process_blender]
 
-mixture = [0.03, 0.07]
+mixture = [0.04, 0.20]
 
 [palette]
 
@@ -57,8 +64,8 @@ blur_color_kernel_size_perc = 0.0
 blur_angle_kernel_size_perc = 0.0
 blur_distance_kernel_size_perc = 0.40
 
-flowlines_line_distance = [0.6, 12.0]
-flowlines_line_max_length = [30, 30]
+flowlines_line_distance = [0.6, 8.0]
+flowlines_line_max_length = [20, 25]
 flowlines_line_distance_end_factor = 0.5
 flowlines_max_angle_discontinuity = 1.57 # pi/2
 

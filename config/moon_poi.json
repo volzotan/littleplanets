@@ -9,7 +9,7 @@
         "name": "Apollo 12",
         "lat": -3.01381,
         "lon": -23.41930,
-        "label_angle": 0
+        "label_angle": 180
     },
     {
         "name": "Apollo 14",
