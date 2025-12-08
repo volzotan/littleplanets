@@ -290,13 +290,6 @@ def main() -> None:
             "fill-opacity": "1.0",
         }
 
-    # layer_styles["contours"] = {
-    #     "fill": "none",
-    #     "stroke": f"rgb({palette[0][0]},{palette[0][1]},{palette[0][2]})",
-    #     "stroke-width": "0.30",
-    #     "fill-opacity": "1.0",
-    # }
-
     for io, overlay_ls in enumerate(linestrings_overlays):
         if io < len(config.layer_colors) and len(config.layer_colors[io]) == 3:
             overlay_color = config.layer_colors[io]
@@ -322,21 +315,34 @@ def main() -> None:
             for ic, colored_linestrings in enumerate(linestrings_overlay_palette):
                 svg.add(f"overlay_color_{ic}", colored_linestrings)
 
+    # add frame
+    frame_color = [0, 0, 0] if not config.invert_background else [255, 255, 255]
+    frame_length = 50
+    width, height = config.dimensions
+    linestrings_frame = [
+        LineString([[0, height-frame_length], [0, height], [frame_length, height]]),
+        LineString([[width-frame_length, height], [width, height], [width, height-frame_length]]),
+        LineString([[width, frame_length], [width, 0], [width-frame_length, 0]]),
+        LineString([[frame_length, 0], [0, 0], [0, frame_length]]),
+    ]
+    layer_styles["frame"] = {
+        "fill": "none",
+        "stroke": f"rgb({frame_color[0]},{frame_color[1]},{frame_color[2]})",
+        "stroke-width": "0.50",
+        "fill-opacity": "1.0",
+    }
+    svg.add("frame", linestrings_frame)
+
+    # Build SVG
+
     for k, v in layer_styles.items():
         svg.add_style(k, v)
-
-    # svg.add("contours", linestrings_contours)
 
     linestrings_palette = _match_linestrings_to_palette(linestrings, mapping_color, palette, scaling_factor)
     for i, colored_linestrings in enumerate(linestrings_palette):
         svg.add(f"lines_{i}", colored_linestrings)
 
     svg.write()
-
-    # try:
-    #     convert_svg_to_png(svg, svg.dimensions[0] * 10)
-    # except Exception as e:
-    #     print(f"SVG to PNG conversion failed: {e}")
 
 
 if __name__ == "__main__":
