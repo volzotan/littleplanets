@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from loguru import logger
 
 from process_blender import project_vectors_to_image_space
-from util.misc import export_angles, visualize, normalize_vectors, normalize_vector, rotate_points
+from util.misc import export_angles, visualize, normalize_vectors, normalize_vector, rotate_points, rotate_vectors
 
 VISUALIZE = False
 DEBUG = True
@@ -70,40 +70,6 @@ def _rotate_vectors_2d(vectors: np.ndarray, euler_rotations: np.ndarray) -> np.n
     return np.stack([x3, y3, z3], axis=-1)
 
 
-def _rotate_vectors(vectors: np.ndarray, euler_rotation: np.ndarray, backwards: bool = False) -> np.ndarray:
-    x, y, z = euler_rotation
-    v = vectors.reshape([-1, 3])
-
-    R_x = np.array(
-        [
-            [1, 0, 0],
-            [0, np.cos(x), -np.sin(x)],
-            [0, np.sin(x), np.cos(x)],
-        ]
-    )
-    R_y = np.array(
-        [
-            [np.cos(y), 0, np.sin(y)],
-            [0, 1, 0],
-            [-np.sin(y), 0, np.cos(y)],
-        ]
-    )
-    R_z = np.array(
-        [
-            [np.cos(z), -np.sin(z), 0],
-            [np.sin(z), np.cos(z), 0],
-            [0, 0, 1],
-        ]
-    )
-
-    R = R_z @ R_y @ R_x
-    if backwards:
-        R = R.T
-    v_rot = v @ R.T  # multiplying from the right inverses the rotation, prior transpose required
-
-    return v_rot.reshape(vectors.shape)
-
-
 def _rotate_and_map_nonvectorized(vectors: np.ndarray, raster: np.ndarray, euler_rotation: np.ndarray) -> np.ndarray:
     output = np.zeros(vectors.shape[0:2], dtype=raster.dtype)
 
@@ -127,7 +93,7 @@ def _rotate_and_map(vectors: np.ndarray, raster: np.ndarray, euler_rotation: np.
 
     output = np.full(vectors.shape[0:2], 0, dtype=raster.dtype)
 
-    v_rot = _rotate_vectors(vectors, euler_rotation, backwards=True)
+    v_rot = rotate_vectors(vectors, euler_rotation, backwards=True)
     v_rot_norm = normalize_vectors(v_rot)
     mask_nan = np.isnan(np.sum(v_rot, axis=2))
 
@@ -285,8 +251,8 @@ def main() -> None:
     """
 
     # 1)
-    img_pxpos_front_orig = _rotate_vectors(img_pxpos_front, blender_rotation, backwards=True)
-    img_pxpos_back_orig = _rotate_vectors(img_pxpos_back, blender_rotation, backwards=True)
+    img_pxpos_front_orig = rotate_vectors(img_pxpos_front, blender_rotation, backwards=True)
+    img_pxpos_back_orig = rotate_vectors(img_pxpos_back, blender_rotation, backwards=True)
 
     # 2, 3)
     clouds_rotated_front = _rotate_and_map(img_pxpos_front, mapping_clouds, blender_rotation)
@@ -324,7 +290,7 @@ def main() -> None:
                     deg_z = step_distance * math.cos(angle)
                     deg_x = step_distance * -math.sin(angle)
                     rot = np.array([deg_x, 0, deg_z])
-                    p2 = _rotate_vectors(p, rot)
+                    p2 = rotate_vectors(p, rot)
 
                     output[y, x] = normalize_vector(p2 - p)
 
@@ -335,8 +301,8 @@ def main() -> None:
     direction_back_orig = calculate_direction_vector(img_pxpos_back_orig, angles_rotated_back)
 
     # 5)
-    direction_front = _rotate_vectors(direction_front_orig, blender_rotation)
-    direction_back = _rotate_vectors(direction_back_orig, blender_rotation)
+    direction_front = rotate_vectors(direction_front_orig, blender_rotation)
+    direction_back = rotate_vectors(direction_back_orig, blender_rotation)
 
     # 6) after projection, the Y axis is flipped
     direction_is_front = project_vectors_to_image_space(img_pxpos_front, direction_front, projection_matrix)

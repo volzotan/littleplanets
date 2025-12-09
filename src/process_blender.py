@@ -14,7 +14,7 @@ from scipy import ndimage
 
 import matplotlib.pyplot as plt
 
-from util.misc import project_to_image_space, normalize_vector, project_vectors_to_image_space, normalize_vectors, export_angles
+from util.misc import project_vectors_to_image_space, normalize_vectors, export_angles, rotate_vectors, normalize_vector
 
 CROSS_FLOW = True
 
@@ -32,8 +32,16 @@ CUTOUT_THRESHOLD = 10
 
 
 class ProcessBlenderConfig(BaseModel):
-    light_angle_xy: float = Field(default=45, description="Azimuthal angle φ (around Z-axis) of the lighting vector in degrees")
-    light_angle_z: float = Field(default=45, description="Polar angle θ (to Z-axis) of the lighting vector in degrees")
+    # light_angle_xy: float = Field(default=45, description="Azimuthal angle φ (around Z-axis) of the lighting vector in degrees")
+    # light_angle_z: float = Field(default=45, description="Polar angle θ (to Z-axis) of the lighting vector in degrees")
+
+    rotX: float = 0
+    rotY: float = 0
+    rotZ: float = 0
+
+    light_axis_pos_x: float | None = None
+    light_axis_pos_y: float | None = None
+    light_axis_pos_z: float | None = None
 
     mixture: list[float] = [0.035, 0.06]
 
@@ -175,7 +183,7 @@ def main() -> None:
     parser.add_argument("--projection-matrix", type=Path, default=None, help="3x4 projection matrix (NPY)")
     parser.add_argument("--scaling-factor", type=float, default=None, help="Scaling factor (float)")
     parser.add_argument("--output", type=Path, default="temp", help="Output directory")
-    parser.add_argument("--config", type=Path, help="Configuration file [TOML]")
+    parser.add_argument("--config", type=Path, help="Configuration file (TOML)")
     parser.add_argument("--debug", action="store_true", default=False, help="Enable debug output")
     parser.add_argument("--visualize", action="store_true", default=False, help="Enable interactive visualization")
 
@@ -199,14 +207,24 @@ def main() -> None:
     img_gray = cv2.imread(str(args.image), cv2.IMREAD_GRAYSCALE)
     img_pxpos = np.load(args.raytrace)
 
-    azimuthal_angle = config.light_angle_xy
-    polar_angle = config.light_angle_z
-    light_pos = [
-        math.sin(math.radians(polar_angle)) * math.cos(math.radians(azimuthal_angle)),
-        math.sin(math.radians(polar_angle)) * math.sin(math.radians(azimuthal_angle)),
-        math.cos(math.radians(polar_angle)),
-    ]
-    light_axis = normalize_vector(np.array(light_pos))
+    # azimuthal_angle = config.light_angle_xy
+    # polar_angle = config.light_angle_z
+    # light_pos = [
+    #     math.sin(math.radians(polar_angle)) * math.cos(math.radians(azimuthal_angle)),
+    #     math.sin(math.radians(polar_angle)) * math.sin(math.radians(azimuthal_angle)),
+    #     math.cos(math.radians(polar_angle)),
+    # ]
+    # light_axis = normalize_vector(np.array(light_pos))
+
+    # align light_axis with the polar axis of the planet
+    light_axis_rot = [math.radians(r) for r in [config.rotX, config.rotY, config.rotZ]]
+    light_axis = np.array([0, 0, 1])
+    light_axis = rotate_vectors(light_axis, np.array(light_axis_rot))
+
+    # if light axis pos data is available, use this instead
+    light_axis_pos = np.array([config.light_axis_pos_x, config.light_axis_pos_y, config.light_axis_pos_z], dtype=float)
+    if not np.isnan(np.sum(light_axis_pos)):
+        light_axis = normalize_vector(light_axis_pos)
 
     if args.scaling_factor is not None:
         resize_size = (int(img_normals.shape[1] * args.scaling_factor), int(img_normals.shape[0] * args.scaling_factor))

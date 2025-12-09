@@ -146,6 +146,40 @@ def rotate_points(points: list[np.ndarray], x: float, y: float, z: float, backwa
     return [R @ p for p in points]
 
 
+def rotate_vectors(vectors: np.ndarray, euler_rotation: np.ndarray, backwards: bool = False) -> np.ndarray:
+    x, y, z = euler_rotation
+    v = vectors.reshape([-1, 3])
+
+    R_x = np.array(
+        [
+            [1, 0, 0],
+            [0, np.cos(x), -np.sin(x)],
+            [0, np.sin(x), np.cos(x)],
+        ]
+    )
+    R_y = np.array(
+        [
+            [np.cos(y), 0, np.sin(y)],
+            [0, 1, 0],
+            [-np.sin(y), 0, np.cos(y)],
+        ]
+    )
+    R_z = np.array(
+        [
+            [np.cos(z), -np.sin(z), 0],
+            [np.sin(z), np.cos(z), 0],
+            [0, 0, 1],
+        ]
+    )
+
+    R = R_z @ R_y @ R_x
+    if backwards:
+        R = R.T
+    v_rot = v @ R.T  # multiplying from the right inverses the rotation, prior transpose required
+
+    return v_rot.reshape(vectors.shape)
+
+
 def visualize_linestrings(linestrings: list[LineString]) -> pv.Plotter:
     plotter = pv.Plotter()
 
