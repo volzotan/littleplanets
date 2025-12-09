@@ -28,7 +28,7 @@ surface_color_url = "https://planetarymaps.usgs.gov/mosaic/Mars_Viking_ClrMosaic
 
 scaling_factor = 0.25
 
-[adjust_camera]
+[adjust_scene]
 
 horizontal_width = 2.2
 camera_focal_length = 40.0

@@ -57,14 +57,14 @@ $(DIR_BUILD)/blender_paths.blend: $(DIR_BLENDER)/$(BLENDER_FILE) $(DIR_BLENDER)/
 	cp $(DIR_BLENDER)/$(BLENDER_FILE) $@
 	$(BLENDER_BIN) $(DIR_BUILD)/blender_paths.blend --background --python $(DIR_BLENDER)/adjust_paths.py -- --render-output-dir $(DIR_BUILD)
 
-$(DIR_BUILD)/blender_camera.blend: $(DIR_BUILD)/blender_paths.blend $(DIR_SRC)/blender_wrapper.py $(DIR_BLENDER)/adjust_camera.py $(DIR_BUILD)/adjust_camera.toml
-	@echo "Running blender camera update"
+$(DIR_BUILD)/blender_scene.blend: $(DIR_BUILD)/blender_paths.blend $(DIR_SRC)/blender_wrapper.py $(DIR_BLENDER)/adjust_scene.py $(DIR_BUILD)/adjust_scene.toml
+	@echo "Running blender scene update"
 	cp $(DIR_BUILD)/blender_paths.blend $@
-	uv run $(DIR_SRC)/blender_wrapper.py $(BLENDER_BIN) $@ $(DIR_BLENDER)/adjust_camera.py --config $(DIR_BUILD)/adjust_camera.toml
+	uv run $(DIR_SRC)/blender_wrapper.py $(BLENDER_BIN) $@ $(DIR_BLENDER)/adjust_scene.py --config $(DIR_BUILD)/adjust_scene.toml
 
-$(DIR_BUILD)/blender_mesh.blend: $(DIR_BUILD)/blender_camera.blend $(DIR_SRC)/blender_wrapper.py $(DIR_BLENDER)/import_ply.py $(DIR_BUILD)/mesh.ply $(DIR_BUILD)/import_ply.toml
+$(DIR_BUILD)/blender_mesh.blend: $(DIR_BUILD)/blender_scene.blend $(DIR_SRC)/blender_wrapper.py $(DIR_BLENDER)/import_ply.py $(DIR_BUILD)/mesh.ply $(DIR_BUILD)/import_ply.toml
 	@echo "Running blender mesh update"
-	cp $(DIR_BUILD)/blender_camera.blend $@
+	cp $(DIR_BUILD)/blender_scene.blend $@
 	uv run $(DIR_SRC)/blender_wrapper.py $(BLENDER_BIN) $@ $(DIR_BLENDER)/import_ply.py --config $(DIR_BUILD)/import_ply.toml --params "--input $(DIR_BUILD)/mesh.ply"
 
 $(DIR_BUILD)/raytrace.npy: $(DIR_BUILD)/blender_mesh.blend $(DIR_BLENDER)/raytracing.py

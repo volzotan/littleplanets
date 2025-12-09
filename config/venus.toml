@@ -22,7 +22,7 @@ surface_color_url = "https://planetpixelemporium.com/download/download.php?venus
 scaling_factor = 0.25
 floor = 0
 
-[adjust_camera]
+[adjust_scene]
 
 horizontal_width = 2.2
 camera_focal_length = 30.0
