@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+from itertools import chain
 from typing import Any
 
 import lxml.etree as ET
@@ -8,7 +10,9 @@ import argparse
 import shapely
 
 import numpy as np
-from shapely import LineString, Point
+from shapely import MultiLineString, LineString, Point
+
+from src.util.misc import linestring_to_coordinate_pairs
 
 DEFAULT_INPUT_FILENAME = "world.svg"
 DEFAULT_MAX_LENGTH_SEGMENT = 50  # in m
@@ -24,15 +28,15 @@ PEN_UP_DISTANCE = 3.0
 PEN_DIP_UP_DISTANCE = 7.0
 PEN_DIP_DOWN_DISTANCE = 2.0
 
-COMP_TOLERANCE = 0.20
-MIN_LINE_LENGTH = 0.10  # in mm
-
 WAIT_INIT = 5000
 
-DIP_LOCATION = [0, -20]
+DIP_LOCATION = [0, -20]  # Dip mode 1: reservoir placed at dip location
+DIP_LOCATION = [-20, None]  # Dip mode 2: reservoir mounted on X gantry
 DIP_DISTANCE = 120
 
 CMD_MOVE = "G1 X{0:.3f} Y{1:.3f}\n"
+CMD_MOVE_X = "G1 X{0:.3f}\n"
+CMD_MOVE_Y = "G1 Y{1:.3f}\n"
 CMD_PEN_UP = "G1 Z{} F{}\n".format(PEN_UP_DISTANCE, PEN_LIFT_SPEED)
 CMD_PEN_DIP_UP = "G1 Z{} F{}\n".format(PEN_DIP_UP_DISTANCE, PEN_LIFT_SPEED)
 CMD_PEN_DIP_DOWN = "G1 Z{} F{}\n".format(PEN_DIP_DOWN_DISTANCE, PEN_DIP_SPEED)
@@ -44,6 +48,12 @@ OPTIMIZE_ORDER = True
 #                        linewidth=150)
 
 np.set_printoptions(suppress=True)
+
+
+@dataclass
+class SvgToGcodeConfig:
+    comp_tolerance: float = 0.20
+    min_line_length: float = 0.10  # in mm
 
 
 def process_count(e: Any, default_namespace: str) -> int:
@@ -126,9 +136,9 @@ def process(e: Any, default_namespace: str) -> list[tuple[float, float, float, f
     return lines
 
 
-def compare_equal(e0, e1):
-    if math.isclose(e0[0], e1[0], abs_tol=COMP_TOLERANCE):
-        if math.isclose(e0[1], e1[1], abs_tol=COMP_TOLERANCE):
+def compare_equal(e0, e1, config: SvgToGcodeConfig):
+    if math.isclose(e0[0], e1[0], abs_tol=config.comp_tolerance):
+        if math.isclose(e0[1], e1[1], abs_tol=config.comp_tolerance):
             return True
 
     return False
@@ -157,34 +167,46 @@ def printProgressBar(iteration, total, prefix="", suffix="", decimals=1, length=
         print()
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+def filter_linestrings(g: shapely.Geometry) -> list[LineString]:
+    match g:
+        case Point():
+            return []
 
+        case LineString():
+            return [g]
+
+        case MultiLineString():
+            result = []
+            for sub_geometry in g.geoms:
+                result += filter_linestrings(sub_geometry)
+            return result
+
+        case _:
+            print(f"cropping: unexpected shapely geometry: {type(g)}")
+            return []
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
     parser.add_argument(
         "input_filename",
         default=DEFAULT_INPUT_FILENAME,
     )
-
     parser.add_argument("--crop", nargs="*", type=int, help="crop: center-X center-Y width height")
-
     parser.add_argument(
         "--max-length-segment",
         type=int,
         default=DEFAULT_MAX_LENGTH_SEGMENT,
         help="maximum length of segment [m]",
     )
-
     parser.add_argument("--filter-layer", type=str, default=None, help="filter layers by name")
-
     parser.add_argument("--high-precision", action="store_true", help="high precision mode")
-
     parser.add_argument("--limit", type=int, default=0, help="process only the first n lines")
-
-    parser.add_argument("--dip-mode", default=False, action="store_true", help="enable dip pen mode")
-
+    parser.add_argument("--dip-mode", default=False, action="store_true", help="enable dip pen mode (reservoir placed at DIP_LOCATION)")
     parser.add_argument("--rotate90", default=False, action="store_true", help="rotate by 90 degrees")
-
     args = parser.parse_args()
+
+    config = SvgToGcodeConfig()
 
     crop_region = None
     if args.crop is not None:
@@ -226,10 +248,10 @@ if __name__ == "__main__":
 
     if args.high_precision:
         print("set to high precision mode")
-        COMP_TOLRANCE = 0.001
-        MIN_LINE_LENGTH = 0.1
+        config.comp_tolerance = 0.001
+        config.min_line_length = 0.1
 
-    all_lines = []
+    all_lines: list[list[tuple[float, float, float, float]]] = []
 
     for layer in root.findall("g", root.nsmap):
         if args.filter_layer is not None:
@@ -241,9 +263,6 @@ if __name__ == "__main__":
         for child in layer:
             line_count += process_count(child, svg_default_namespace)
 
-        all_lines_np = np.zeros([line_count, 4], dtype=np.float64)
-        fill_index = 0
-
         for i, child in enumerate(layer):
             if i % 100 == 0:
                 printProgressBar(
@@ -252,13 +271,8 @@ if __name__ == "__main__":
                     prefix=f"process layer: {layer.attrib.get('id', 'UNNAMED_LAYER'):<25}",
                 )
 
-            lines = process(child, svg_default_namespace)
+            all_lines.append(process(child, svg_default_namespace))
 
-            for line in lines:
-                all_lines_np[fill_index, :] = line
-                fill_index += 1
-
-        all_lines += all_lines_np.tolist()
         print("")
 
     if args.limit > 0:
@@ -274,34 +288,22 @@ if __name__ == "__main__":
             if i % 100 == 0:
                 printProgressBar(i, len(all_lines), prefix="cropping")
 
-            ls = LineString([line[0:2], line[2:4]])
+            coords = [l[0:2] for l in line] + [line[-1][2:4]]
+            ls = LineString(coords)
             result = crop_region.intersection(ls)
 
             if result.is_empty:
                 continue
 
-            match result:
-                case Point():
-                    continue
-
-                case LineString():
-                    result = shapely.affinity.translate(result, xoff=-crop_translation[0], yoff=-crop_translation[1])
-
-                    cropped_lines.append(
-                        [
-                            result.coords[0][0],
-                            result.coords[0][1],
-                            result.coords[1][0],
-                            result.coords[1][1],
-                        ]
-                    )
-
-                case _:
-                    print(f"cropping: unexpected shapely geometry: {type(result)}")
+            filtered_linestrings = filter_linestrings(result)
+            for ls in filtered_linestrings:
+                cropped_lines.append(shapely.affinity.translate(ls, xoff=-crop_translation[0], yoff=-crop_translation[1]))
 
         print("")
 
-        all_lines = cropped_lines
+        all_lines = []
+        for line in cropped_lines:
+            all_lines.append([(pair[0][0], pair[0][1], pair[1][0], pair[1][1]) for pair in linestring_to_coordinate_pairs(line)])
 
     print(" ")
     print("--------------------------------------------------")
@@ -316,26 +318,83 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------------------------
     # filter duplicates
 
-    nplines = np.array(all_lines, dtype=float)
-    unique = np.unique(nplines, axis=0)
+    # nplines = np.array(all_lines, dtype=float)
+    # unique = np.unique(nplines, axis=0)
+    #
+    # number_duplicates = len(all_lines) - unique.shape[0]
+    # print("cleaned duplicates: {0} | duplicate ratio: {1:.2f}%".format(number_duplicates, (number_duplicates / len(all_lines)) * 100))
+    #
+    # nplines = unique
 
-    number_duplicates = len(all_lines) - unique.shape[0]
-    print("cleaned duplicates: {0} | duplicate ratio: {1:.2f}%".format(number_duplicates, (number_duplicates / len(all_lines)) * 100))
-
-    nplines = unique
+    # disabled ... need to keep the LineStrings intact (do not treat every single line of a line string individually)
 
     # ------------------------------------------------------------------------------------
     # filter tiny lines
 
     # distances = np.sqrt(np.add(np.power(np.subtract(nplines[:, 0], nplines[:, 2]), 2), np.power(np.subtract(nplines[:, 1], nplines[:, 3]), 2)))
-    # indices_shortlines = np.where(distances < MIN_LINE_LENGTH)[0]
+    # indices_shortlines = np.where(distances < config.min_line_length)[0]
     # nplines = np.delete(nplines, indices_shortlines, axis=0)
     # print("cleaned short lines: {0} | short line ratio: {1:.2f}%".format(indices_shortlines.shape[0], (indices_shortlines.shape[0]/len(all_lines))*100))
 
     # evil ... breaks paths without pen up/down events in two and creates gaps
 
     # ------------------------------------------------------------------------------------
-    # mirror along X-axis to transfer SVG coordinate system (0 top left) to gcode (0 bottom left)
+    # optimize drawing order. greedy (and inefficient)
+
+    ordered_lines = None
+
+    if OPTIMIZE_ORDER:
+        timer = datetime.now()
+
+        indices_done = []
+
+        # treat each line string as a single line, compute distance only on the start and end point of this line
+        # and then order the linestrings based on the indices of these distances
+        nplines = np.array([(line[0][0], line[0][1], line[-1][0], line[-1][1]) for line in all_lines])
+
+        indices_done_mask = np.zeros(nplines.shape[0], dtype=bool)
+        indices_done_mask[indices_done] = True
+
+        ordered_lines = []
+        last = [0, 0, 0, 0]
+
+        for i in range(0, nplines.shape[0]):
+            if i % 100 == 0:
+                printProgressBar(len(ordered_lines), nplines.shape[0], prefix="optimize order")
+
+            indices_done_mask[indices_done] = True
+
+            # pythagorean distance
+
+            distance_forw = np.sqrt(np.add(np.power(np.subtract(nplines[:, 0], last[2]), 2), np.power(np.subtract(nplines[:, 1], last[3]), 2)))
+            distance_forw_masked = np.ma.masked_array(distance_forw, mask=indices_done_mask)
+            distance_forw_min = np.argmin(distance_forw_masked)
+
+            distance_back = np.sqrt(np.add(np.power(np.subtract(nplines[:, 2], last[2]), 2), np.power(np.subtract(nplines[:, 3], last[3]), 2)))
+            distance_back_masked = np.ma.masked_array(distance_back, mask=indices_done_mask)
+            distance_back_min = np.argmin(distance_back_masked)
+
+            if distance_forw[distance_forw_min] < distance_back[distance_back_min]:
+                indices_done.append(distance_forw_min)
+                ordered_lines.append(all_lines[distance_forw_min])
+            else:
+                indices_done.append(distance_back_min)
+                flipped = [(p[2], p[3], p[0], p[1]) for p in reversed(all_lines[distance_back_min])]
+                ordered_lines.append(flipped)
+
+            last = ordered_lines[-1][-1]
+
+        print("")
+        print("optimization done. time: {0:.2f}s".format((datetime.now() - timer).total_seconds()))
+
+    else:
+        ordered_lines = all_lines
+
+    ordered_lines = list(chain.from_iterable(ordered_lines))
+    nplines = np.array(ordered_lines, dtype=float)
+
+    # ------------------------------------------------------------------------------------
+    # translate across X-axis to transfer SVG coordinate system (0 top left) to gcode (0 bottom left)
 
     maxy = size[1]  # np.max([np.max(nplines[:, 1]), np.max(nplines[:, 3])])
     if crop_region is not None:
@@ -349,89 +408,7 @@ if __name__ == "__main__":
     nplines[:, 3] = np.add(nplines[:, 3], maxy)
 
     # ------------------------------------------------------------------------------------
-    # optimize drawing order. greedy (and inefficient)
-
-    ordered_lines = None
-
-    if OPTIMIZE_ORDER:
-        timer = datetime.now()
-
-        indices_done = [0]
-
-        # indices_done_mask = np.zeros(nplines.shape, dtype=bool)
-        # indices_done_mask[indices_done, :] = True
-
-        indices_done_mask = np.zeros(nplines.shape[0], dtype=bool)
-        indices_done_mask[indices_done] = True
-
-        ordered_lines = [nplines[0, :]]
-
-        # nplines_masked = np.ma.masked_array(nplines, mask=indices_done_mask)
-
-        for i in range(0, nplines.shape[0]):
-            if i % 100 == 0:
-                # print("{0:.2f}".format((len(ordered_lines)/nplines.shape[0])*100.0), end="\r")
-                printProgressBar(len(ordered_lines), nplines.shape[0], prefix="optimize order")
-
-            last = ordered_lines[-1]
-            indices_done_mask[indices_done] = True
-
-            # indices_done_mask[indices_done, :] = True
-
-            # pythagorean distance
-
-            # distance_forw = np.sqrt(np.add(np.power(np.subtract(nplines[:, 0], last[2]), 2), np.power(np.subtract(nplines[:, 1], last[3]), 2)))
-            # distance_forw_masked = np.ma.masked_array(distance_forw, mask=indices_done_mask)
-            # distance_forw_min = np.argmin(distance_forw_masked)
-
-            # distance_back = np.sqrt(np.add(np.power(np.subtract(nplines[:, 2], last[2]), 2), np.power(np.subtract(nplines[:, 3], last[3]), 2)))
-            # distance_back_masked = np.ma.masked_array(distance_back, mask=indices_done_mask)
-            # distance_back_min = np.argmin(distance_back_masked)
-
-            # if distance_forw[distance_forw_min] < distance_back[distance_back_min]:
-            #     indices_done.append(distance_forw_min)
-            #     ordered_lines.append(nplines[distance_forw_min, :])
-            # else:
-            #     indices_done.append(distance_back_min)
-            #     flip = nplines[distance_back_min, :]
-            #     ordered_lines.append(np.array([flip[2], flip[3], flip[0], flip[1]]))
-
-            # manhattan distance
-
-            # mnplines = np.ma.masked_array(nplines, mask=indices_done_mask, axis=0)
-
-            distance_forw = np.add(
-                np.abs(np.subtract(nplines[:, 0], last[2])),
-                np.abs(np.subtract(nplines[:, 1], last[3])),
-            )
-            distance_forw = np.ma.masked_array(distance_forw, mask=indices_done_mask)
-            distance_forw_min = np.argmin(distance_forw)
-
-            distance_back = np.add(
-                np.abs(np.subtract(nplines[:, 2], last[2])),
-                np.abs(np.subtract(nplines[:, 3], last[3])),
-            )
-            distance_back = np.ma.masked_array(distance_back, mask=indices_done_mask)
-            distance_back_min = np.argmin(distance_back)
-
-            if distance_forw[distance_forw_min] < distance_back[distance_back_min]:
-                indices_done.append(distance_forw_min)
-                ordered_lines.append(nplines[distance_forw_min, :])
-            else:
-                indices_done.append(distance_back_min)
-                flip = nplines[distance_back_min, :]
-                ordered_lines.append(np.array([flip[2], flip[3], flip[0], flip[1]]))
-
-        print("")
-        print("optimization done. time: {0:.2f}s".format((datetime.now() - timer).total_seconds()))
-
-    else:
-        ordered_lines = nplines
-
-    # ------------------------------------------------------------------------------------
     # filter tiny edges/leaves/whatever (small lines which are not connected)
-
-    nplines = np.array(ordered_lines, dtype=float)
 
     distances = np.sqrt(
         np.add(
@@ -439,7 +416,7 @@ if __name__ == "__main__":
             np.power(np.subtract(nplines[:, 1], nplines[:, 3]), 2),
         )
     )
-    indices_shortlines = np.where(distances < MIN_LINE_LENGTH)[0]
+    indices_shortlines = np.where(distances < config.min_line_length)[0]
 
     unconnected_indices = []
     for i in range(1, nplines.shape[0] - 1):
@@ -601,8 +578,8 @@ if __name__ == "__main__":
 
                 move_pen_up = True
                 if line_next is not None:
-                    if math.isclose(line[2], line_next[0], abs_tol=COMP_TOLERANCE):
-                        if math.isclose(line[3], line_next[1], abs_tol=COMP_TOLERANCE):
+                    if math.isclose(line[2], line_next[0], abs_tol=config.comp_tolerance):
+                        if math.isclose(line[3], line_next[1], abs_tol=config.comp_tolerance):
                             move_pen_up = False
                 if move_pen_up:
                     out.write(CMD_PEN_UP)
@@ -623,7 +600,16 @@ if __name__ == "__main__":
                     count_pen_up += 1
 
                     out.write(f"G1 F{TRAVEL_SPEED}\n")
-                    out.write(CMD_MOVE.format(*DIP_LOCATION))
+
+                    match DIP_LOCATION:
+                        case None, None:
+                            raise Exception(f"invalid DIP_LOCATION {DIP_LOCATION}")
+                        case None, dip_y:
+                            out.write(CMD_MOVE_Y.format(dip_y))
+                        case dip_x, None:
+                            out.write(CMD_MOVE_X.format(dip_x))
+                        case dip_x, dip_y:
+                            out.write(CMD_MOVE.format(dip_x, dip_y))
 
                     out.write(CMD_PEN_DIP_DOWN)
                     out.write(CMD_PEN_DIP_UP)
@@ -652,3 +638,7 @@ if __name__ == "__main__":
 
     if args.dip_mode:
         print(f"count dip:           {count_pen_up:>5}")
+
+
+if __name__ == "__main__":
+    main()
