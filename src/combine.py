@@ -320,9 +320,9 @@ def main() -> None:
     frame_length = 50
     width, height = config.dimensions
     linestrings_frame = [
-        LineString([[0, height-frame_length], [0, height], [frame_length, height]]),
-        LineString([[width-frame_length, height], [width, height], [width, height-frame_length]]),
-        LineString([[width, frame_length], [width, 0], [width-frame_length, 0]]),
+        LineString([[0, height - frame_length], [0, height], [frame_length, height]]),
+        LineString([[width - frame_length, height], [width, height], [width, height - frame_length]]),
+        LineString([[width, frame_length], [width, 0], [width - frame_length, 0]]),
         LineString([[frame_length, 0], [0, 0], [0, frame_length]]),
     ]
     layer_styles["frame"] = {
