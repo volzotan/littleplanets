@@ -101,6 +101,9 @@ def main() -> None:
         linestrings_poi: list[LineString] = []
         marker_geometry = None
 
+        if "invisible" in poi and poi["invisible"] is True:
+            continue
+
         if "path" in poi:
             with zipfile.ZipFile(args.pois.parent / poi["path"], "r") as kmz:
                 kml_filenames = [f for f in kmz.namelist() if f.lower().endswith(".kml")]
@@ -155,21 +158,26 @@ def main() -> None:
             geom = MultiLineString(text)
 
             center_x = (geom.bounds[2] - geom.bounds[0]) / 2
-            offset = config.font_size * font.font_info.cap_height * 0.75
+
+            offset_x = config.font_size * font.font_info.cap_height * 0.75
+            offset_y = config.font_size * font.font_info.cap_height
 
             x = 0
+            y = 0
             if math.isclose(angle, 0):
-                x = offset
+                x = offset_x
             if math.isclose(angle, 90):
                 x = -center_x
+                y = offset_y
             elif math.isclose(angle, 270):
                 x = -center_x
+                y = -offset_y
             elif 90 < angle < 270:
-                x = -(geom.bounds[2] - geom.bounds[0]) - offset
+                x = -(geom.bounds[2] - geom.bounds[0]) - offset_x
             else:
                 pass
 
-            text = [shapely.affinity.translate(ls, xoff=x) for ls in text]
+            text = [shapely.affinity.translate(ls, xoff=x, yoff=y) for ls in text]
 
             if "label_lat" in poi and "label_lon" in poi:
                 if args.visualize:

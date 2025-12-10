@@ -1,38 +1,20 @@
 [
-    {
-        "name": "Apollo 11",
-        "lat": 0.67409,
-        "lon": 23.47298,
-        "label_angle": 0
-    },
-    {
-        "name": "Apollo 12",
-        "lat": -3.01381,
-        "lon": -23.41930,
-        "label_angle": 180
-    },
-    {
-        "name": "Apollo 14",
-        "lat": -3.64544,
-        "lon": -17.47139,
-        "label_angle": 0
-    },
-    {
-        "name": "Apollo 15",
-        "lat": 26.13224,
-        "lon": 3.63400,
-        "label_angle": 0
-    },
-    {
-        "name": "Apollo 16",
-        "lat": -8.97341,
-        "lon": 15.49859,
-        "label_angle": 180
-    },
-    {
-        "name": "Apollo 17",
-        "lat": 20.18809,
-        "lon": 30.77475,
-        "label_angle": 180
-    }
+  {"name":"Apollo 11","lat":0.67409,"lon":23.47298,"label_angle":0},
+  {"name":"Apollo 12","lat":-3.01381,"lon":-23.4193,"label_angle":180},
+  {"name":"Apollo 14","lat":-3.64544,"lon":-17.47139,"label_angle":0},
+  {"name":"Apollo 15","lat":26.13224,"lon":3.634,"label_angle":0},
+  {"name":"Apollo 16","lat":-8.97341,"lon":15.49859,"label_angle":180},
+  {"name":"Apollo 17","lat":20.18809,"lon":30.77475,"label_angle":180},
+  {"name":"Surveyor 1","lat":-2.474,"lon":-43.339,"label_angle":0},
+  {"name":"Luna 9","lat":7.13,"lon":-64.37,"label_angle":0,"invisible":true},
+  {"name":"Luna 13","lat":8.87,"lon":-62.05,"label_angle":0,"invisible":true},
+  {"name":"Luna 16","lat":-0.68,"lon":56.3,"label_angle":180},
+  {"name":"Luna 17","lat":38.28,"lon":-35,"label_angle":0},
+  {"name":"Luna 20","lat":3.57,"lon":56.5,"label_angle":180},
+  {"name":"Luna 21","lat":25.51,"lon":30.38,"label_angle":180},
+  {"name":"Luna 24","lat":12.25,"lon":62.2,"label_angle":270},
+  {"name":"Chang'e 3","lat":44.1214,"lon":340.4884,"label_angle":0},
+  {"name":"Chang'e 4","lat":-45.4446,"lon":177.5991,"label_angle":0,"invisible":true},
+  {"name":"Chandrayaan-3","lat":-69.373,"lon":32.319,"label_angle":0,"invisible":true},
+  {"name":"Blue Ghost 1","lat":18.56,"lon":61.81,"label_angle":180}
 ]
