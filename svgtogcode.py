@@ -14,8 +14,7 @@ from shapely import MultiLineString, LineString, Point
 
 from src.util.misc import linestring_to_coordinate_pairs
 
-DEFAULT_INPUT_FILENAME = "world.svg"
-DEFAULT_MAX_LENGTH_SEGMENT = 50  # in m
+DEFAULT_MAX_LENGTH_SEGMENT = 20  # in m
 
 OFFSET = [0, 0]
 
@@ -32,7 +31,7 @@ WAIT_INIT = 5000
 
 DIP_LOCATION = [0, -20]  # Dip mode 1: reservoir placed at dip location
 DIP_LOCATION = [-20, None]  # Dip mode 2: reservoir mounted on X gantry
-DIP_DISTANCE = 120
+DIP_DISTANCE = 200
 
 CMD_MOVE = "G1 X{0:.3f} Y{1:.3f}\n"
 CMD_MOVE_X = "G1 X{0:.3f}\n"
@@ -188,10 +187,7 @@ def filter_linestrings(g: shapely.Geometry) -> list[LineString]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "input_filename",
-        default=DEFAULT_INPUT_FILENAME,
-    )
+    parser.add_argument("input_filename")
     parser.add_argument("--crop", nargs="*", type=int, help="crop: center-X center-Y width height")
     parser.add_argument(
         "--max-length-segment",

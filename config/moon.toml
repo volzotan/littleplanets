@@ -18,7 +18,7 @@ colors = [[255, 255, 255]]
 layer_colors = [[245, 233, 94], [255, 255, 255]]
 invert_background = true
 
-dimensions = [750, 750]
+dimensions = [650, 650]
 
 [downloader]
 
