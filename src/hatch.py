@@ -81,6 +81,7 @@ if __name__ == "__main__":
     parser.add_argument("--mapping-distance", type=Path, help="Mapping distance (PNG)")
     parser.add_argument("--mapping-line-length", type=Path, help="Mapping line length (PNG)")
     parser.add_argument("--mapping-background", type=Path, help="Mapping background (PNG)")
+    parser.add_argument("--contours", type=Path, default=None, help="Contour linestrings (NPZ)")
 
     parser.add_argument("--config", type=Path, default=None, help="Config file (TOML)")
 
@@ -120,6 +121,14 @@ if __name__ == "__main__":
     if config.invert_background:  # white ink on black paper, invert grayscale image
         mapping_distance = ~mapping_distance
 
+    contour_points = []
+    if args.contours is not None:
+        contours_npz = np.load(args.contours)
+        linestrings_contours = [LineString(arr) for arr in contours_npz.values()]
+        linestrings_contours = [shapely.affinity.scale(ls, xfact=scaling_factor, yfact=scaling_factor, origin=(0, 0)) for ls in linestrings_contours]
+        linestrings_contours = [ls.segmentize(1.0) for ls in linestrings_contours]
+        contour_points: list[tuple[float, float]] = list(itertools.chain.from_iterable([list(ls.coords) for ls in linestrings_contours]))
+
     if args.debug:
         # cv2.imwrite(str(DIR_DEBUG / f"hatch_mapping_color{args.suffix}.png"), mapping_color) # doesn't make sense to export mapping_color if it's palette colors
         cv2.imwrite(str(DIR_DEBUG / f"hatch_mapping_angle{args.suffix}.png"), mapping_angle)
@@ -141,7 +150,8 @@ if __name__ == "__main__":
     # hatcher = flowlines.FlowlineHatcher(dimensions, config, *mappings, exclusion_points=exclusion_points + contour_points)
     # hatcher = flowlines.FlowlineHatcher(dimensions, config, *mappings, exclusion_points=exclusion_points, initial_seed_points=contour_points)
     # hatcher = flowlines.FlowlineHatcher(config.dimensions, flowlines_config, *mappings, exclusion_points=exclusion_points)
-    hatcher = flowlines.FlowlineHatcher(config.dimensions, flowlines_config, *mappings)
+    # hatcher = flowlines.FlowlineHatcher(config.dimensions, flowlines_config, *mappings)
+    hatcher = flowlines.FlowlineHatcher(config.dimensions, flowlines_config, *mappings, initial_seed_points=contour_points)
     linestrings: list[LineString] = hatcher.hatch()
     linestrings = [shapely.simplify(l, 0.01) for l in linestrings]
 
