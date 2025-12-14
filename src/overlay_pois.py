@@ -25,6 +25,7 @@ class OverlayPoiConfig(BaseModel):
     rotZ: float = 0
     circle_radius: float = 0.02
     font_size: float = 0.03
+    ignore_paths: bool = False
 
 
 def _latlon_to_cartesian(xs: list[float], ys: list[float], zs: list[float] = None) -> tuple[np.ndarray]:
@@ -104,7 +105,7 @@ def main() -> None:
         if "invisible" in poi and poi["invisible"] is True:
             continue
 
-        if "path" in poi:
+        if "path" in poi and not config.ignore_paths:
             with zipfile.ZipFile(args.pois.parent / poi["path"], "r") as kmz:
                 kml_filenames = [f for f in kmz.namelist() if f.lower().endswith(".kml")]
 
@@ -138,6 +139,8 @@ def main() -> None:
 
                             # TODO: rotate path back to 0,0 so it can act as a marker_object
 
+        elif "path" in poi and config.ignore_paths:
+            pass
         else:  # no path, draw simple circle
             radius = poi.get("circle_radius", config.circle_radius)
             circle = Point([0, 0]).buffer(radius).boundary.segmentize(0.05)

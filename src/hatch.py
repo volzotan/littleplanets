@@ -39,6 +39,7 @@ class HatchConfig(BaseModel):
     blur_distance_kernel_size_perc: float = Field(0, ge=0)
 
     flowlines_line_distance: tuple[float, float] = (0.8, 10)
+    flowlines_line_min_length: float = Field(1.0, gt=0)
     flowlines_line_max_length: tuple[float, float] = (5, 25)
     flowlines_line_distance_end_factor: float = Field(0.25, ge=0, le=1.0)
     flowlines_max_angle_discontinuity: float = Field(math.pi / 12, gt=0, lt=math.tau)
@@ -143,6 +144,7 @@ if __name__ == "__main__":
 
     flowlines_config = flowlines.FlowlineHatcherConfig()
     flowlines_config.LINE_DISTANCE = config.flowlines_line_distance
+    flowlines_config.LINE_MIN_LENGTH = config.flowlines_line_min_length
     flowlines_config.LINE_MAX_LENGTH = config.flowlines_line_max_length
     flowlines_config.LINE_DISTANCE_END_FACTOR = config.flowlines_line_distance_end_factor
     flowlines_config.MAX_ANGLE_DISCONTINUITY = config.flowlines_max_angle_discontinuity
