@@ -31,7 +31,13 @@ scaling_factor = 0.25
 [adjust_scene]
 
 horizontal_width = 2.2
-camera_focal_length = 40.0
+camera_focal_length = 25.0
+
+light_pos_x = 0.5
+light_pos_y = 0.5
+light_pos_z = 3.0
+light_size = 0.2
+light_power = 100
 
 [mesh]
 
@@ -67,8 +73,8 @@ blur_angle_kernel_size_perc = 0.0
 blur_distance_kernel_size_perc = 0.40
 
 flowlines_line_distance = [0.6, 12.0]
-flowlines_line_max_length = [30, 30]
-flowlines_line_distance_end_factor = 0.5
+flowlines_line_max_length = [10, 30]
+flowlines_line_distance_end_factor = 0.3
 flowlines_max_angle_discontinuity = 1.57 # pi/2
 
 [combine]
