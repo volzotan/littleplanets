@@ -8,7 +8,7 @@ from shapely.ops import transform
 import pyvista as pv
 
 
-def linestring_to_coordinate_pairs(linestring: LineString) -> list[list[tuple[float, float]]]:
+def linestring_to_coordinate_pairs(linestring: LineString) -> list[list[tuple[float]]]:
     pairs = []
 
     for i in range(len(linestring.coords) - 1):
@@ -83,6 +83,37 @@ def dash_linestring(linestring: LineString, dash_length: float, pause_length: fl
         position += dash_length + pause_length
 
     return dash_segments
+
+
+def split_linestring(ls: LineString, max_length: float) -> list[LineString]:
+    ls = shapely.segmentize(ls, max_length)
+    coords = list(ls.coords)
+
+    split_ls = []
+
+    if len(coords) < 2:
+        return []
+
+    candidate = [coords[0]]
+    candidate_length = 0
+
+    for i in range(1, len(coords)):
+        p1 = coords[i - 1]
+        p2 = coords[i]
+        p1_p2_length = math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
+
+        if candidate_length + p1_p2_length > max_length:
+            split_ls.append(LineString(candidate))
+            candidate = [coords[i - 1], coords[i]]
+            candidate_length = p1_p2_length
+        else:
+            candidate.append(coords[i])
+            candidate_length += p1_p2_length
+
+        if i == len(coords) - 1:
+            split_ls.append(LineString(candidate))
+
+    return split_ls
 
 
 def rotate_linestrings(lines: list[LineString], x: float, y: float, z: float) -> list[LineString]:
@@ -208,6 +239,9 @@ def visualize_linestrings(linestrings: list[LineString]) -> pv.Plotter:
             # discard any linestrings with almost zero length
             if np.all(np.isclose(pair[0], pair[1])):
                 continue
+
+            if len(pair[0]) == 2:
+                pair = [(p[0], p[1], 0.0) for p in pair]
 
             spline = pv.Spline(np.array(pair, dtype=np.float32)).tube(radius=0.002)
             plotter.add_mesh(spline, color=colors[li % 3])

@@ -3,7 +3,6 @@ import datetime
 import itertools
 import tomllib
 from pathlib import Path
-import math
 import random
 
 import cv2
@@ -16,14 +15,14 @@ from shapely import LineString, MultiLineString, Geometry, Point
 
 from loguru import logger
 
-from util import flowlines
+from util.misc import split_linestring
 from svgwriter import SvgWriter
 
 DIR_DEBUG = Path("debug")
 
 PSEUDO_RANDOM_SEED = "littleplanets"
 
-SEGMENTIZE_MAX_LENGTH = 10.0  # mm
+SEGMENTIZE_MAX_LENGTH = 5.0  # mm
 
 
 class CombineConfig(BaseModel):
@@ -40,7 +39,7 @@ class CombineConfig(BaseModel):
     overlay_cutout_cut_distance: float = 1.5 # --cutout
     overlay_layering_cut_distance: float = 4.0 # --overlays
 
-    ignore_contours: bool = True
+    ignore_contours: bool = False
 
 
 def _project_linestring(ls: LineString, P: np.ndarray, scaling_factor: float) -> LineString:
@@ -60,37 +59,6 @@ def _blur_raster(raster: np.ndarray, perc: float) -> np.ndarray:
         return raster
 
 
-def _split_linestring(ls: LineString, max_length: float) -> list[LineString]:
-    ls = shapely.segmentize(ls, max_length)
-    coords = list(ls.coords)
-
-    split_ls = []
-
-    if len(coords) < 2:
-        return []
-
-    candidate = [coords[0]]
-    candidate_length = 0
-
-    for i in range(1, len(coords)):
-        p1 = coords[i - 1]
-        p2 = coords[i]
-        p1_p2_length = math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
-
-        if candidate_length + p1_p2_length > max_length:
-            split_ls.append(LineString(candidate))
-            candidate = [coords[i - 1], coords[i]]
-            candidate_length = p1_p2_length
-        else:
-            candidate.append(coords[i])
-            candidate_length += p1_p2_length
-
-        if i == len(coords) - 1:
-            split_ls.append(LineString(candidate))
-
-    return split_ls
-
-
 def _match_linestrings_to_palette(
     linestrings: list[LineString], mapping: np.ndarray, palette: np.ndarray, scaling_factor: float = 1.0
 ) -> list[list[LineString]]:
@@ -100,8 +68,8 @@ def _match_linestrings_to_palette(
         return [linestrings]
 
     for ls in linestrings:
-        if len(ls.coords) < 2:
-            continue
+        # if len(ls.coords) < 2:
+        #     continue
 
         all_pixels = np.nan_to_num(np.array([mapping[int(p[1] * 1 / scaling_factor), int(p[0] * 1 / scaling_factor)] for p in ls.coords]))
         mean = np.mean(all_pixels, axis=0)
@@ -253,7 +221,7 @@ def main() -> None:
         linestrings_contours = [shapely.affinity.scale(ls, xfact=scaling_factor, yfact=scaling_factor, origin=(0, 0)) for ls in linestrings_contours]
 
     # merge contours with hatchlines
-    linestrings_contours_split = itertools.chain.from_iterable([_split_linestring(ls, SEGMENTIZE_MAX_LENGTH) for ls in linestrings_contours])
+    linestrings_contours_split = itertools.chain.from_iterable([split_linestring(ls, SEGMENTIZE_MAX_LENGTH) for ls in linestrings_contours])
     linestrings += linestrings_contours_split
 
     # cut buffered overlay from hatched linestrings

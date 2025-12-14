@@ -85,9 +85,9 @@ $(DIR_BUILD)/mesh_blender.ply: $(DIR_BUILD)/blender_mesh.blend $(DIR_BLENDER)/ex
 	@echo "Running blender mesh export"
 	$(BLENDER_BIN) $(DIR_BUILD)/blender_mesh.blend --background --python $(DIR_BLENDER)/export_ply.py -- --output $@
 
-$(DIR_BUILD)/contours.npz: $(DIR_SRC)/contours.py $(DIR_BUILD)/normals.exr $(DIR_BUILD)/raytrace.npy
+$(DIR_BUILD)/contours.npz: $(DIR_SRC)/contours.py $(DIR_BUILD)/normals.exr $(DIR_BUILD)/raytrace.npy $(DIR_BUILD)/contours.toml
 	@echo "Computing contours"
-	uv run $^ --output $@
+	uv run $(DIR_SRC)/contours.py $(DIR_BUILD)/normals.exr $(DIR_BUILD)/raytrace.npy --output $@ --config $(DIR_BUILD)/contours.toml
 
 # Overlay Coastlines
 

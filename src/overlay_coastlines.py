@@ -13,8 +13,7 @@ import math
 from shapely.geometry import LineString
 from loguru import logger
 
-from combine import _split_linestring
-from util.misc import visualize_linestrings, write_linestrings_to_npz, rotate_linestrings
+from util.misc import visualize_linestrings, write_linestrings_to_npz, rotate_linestrings, split_linestring
 
 VISUALIZE = False
 DEBUG = True
@@ -125,7 +124,7 @@ def main() -> None:
 
     # SPLIT
 
-    linestrings = itertools.chain.from_iterable([_split_linestring(ls, SEGMENTIZE_MAX_LENGTH) for ls in linestrings])
+    linestrings = itertools.chain.from_iterable([split_linestring(ls, SEGMENTIZE_MAX_LENGTH) for ls in linestrings])
 
     # ROTATE
 

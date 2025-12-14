@@ -33,8 +33,8 @@ scaling_factor = 0.25
 horizontal_width = 2.2
 camera_focal_length = 25.0
 
-light_pos_x = 0.5
-light_pos_y = 0.5
+light_pos_x = 1.0
+light_pos_y = 0.1
 light_pos_z = 3.0
 light_size = 0.2
 light_power = 100
@@ -48,8 +48,8 @@ subdivision = 10
 
 [overlay_pois]
 
-circle_radius = 0.015
-font_size = 0.020
+circle_radius = 0.012
+font_size = 0.018
 
 [overlay_grid]
 
@@ -61,6 +61,10 @@ grid_lines_lon = 8
 [process_blender]
 
 mixture = [0.03, 0.07]
+
+[contours]
+
+shrink = 0
 
 [palette]
 
