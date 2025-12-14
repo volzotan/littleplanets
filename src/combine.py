@@ -23,9 +23,7 @@ DIR_DEBUG = Path("debug")
 
 PSEUDO_RANDOM_SEED = "littleplanets"
 
-OVERLAY_STENCIL_CUT_DISTANCE = 4
-CUTOUT_STENCIL_CUT_DISTANCE = 1
-SEGMENTIZE_MAX_LENGTH = 15.0  # mm
+SEGMENTIZE_MAX_LENGTH = 10.0  # mm
 
 
 class CombineConfig(BaseModel):
@@ -38,6 +36,11 @@ class CombineConfig(BaseModel):
 
     # Blurring kernel size, percentage of raster size(float)
     blur_color_kernel_size_perc: float = Field(0, ge=0)
+
+    overlay_cutout_cut_distance: float = 1.5 # --cutout
+    overlay_layering_cut_distance: float = 4.0 # --overlays
+
+    ignore_contours: bool = True
 
 
 def _project_linestring(ls: LineString, P: np.ndarray, scaling_factor: float) -> LineString:
@@ -244,7 +247,7 @@ def main() -> None:
 
     # TODO: contours don't need to be projected, but they need to be scaled (currently missing!)
     linestrings_contours = []
-    if args.contours is not None:
+    if args.contours is not None and not config.ignore_contours:
         contours_npz = np.load(args.contours)
         linestrings_contours = [LineString(arr) for arr in contours_npz.values()]
         linestrings_contours = [shapely.affinity.scale(ls, xfact=scaling_factor, yfact=scaling_factor, origin=(0, 0)) for ls in linestrings_contours]
@@ -255,8 +258,8 @@ def main() -> None:
 
     # cut buffered overlay from hatched linestrings
     timer_start = datetime.datetime.now()
-    linestrings = _cut(linestrings, linestrings_cutouts, CUTOUT_STENCIL_CUT_DISTANCE / 2)
-    linestrings = _cut(linestrings, [ls for overlay_ls in linestrings_overlays for ls in overlay_ls], OVERLAY_STENCIL_CUT_DISTANCE / 2)
+    linestrings = _cut(linestrings, linestrings_cutouts, config.overlay_cutout_cut_distance / 2)
+    linestrings = _cut(linestrings, [ls for overlay_ls in linestrings_overlays for ls in overlay_ls], config.overlay_layering_cut_distance / 2)
     logger.debug(f"Combination stencil time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
 
     # cut each overlay from all underlying ones
@@ -264,7 +267,7 @@ def main() -> None:
     combined_stencil = Point()
     for i in reversed(range(len(linestrings_overlays))):
         if not combined_stencil.is_empty:
-            linestrings_overlays[i] = _cut(linestrings_overlays[i], [combined_stencil], OVERLAY_STENCIL_CUT_DISTANCE / 2)
+            linestrings_overlays[i] = _cut(linestrings_overlays[i], [combined_stencil], config.overlay_layering_cut_distance / 2)
         combined_stencil = shapely.unary_union([combined_stencil] + linestrings_overlays[i])
     logger.debug(f"Overlay cascade stencil time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
 
