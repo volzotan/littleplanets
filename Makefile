@@ -214,13 +214,14 @@ $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_brightness_difference.png &:
 		--palette-brightness-difference $(DIR_BUILD)/mapping_brightness_difference.png \
 		--config $(DIR_BUILD)/palette.toml
 
-$(DIR_BUILD)/hatchlines.npz: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_angle.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_background.png $(DIR_BUILD)/hatch.toml
+$(DIR_BUILD)/hatchlines.npz: $(DIR_SRC)/hatch.py $(DIR_BUILD)/mapping_angle.png $(DIR_BUILD)/mapping_distance.png $(DIR_BUILD)/mapping_line_length.png $(DIR_BUILD)/mapping_background.png $(DIR_BUILD)/contours.npz  $(DIR_BUILD)/hatch.toml
 	@echo "Hatch"
 	uv run $(DIR_SRC)/hatch.py											\
 		--mapping-angle $(DIR_BUILD)/mapping_angle.png 					\
 		--mapping-distance $(DIR_BUILD)/mapping_distance.png 			\
 		--mapping-line-length $(DIR_BUILD)/mapping_line_length.png 		\
 		--mapping-background $(DIR_BUILD)/mapping_background.png 		\
+		--contours $(DIR_BUILD)/contours.npz							\
 		--config $(DIR_BUILD)/hatch.toml 								\
 		--output $@
 
