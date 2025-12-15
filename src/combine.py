@@ -218,11 +218,11 @@ def main() -> None:
     if args.contours is not None and not config.ignore_contours:
         contours_npz = np.load(args.contours)
         linestrings_contours = [LineString(arr) for arr in contours_npz.values()]
-        linestrings_contours = [shapely.affinity.scale(ls, xfact=scaling_factor, yfact=scaling_factor, origin=(0, 0)) for ls in linestrings_contours]
 
-    # merge contours with hatchlines
-    linestrings_contours_split = itertools.chain.from_iterable([split_linestring(ls, SEGMENTIZE_MAX_LENGTH) for ls in linestrings_contours])
-    linestrings += linestrings_contours_split
+        if len(linestrings_contours) > 0 and linestrings_contours[0].has_z:
+            linestrings_contours = [_project_linestring(l, P, scaling_factor) for l in linestrings_contours]
+
+        # linestrings_contours = [shapely.affinity.scale(ls, xfact=scaling_factor, yfact=scaling_factor, origin=(0, 0)) for ls in linestrings_contours]
 
     # cut buffered overlay from hatched linestrings
     timer_start = datetime.datetime.now()
@@ -238,6 +238,10 @@ def main() -> None:
             linestrings_overlays[i] = _cut(linestrings_overlays[i], [combined_stencil], config.overlay_layering_cut_distance / 2)
         combined_stencil = shapely.unary_union([combined_stencil] + linestrings_overlays[i])
     logger.debug(f"Overlay cascade stencil time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
+
+    # merge contours with hatchlines (merge after cutting, so contours are not cut by the grid overlay)
+    linestrings_contours_split = itertools.chain.from_iterable([split_linestring(ls, SEGMENTIZE_MAX_LENGTH) for ls in linestrings_contours])
+    linestrings += linestrings_contours_split
 
     # Coloring
     palette = np.array(config.colors, dtype=int)
