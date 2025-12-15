@@ -42,6 +42,8 @@ font_size = 0.020
 grid_lines_lat = 16
 grid_lines_lon = 8
 
+[overlay_contours]
+
 [overlay_axis]
 
 [process_blender]

@@ -61,6 +61,8 @@ grid_lines_lon = 8
 
 axis_extent = 1.25
 
+[overlay_contours]
+
 [process_blender]
 
 mixture = [0.04, 0.20]
@@ -81,5 +83,3 @@ flowlines_line_distance_end_factor = 0.3
 flowlines_max_angle_discontinuity = 0.78 # pi/4
 
 [combine]
-
-ignore_contours = true

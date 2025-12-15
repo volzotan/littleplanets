@@ -46,6 +46,8 @@ grid_lines_lon = 8
 
 [overlay_axis]
 
+[overlay_contours]
+
 [process_blender]
 
 light_angle_xy = 92.64

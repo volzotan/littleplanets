@@ -8,6 +8,7 @@ import numpy as np
 
 DEBUG = False
 
+LIGHT_NAME = "Light"
 
 # src: https://blender.stackexchange.com/a/134596/118415
 class ArgumentParserForBlender(argparse.ArgumentParser):
@@ -37,9 +38,10 @@ def find_layer_collection(layer_coll, coll_name):
 
 
 parser = ArgumentParserForBlender()
-parser.add_argument("--input", type=Path, default="overlay.npz", help="Input filename [NPZ]")
-parser.add_argument("--output", type=Path, default="overlay_visible.npz", help="Output filename [NPZ]")
-parser.add_argument("--save-to", type=Path, default=None, help="Output filename of the blender file [blend]")
+parser.add_argument("--input", type=Path, default="overlay.npz", help="Input filename (NPZ)")
+parser.add_argument("--output", type=Path, default="overlay_visible.npz", help="Output filename (NPZ)")
+parser.add_argument("--raycast-from-light", action="store_true", help="Use the light location as the raycasting origin instead of the camera")
+parser.add_argument("--save-to", type=Path, default=None, help="Output filename of the blender file (blend)")
 args = parser.parse_args()
 
 scene = bpy.context.scene
@@ -97,6 +99,17 @@ visibility_list = []
 bpy.context.view_layer.depsgraph.update()
 depsgraph = bpy.context.evaluated_depsgraph_get()
 origin = cam.matrix_world.translation
+
+if args.raycast_from_light:
+    light_obj = bpy.data.objects.get(LIGHT_NAME)
+
+    if not light_obj:
+        raise Exception(f"No light object found for name {LIGHT_NAME}")
+
+    if light_obj.type != "LIGHT":
+        raise Exception(f"Object found for name {LIGHT_NAME} is not of type 'LIGHT'")
+
+    origin = light_obj.location
 
 for lines in overlay_npz.values():
     visible_points = np.zeros([lines.shape[0]], dtype=bool)

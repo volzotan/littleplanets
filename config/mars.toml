@@ -59,13 +59,11 @@ grid_lines_lon = 8
 
 [overlay_axis]
 
+[overlay_contours]
+
 [process_blender]
 
 mixture = [0.03, 0.07]
-
-[contours]
-
-shrink = 0
 
 [palette]
 
