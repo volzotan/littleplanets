@@ -17,8 +17,7 @@ if __name__ == "__main__":
     npz = np.load(args.npz)
     linestrings = [LineString(e) for e in npz.values()]
 
-    linestrings = [shapely.affinity.scale(ls, xfact=0.001, yfact=0.001, origin=Point([0, 0])) for ls in linestrings]
-
+    # linestrings = [shapely.affinity.scale(ls, xfact=0.001, yfact=0.001, origin=Point([0, 0])) for ls in linestrings]
 
     print(f"loaded {len(linestrings)} LineStrings")
     print(linestrings[0])

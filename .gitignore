@@ -21,5 +21,9 @@ data_lowres_*/
 build_*/
 debug/
 
+*.nc
+*.png
+*.blend1
+
 experiment_output/
 REFERENCE_ART/

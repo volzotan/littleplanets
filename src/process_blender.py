@@ -405,18 +405,18 @@ def main() -> None:
 
     # 1) win var inverted
 
-    WINDOW_SIZE = 10
-    MAX_WIN_VAR = 1e-6
-    win_mean = ndimage.uniform_filter(img_distance, (WINDOW_SIZE, WINDOW_SIZE))
-    win_sqr_mean = ndimage.uniform_filter(img_distance**2, (WINDOW_SIZE, WINDOW_SIZE))
-    win_var = win_sqr_mean - win_mean**2
-
-    win_var = np.clip(win_var, 0, MAX_WIN_VAR)
-    win_var = win_var * -1 + MAX_WIN_VAR
-
-    mapping_line_length_2 = (np.iinfo(np.uint8).max * ((win_var - np.min(win_var)) / np.ptp(win_var))).astype(np.uint8)
-
-    cv2.imwrite(str(args.output / "mapping_line_length.png"), ~mapping_line_length_2)
+    # WINDOW_SIZE = 10
+    # MAX_WIN_VAR = 1e-6
+    # win_mean = ndimage.uniform_filter(img_distance, (WINDOW_SIZE, WINDOW_SIZE))
+    # win_sqr_mean = ndimage.uniform_filter(img_distance**2, (WINDOW_SIZE, WINDOW_SIZE))
+    # win_var = win_sqr_mean - win_mean**2
+    #
+    # win_var = np.clip(win_var, 0, MAX_WIN_VAR)
+    # win_var = win_var * -1 + MAX_WIN_VAR
+    #
+    # mapping_line_length_2 = (np.iinfo(np.uint8).max * ((win_var - np.min(win_var)) / np.ptp(win_var))).astype(np.uint8)
+    #
+    # cv2.imwrite(str(args.output / "mapping_line_length.png"), ~mapping_line_length_2)
 
     # 2) line_distance
 
