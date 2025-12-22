@@ -20,8 +20,6 @@ DEBUG = True
 DIR_DEBUG = Path("debug")
 
 MIN_LINE_LENGTH = 0.05
-SEGMENTIZE_MAX_LENGTH = 10
-
 
 class OverlayCoastlinesConfig(BaseModel):
     rotX: float = 0
@@ -31,6 +29,7 @@ class OverlayCoastlinesConfig(BaseModel):
     radius: float = 1.0
     morph_kernel_size: int = 4
     simplify: float = 2
+    segmentize_length: float = 0.01
 
 
 def _read(input_path: Path) -> tuple[np.ndarray, Any, Any]:
@@ -124,7 +123,7 @@ def main() -> None:
 
     # SPLIT
 
-    linestrings = itertools.chain.from_iterable([split_linestring(ls, SEGMENTIZE_MAX_LENGTH) for ls in linestrings])
+    linestrings = itertools.chain.from_iterable([split_linestring(ls, config.segmentize_length) for ls in linestrings])
 
     # ROTATE
 
