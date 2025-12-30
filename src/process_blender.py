@@ -28,6 +28,8 @@ MAGNITUDE_THRESHOLD = 0.06
 
 CUTOUT_THRESHOLD = 10
 
+MAPPING_DISTANCE_CUTOFF = True
+
 # EXPORT = False
 
 
@@ -529,6 +531,10 @@ def main() -> None:
         maxval = np.percentile(mapping_distance, 100 - CLIPPING_CUTOFF_PERCENTILE)
         mapping_distance = np.clip(mapping_distance, minval, maxval)
         mapping_distance = (((mapping_distance - minval) / (maxval - minval)) * 255).astype(np.uint8)
+
+    if MAPPING_DISTANCE_CUTOFF:
+        # add the min regions of mapping_distance to background
+        mapping_background[mapping_distance == 0] = 255
 
     if args.debug:
         cv2.imwrite(str(dir_debug / "mapping_distance_clip.png"), _apply_colormap(mapping_distance))
