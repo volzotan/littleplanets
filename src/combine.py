@@ -36,8 +36,8 @@ class CombineConfig(BaseModel):
     # Blurring kernel size, percentage of raster size(float)
     blur_color_kernel_size_perc: float = Field(0, ge=0)
 
-    overlay_cutout_cut_distance: float = 1.5 # --cutout
-    overlay_layering_cut_distance: float = 4.0 # --overlays
+    overlay_cutout_cut_distance: float = 1.5  # --cutout
+    overlay_layering_cut_distance: float = 4.0  # --overlays
 
     ignore_contours: bool = False
 
@@ -303,10 +303,10 @@ def main() -> None:
         LineString([[width - frame_length, height], [width, height], [width, height - frame_length]]),
         LineString([[width, frame_length], [width, 0], [width - frame_length, 0]]),
         LineString([[frame_length, 0], [0, 0], [0, frame_length]]),
-        LineString([[width/2-frame_length/2, 0], [width/2+frame_length/2, 0]]),
-        LineString([[width/2-frame_length/2, height], [width/2+frame_length/2, height]]),
-        LineString([[0, height/2-frame_length/2], [0, height/2+frame_length/2]]),
-        LineString([[width, height/2-frame_length/2], [width, height/2+frame_length/2]]),
+        LineString([[width / 2 - frame_length / 2, 0], [width / 2 + frame_length / 2, 0]]),
+        LineString([[width / 2 - frame_length / 2, height], [width / 2 + frame_length / 2, height]]),
+        LineString([[0, height / 2 - frame_length / 2], [0, height / 2 + frame_length / 2]]),
+        LineString([[width, height / 2 - frame_length / 2], [width, height / 2 + frame_length / 2]]),
     ]
     layer_styles["frame"] = {
         "fill": "none",

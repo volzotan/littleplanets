@@ -10,6 +10,7 @@ DEBUG = False
 
 LIGHT_NAME = "Light"
 
+
 # src: https://blender.stackexchange.com/a/134596/118415
 class ArgumentParserForBlender(argparse.ArgumentParser):
     def _get_argv_after_doubledash(self):

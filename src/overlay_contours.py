@@ -11,6 +11,7 @@ import cv2
 
 VISUALIZE = False
 
+
 class OverlayContoursConfig(BaseModel):
     shrink: float = 0.0
     simplify: float = 0.1

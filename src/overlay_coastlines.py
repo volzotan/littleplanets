@@ -21,6 +21,7 @@ DIR_DEBUG = Path("debug")
 
 MIN_LINE_LENGTH = 0.05
 
+
 class OverlayCoastlinesConfig(BaseModel):
     rotX: float = 0
     rotY: float = 0

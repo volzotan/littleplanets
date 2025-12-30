@@ -28,6 +28,7 @@ CLOSING_KERNEL_SIZE: int | None = 3
 
 random.seed("littleplanets")
 
+
 class ContoursConfig(BaseModel):
     shrink: float = 0.0
     simplify: float = 0.1
@@ -36,6 +37,7 @@ class ContoursConfig(BaseModel):
 def write_npz(filename: Path, linestrings: list[LineString], include_z: bool = False) -> None:
     arrays = [shapely.get_coordinates(l, include_z=include_z) for l in linestrings]
     np.savez(filename, *arrays)
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
