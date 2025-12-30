@@ -15,7 +15,7 @@ from shapely import LineString, MultiLineString, Geometry, Point
 
 from loguru import logger
 
-from util.misc import split_linestring
+from util.misc import smooth_linestrings, split_linestring
 from svgwriter import SvgWriter
 
 DIR_DEBUG = Path("debug")
@@ -238,6 +238,10 @@ def main() -> None:
             linestrings_overlays[i] = _cut(linestrings_overlays[i], [combined_stencil], config.overlay_layering_cut_distance / 2)
         combined_stencil = shapely.unary_union([combined_stencil] + linestrings_overlays[i])
     logger.debug(f"Overlay cascade stencil time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
+
+    # smoothing
+    linestrings_contours = smooth_linestrings(linestrings_contours)
+    linestrings = smooth_linestrings(linestrings)
 
     # merge contours with hatchlines (merge after cutting, so contours are not cut by the grid overlay)
     linestrings_contours_split = itertools.chain.from_iterable([split_linestring(ls, SEGMENTIZE_MAX_LENGTH) for ls in linestrings_contours])

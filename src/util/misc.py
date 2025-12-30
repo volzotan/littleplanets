@@ -6,6 +6,7 @@ import shapely
 from shapely.geometry import LineString, Point
 from shapely.ops import transform
 import pyvista as pv
+from shapelysmooth import chaikin_smooth
 
 
 def linestring_to_coordinate_pairs(linestring: LineString) -> list[list[tuple[float]]]:
@@ -357,3 +358,11 @@ def export_angles(arr: np.ndarray, adjust_y_axis: bool = False) -> np.ndarray:
     angle = np.atan2(arr[:, :, 1] * factor, arr[:, :, 0])
     angle = (angle / math.tau * 255).astype(np.uint8)
     return angle
+
+
+def smooth_linestring(ls: LineString) -> LineString:
+    return chaikin_smooth(ls, 5)
+
+
+def smooth_linestrings(linestrings: list[LineString]) -> list[LineString]:
+    return [chaikin_smooth(ls, 10) for ls in linestrings if not ls.is_empty]
