@@ -34,9 +34,16 @@ scaling_factor = 0.25
 
 horizontal_width = 2.2
 camera_focal_length = 50.0
-light_pos_x = 0.4
+
+#light_pos_x = 0.4
+#light_pos_y = 0.4
+#light_pos_z = 3.0
+#light_size = 0.2
+#light_power = 100
+
+light_pos_x = 0.6
 light_pos_y = 0.4
-light_pos_z = 3.0
+light_pos_z = 2.2
 light_size = 0.2
 light_power = 100
 
