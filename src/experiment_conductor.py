@@ -21,8 +21,8 @@ DIR_OUTPUT = Path("experiment_output")
 DIR_BUILD_BASE = Path(f"build_{PLANET}")  # base build dir from which initial files are copied
 DIR_DATA = Path(f"data_{PLANET}")
 
-# MAKEFILE_TARGET = "run"
-MAKEFILE_TARGET = "run_no_overlays"
+MAKEFILE_TARGET = "run"
+# MAKEFILE_TARGET = "run_no_overlays"
 
 VARIABLES = {
     #     "blur_angle_kernel_size_perc": [0.1, 0.2, 0.3, 0.4, 0.5],
@@ -60,13 +60,13 @@ VARIABLES = {
     #     "2025-07-07 12:00",
     # ],
     # "mesh|scale": [0.05, 0.07, 0.09, 0.11],
-    # "adjust_camera|camera_focal_length": [10, 15, 20, 30, 50, 90, 150, 300],
+    "adjust_scene|camera_focal_length": [10, 15, 20, 30, 50, 90, 150, 300],
     # "modify_tiff|blur": [0.0, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.0]
     # "process_blender|mixture": [[0.04, 0.06], [0.04, 0.08], [0.04, 0.1], [0.04, 0.15], [0.04, 0.20], [0.04, 0.25], [0.04, 0.30], [0.04, 0.35], [0.04, 0.40]]
     # "process_blender|mixture": [[0.04, 0.2], [0.05, 0.20], [0.06, 0.20], [0.07, 0.20], [0.08, 0.20], [0.09, 0.20], [0.10, 0.20]]
     # "hatch|flowlines_line_max_length": [(3, 3), (6, 6), (12, 12), (16, 16), (20, 20), (30, 30), (40, 40), (50, 50), (60, 60), (70, 70), (80, 80)],
     # "hatch|flowlines_line_max_length": [(5, 25), (10, 25), (15, 25), (20, 25), (25, 25)],
-    "hatch|flowlines_line_distance_end_factor": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+    # "hatch|flowlines_line_distance_end_factor": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
     # "hatch|flowlines_line_max_length": [[3, 25], [4, 25], [5, 25], [7.5, 25], [10, 25], [12.5, 25], [15, 25], [20, 25], [25, 25]],
 }
 
@@ -107,17 +107,21 @@ def process(num_experiment: int, config_override: dict[str, Any]) -> None:
         if clouds_file.exists():
             clouds_file.unlink()
 
+        cmd = [
+            "make",  # "-j4",
+            "setup",
+            MAKEFILE_TARGET,
+            f"CONFIG_FILE={config_file}",
+            f"DIR_DATA={DIR_DATA}",
+            f"DIR_BUILD={build_dir}",
+            f"POI_FILE={FILE_POI}",
+            f"OUTPUT_PNG={image_file}",
+        ]
+
+        logger.debug(f"make {cmd}")
+
         subprocess.run(
-            [
-                "make",  # "-j4",
-                "setup",
-                MAKEFILE_TARGET,
-                f"CONFIG_FILE={config_file}",
-                f"DIR_DATA={DIR_DATA}",
-                f"DIR_BUILD={build_dir}",
-                f"POI_FILE={FILE_POI}",
-                f"OUTPUT_PNG={image_file}",
-            ],
+            cmd,
             # stdout=subprocess.DEVNULL,
             # stderr=subprocess.DEVNULL,
             check=True,

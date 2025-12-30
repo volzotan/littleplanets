@@ -39,6 +39,7 @@ for node in bpy.context.scene.node_tree.nodes:
         continue
 
     node.base_path = str(args.render_output_dir)
+    print(f"Adjusted blender output path to {args.render_output_dir}")
 
 
 if not DEBUG:
