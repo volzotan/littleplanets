@@ -1,4 +1,4 @@
-make setup run                      CONFIG_FILE=config/venus.toml   DIR_BUILD=build_jupiter DIR_DATA=data_venus     POI_FILE=config/venus_poi.json      OUTPUT_PNG=venus.png
+make setup run                      CONFIG_FILE=config/venus.toml   DIR_BUILD=build_venus   DIR_DATA=data_venus     POI_FILE=config/venus_poi.json      OUTPUT_PNG=venus.png
 make setup run_clouds_coastlines    CONFIG_FILE=config/earth.toml   DIR_BUILD=build_earth   DIR_DATA=data_earth     POI_FILE=config/earth_poi.json      OUTPUT_PNG=earth.png
 make setup run                      CONFIG_FILE=config/moon.toml    DIR_BUILD=build_moon    DIR_DATA=data_moon      POI_FILE=config/moon_poi.json       OUTPUT_PNG=moon.png
 make setup run                      CONFIG_FILE=config/mars.toml    DIR_BUILD=build_mars    DIR_DATA=data_mars      POI_FILE=config/mars_poi.json       OUTPUT_PNG=mars.png
