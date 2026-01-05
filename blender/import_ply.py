@@ -80,6 +80,7 @@ else:
 nodes = mat.node_tree.nodes
 principled_bsdf_node = nodes.get("Principled BSDF")
 principled_bsdf_node.inputs["Roughness"].default_value = 1.0
+principled_bsdf_node.inputs["Specular IOR Level"].default_value = 0.0
 
 vertex_color_node = None
 if not "VERTEX_COLOR" in [node.type for node in nodes]:
