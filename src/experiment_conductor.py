@@ -157,9 +157,13 @@ def worker_init() -> None:
     logger.info(f"worker init {build_dir}")
     os.makedirs(build_dir, exist_ok=True)
 
-    if DIR_BUILD_BASE is not None:
+    if DIR_BUILD_BASE is not None and DIR_BUILD_BASE.exists():
         subprocess.run(
-            ["rsync", "-av", str(DIR_BUILD_BASE) + "/", str(build_dir) + "/"],
+            ["rsync", "-av",
+                "--exclude", "*.toml",
+                "--exclude", "*.blend",
+                str(DIR_BUILD_BASE) + "/", str(build_dir) + "/"
+             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=True,
