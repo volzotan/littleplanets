@@ -26,6 +26,15 @@ ELEVATION_VECTOR_WEIGHT = 0.6  # 0.95
 DIR_DEBUG = Path("debug")
 
 
+class MeshConfig(BaseModel):
+    scale: float = Field(default=0.10, description="Scaling factor")
+    fixed_elevation_scale: float | None = Field(
+        default=None, description="A fixed scale value [-1, +1] that uniformly overrides elevation raster data"
+    )
+    blur: int = Field(default=100, description="Elevation raster blurring kernel size")
+    subdivision: int = Field(default=10, description="Number of subdivision steps")
+
+
 @dataclass
 class Mesh:
     points: list[np.array]
@@ -693,15 +702,6 @@ def write_obj(plotter: pv.Plotter, filename: Path) -> None:
     if not filename.suffix == ".obj":
         filename = filename.parent / (filename.name + ".obj")
     plotter.export_obj(filename)
-
-
-class MeshConfig(BaseModel):
-    scale: float = Field(default=0.10, description="Scaling factor")
-    fixed_elevation_scale: float | None = Field(
-        default=None, description="A fixed scale value [-1, +1] that uniformly overrides elevation raster data"
-    )
-    blur: int = Field(default=100, description="Elevation raster blurring kernel size")
-    subdivision: int = Field(default=10, description="Number of subdivision steps")
 
 
 def main() -> None:
