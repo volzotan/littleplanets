@@ -1,9 +1,14 @@
 rotX = -90
-rotY = 84.375 # 360 / 32 * 7.5  (32 lines in total, 7.5 to be in between)
+# rotY = 84.375 # 360 / 32 * 7.5  (32 lines in total, 7.5 to be in between)
+rotY = 90
 rotZ = -22.5
 
-light_angle_xy = 67.5
-light_angle_z = 90 #50
+#light_angle_xy = 67.5
+#light_angle_z = 90 #50
+
+#light_axis_pos_x = 0.5
+#light_axis_pos_y = 0.1
+#light_axis_pos_z = 2.0
 
 colors = [[240, 126, 50], [65, 102, 174]]
 invert_background = true
@@ -33,7 +38,55 @@ scaling_factor = 0.25
 horizontal_width = 2.2
 camera_focal_length = 25.0
 
-light_pos_x = 1.0
+#light_pos_x = 1.0
+#light_pos_y = 0.1
+#light_pos_z = 3.0
+#light_size = 0.2
+#light_power = 100
+
+#light_pos_x = 0.5
+#light_pos_y = 0.1
+#light_pos_z = 2.0
+#light_size = 2.0
+#light_power = 50
+
+#light_pos_x = 0.3
+#light_pos_y = 0.3
+#light_pos_z = 1.7
+#light_size = 0.3
+#light_power = 20
+
+#light_pos_x = 0.16
+#light_pos_y = 0.0
+#light_pos_z = 1.7
+#light_size = 0.3
+#light_power = 20
+
+#light_pos_x = 0.30
+#light_pos_y = 0.0
+#light_pos_z = 1.7
+#light_size = 1.0
+#light_power = 30
+
+#light_pos_x = 0.30
+#light_pos_y = 0.0
+#light_pos_z = 1.8
+#light_size = 1.0
+#light_power = 40
+
+#light_pos_x = 2
+#light_pos_y = 1
+#light_pos_z = 5
+#light_size = 0.01
+#light_power = 200
+
+#light_pos_x = 0.25
+#light_pos_y = 0.40
+#light_pos_z = 1.5
+#light_size = 2
+#light_power = 30
+
+light_pos_x = 0.5
 light_pos_y = 0.1
 light_pos_z = 3.0
 light_size = 0.2
@@ -74,9 +127,9 @@ blur_color_kernel_size_perc = 0.0
 blur_angle_kernel_size_perc = 0.0
 blur_distance_kernel_size_perc = 0.40
 
-flowlines_line_distance = [0.6, 12.0]
+flowlines_line_distance = [0.6, 6.0]
 flowlines_line_min_length = 6.0
-flowlines_line_max_length = [20, 30]
+flowlines_line_max_length = [10, 30]
 flowlines_line_distance_end_factor = 1.0
 flowlines_max_angle_discontinuity = 1.57 # pi/2
 
