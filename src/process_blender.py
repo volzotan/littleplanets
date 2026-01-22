@@ -257,9 +257,9 @@ def main() -> None:
 
     # flip direction if intersection point is on the opposite end of the axis
     # necessary to avoid a flipping of direction signs when moving from one face to the next one
-    opposite_directions = np.full_like(img_direction, 1, dtype=np.float32)
+    opposite_directions = np.full(img_direction.shape[0:2], 1, dtype=np.float32)
     opposite_directions[np.dot(img_direction, light_axis) < 0] = -1
-    img_direction *= opposite_directions
+    img_direction *= opposite_directions[:, :, np.newaxis]
 
     img_elevation_vector = normalize_vectors(img_pxpos)
     dot = np.sum(img_elevation_vector * img_normals, axis=2, keepdims=True)  # vectorized dot product
