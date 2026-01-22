@@ -11,8 +11,13 @@ import numpy as np
 import cv2
 import toml
 from pydantic import BaseModel, Field
+import psutil
+import time
+import random
 
 from loguru import logger
+
+LOW_MEMORY_SLEEP_DURATION = 10.0
 
 
 class ModifyDemConfig(BaseModel):
@@ -81,6 +86,12 @@ def main() -> None:
     parser.add_argument("input", type=Path, help="input filename")
     parser.add_argument("output", type=Path, help="output filename")
     parser.add_argument("--config", type=Path, help="Configuration file (TOML)")
+    parser.add_argument(
+        "--pause-below-minimum-available-memory",
+        type=float,
+        default=0.0,
+        help="Do not start execution if available system memory is below the given threshold (MB)",
+    )
     args = parser.parse_args()
 
     config = None
@@ -94,6 +105,25 @@ def main() -> None:
     if args.input is None or not args.input.exists():
         logger.warning(f"Empty input file {args.input}. Abort.")
         return
+
+    if args.pause_below_minimum_available_memory > 0:
+        # wait for a random amount of time so concurrent executions
+        # don't try to read the file into memory at the same time
+        wait_duration = random.uniform(0, LOW_MEMORY_SLEEP_DURATION)
+        logger.debug(f"Initial wait: {wait_duration:5.2f}s")
+        time.sleep(wait_duration)
+
+        def _get_available_memory() -> float:
+            return getattr(psutil.virtual_memory(), "available") * 2**-20  # megabytes
+
+        available = _get_available_memory()
+
+        while _get_available_memory() < args.pause_below_minimum_available_memory:
+            logger.warning(f"Available memory {available:5.2f} is below the threshold {args.pause_below_minimum_available_memory:5.2f}")
+            time.sleep(LOW_MEMORY_SLEEP_DURATION)
+            available = _get_available_memory()
+        else:
+            logger.info(f"Available memory {available:5.2f} is sufficient, starting execution")
 
     data, data_crs, data_transform = _read(args.input)
     options = {"crs": data_crs, "transform": data_transform}

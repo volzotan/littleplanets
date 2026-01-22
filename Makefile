@@ -46,7 +46,7 @@ $(DIR_DATA)/dem.tif $(DIR_DATA)/surface_color.tif $(DIR_DATA)/cds_clouds.nc: $(D
 
 $(DIR_BUILD)/dem.tif: $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/dem.tif $(DIR_BUILD)/modify_tiff.toml
 	@echo "Modify TIFF $@"
-	uv run $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/dem.tif $@ --config $(DIR_BUILD)/modify_tiff.toml
+	uv run $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/dem.tif $@ --config $(DIR_BUILD)/modify_tiff.toml --pause-below-minimum-available-memory 4096
 
 $(DIR_BUILD)/mesh.ply: $(DIR_SRC)/mesh.py $(DIR_BUILD)/dem.tif $(DIR_DATA)/surface_color.tif $(DIR_BUILD)/mesh.toml
 	@echo "Generating mesh"

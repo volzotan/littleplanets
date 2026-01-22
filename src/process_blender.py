@@ -18,9 +18,6 @@ from util.misc import project_vectors_to_image_space, normalize_vectors, export_
 
 CROSS_FLOW = True
 
-CONTRAST_ENHANCEMENT = True
-CONTRAST_VALUE = 1.0
-
 CLIPPING = True
 CLIPPING_CUTOFF_PERCENTILE = 1.00
 
@@ -46,6 +43,8 @@ class ProcessBlenderConfig(BaseModel):
     light_axis_pos_z: float | None = None
 
     mixture: list[float] = [0.035, 0.06]
+
+    contrast_enhancement_strength: float | None = None
 
 
 def _visualize(centers: np.ndarray, vectors: list[np.ndarray], points: list[np.ndarray], light_axis: np.array) -> pv.Plotter:
@@ -539,9 +538,9 @@ def main() -> None:
         # foo /= 3000
         # visualize(centers, [foo], [], light_axis).show()
 
-    if CONTRAST_ENHANCEMENT:
-        clahe = cv2.createCLAHE(clipLimit=1.0, tileGridSize=(8, 8))
-        mapping_distance = cv2.addWeighted(clahe.apply(mapping_distance), CONTRAST_VALUE, mapping_distance, 1 - CONTRAST_VALUE, 0.0)
+    if config.contrast_enhancement_strength is not None and config.contrast_enhancement_strength > 0:
+        clahe = cv2.createCLAHE(clipLimit=config.contrast_enhancement_strength, tileGridSize=(8, 8))
+        mapping_distance = clahe.apply(mapping_distance)
 
     cv2.imwrite(str(args.output / "mapping_color.png"), mapping_color)
 

@@ -73,6 +73,7 @@ axis_extent = 1.25
 [process_blender]
 
 mixture = [0.04, 0.20]
+contrast_enhancement_strength = 1.0
 
 [palette]
 
