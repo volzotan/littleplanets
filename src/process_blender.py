@@ -176,6 +176,28 @@ def _apply_linear_transition(m: np.ndarray, min: float, max: float) -> np.ndarra
     return (np.clip(m, min, max) - min) / (max - min)
 
 
+def _segmentize(image: np.ndarray) -> np.ndarray:
+
+    algo = cv2.ximgproc.SLIC        # Standard SLIC
+    # algo = cv2.ximgproc.SLICO      # Zero-parameter SLIC
+    # algo = cv2.ximgproc.MSLIC      # Multi-scale SLIC
+
+    slic = cv2.ximgproc.createSuperpixelSLIC(
+        image,
+        algorithm=algo,
+        region_size=10,
+        ruler=10,
+    )
+
+    slic.iterate(10)
+    slic.enforceLabelConnectivity(min_element_size=25)
+
+    mask = slic.getLabelContourMask(thick_line=False)
+    labels = slic.getLabels()
+
+    return labels, mask
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
 
@@ -545,6 +567,22 @@ def main() -> None:
     cv2.imwrite(str(args.output / "mapping_background.png"), mapping_background)
 
     print(f"total time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
+
+
+
+
+    # Segmentation Experiment
+
+    # labels, _ = _segmentize(img_normals)
+    # segmented_angles = img_field_elevation_vectors_10.copy()
+    # for i in range(np.max(labels)):
+    #     mask = labels == i
+    #     avg = np.mean(segmented_angles[mask], axis=0)
+    #     segmented_angles[mask] = avg
+    #
+    # cv2.imwrite(str(args.output / "mapping_angle.png"), export_angles(segmented_angles, adjust_y_axis=True))
+
+
 
 
 if __name__ == "__main__":
