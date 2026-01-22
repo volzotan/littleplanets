@@ -15,13 +15,13 @@ DIR_DEBUG = Path("debug")
 
 MIN_RATIO_THRESHOLD = None  # 0.15
 
-
-BASE_DIR = Path("build_earth")
-NUM_COLORS = 3
 ERROR_THRESHOLD = 0.250
 
-# BASE_DIR = Path("build_mars")
-# NUM_COLORS = 2
+# BASE_DIR = Path("build_earth")
+# NUM_COLORS = 3
+
+BASE_DIR = Path("build_mars")
+NUM_COLORS = 2
 
 # BASE_DIR = Path("build_jupiter")
 # NUM_COLORS = 3
