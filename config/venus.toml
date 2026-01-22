@@ -1,8 +1,9 @@
 rotX = -90
-rotY = 5.625 # 360 / 32 * 0.5  (32 lines in total, 7.5 to be in between)
+rotY = -50.625 # 360 / 32 * -4.5  (32 lines in total, 0.5 to be in between)
 rotZ = 2.64
 
-colors = [[240, 126, 50], [245, 233, 94]]
+#colors = [[240, 126, 50], [245, 233, 94]]
+colors = [[240, 126, 50], [255, 255, 255]]
 
 dimensions = [750, 750]
 

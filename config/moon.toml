@@ -10,9 +10,9 @@ rotZ = -6.68 # axial tilt
 # light_angle_xy = 83.32
 # light_angle_z = 90
 
-#light_axis_pos_x = 0.3
-#light_axis_pos_y = 0.3
-#light_axis_pos_z = 3.0
+light_axis_pos_x = 0.6
+light_axis_pos_y = 0.4
+light_axis_pos_z = 2.2
 
 colors = [[255, 255, 255]]
 layer_colors = [[245, 233, 94], [255, 255, 255]]
