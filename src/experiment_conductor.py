@@ -88,8 +88,9 @@ def process(num_experiment: int, config_override: dict[str, Any]) -> None:
     try:
         filename = f"experiment_{num_experiment}"
         config_file = DIR_OUTPUT / (filename + ".toml")
-        image_file = DIR_OUTPUT / (filename + ".png")
-        render_output_file = DIR_OUTPUT / (filename + ".tif")
+        image_file = DIR_OUTPUT / (filename + "_0" + ".png")
+        render_output_file = DIR_OUTPUT / (filename + "_1" + ".tif")
+        freestyle_output_file = DIR_OUTPUT / (filename + "_2" + ".png")
 
         # restructure "foo|bar: 3" to [foo] bar: 3, i.e. split off 'bar' into a sub-dict
         config_override_restructured = {}
@@ -136,6 +137,7 @@ def process(num_experiment: int, config_override: dict[str, Any]) -> None:
         )
 
         shutil.copy(build_dir / "image.tif", render_output_file)
+        shutil.copy(build_dir / "freestyle.png", freestyle_output_file)
         # shutil.copy(build_dir.parent / Path(str(build_dir.stem) + "_debug") / "mixture.png", image_file)
 
     except Exception as e:

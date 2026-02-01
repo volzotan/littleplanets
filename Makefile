@@ -76,6 +76,7 @@ $(DIR_BUILD)/normals.exr $(DIR_BUILD)/image.tif &: $(DIR_BUILD)/blender_mesh.ble
 	$(BLENDER_BIN) $(DIR_BUILD)/blender_mesh.blend --background -f 0
 	mv $(DIR_BUILD)/Normals0000.exr $(DIR_BUILD)/normals.exr
 	mv $(DIR_BUILD)/Image0000.tif $(DIR_BUILD)/image.tif
+	mv $(DIR_BUILD)/Image0000.png $(DIR_BUILD)/freestyle.png
 
 $(DIR_BUILD)/projection_matrix.npy: $(DIR_BUILD)/blender_mesh.blend $(DIR_BLENDER)/export_projection_matrix.py
 	@echo "Running blender P matrix exporter"
