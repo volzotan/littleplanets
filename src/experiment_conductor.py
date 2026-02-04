@@ -59,9 +59,9 @@ VARIABLES = {
     #     "2025-07-06 12:00",
     #     "2025-07-07 12:00",
     # ],
-    "mesh|scale": [0.05, 0.07, 0.09, 0.11],
-    "mesh|blur": [1, 10, 50, 100, 150, 200],
-    "adjust_scene|camera_focal_length": [15, 20, 30, 50, 90, 150],
+    # "mesh|scale": [0.05, 0.07, 0.09, 0.11],
+    # "mesh|blur": [1, 10, 50, 100, 150, 200],
+    # "adjust_scene|camera_focal_length": [15, 20, 30, 50, 90, 150],
     # "modify_tiff|blur": [0.0, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.0]
     # "process_blender|mixture": [[0.04, 0.06], [0.04, 0.08], [0.04, 0.1], [0.04, 0.15], [0.04, 0.20], [0.04, 0.25], [0.04, 0.30], [0.04, 0.35], [0.04, 0.40]]
     # "process_blender|mixture": [[0.04, 0.2], [0.05, 0.20], [0.06, 0.20], [0.07, 0.20], [0.08, 0.20], [0.09, 0.20], [0.10, 0.20]]
@@ -75,6 +75,7 @@ VARIABLES = {
     # "hatch|flowlines_max_angle_discontinuity": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.57],
     # "mesh|blur": [1, 10, 50, 100, 150, 200, 250, 300, 350, 400, 500],
     # "hatch|flowlines_line_distance": [[0.6, 4.],[0.6, 6.],[0.6, 8.],[0.6, 10.],[0.6, 12.],[0.6, 14.]],
+    "process_blender|contrast_enhancement_strength": [0., 1., 2., 3., 4., 5., 6., 7.],
 }
 
 
@@ -90,7 +91,8 @@ def process(num_experiment: int, config_override: dict[str, Any]) -> None:
         config_file = DIR_OUTPUT / (filename + ".toml")
         image_file = DIR_OUTPUT / (filename + "_0" + ".png")
         render_output_file = DIR_OUTPUT / (filename + "_1" + ".tif")
-        freestyle_output_file = DIR_OUTPUT / (filename + "_2" + ".png")
+        mapping_output_file = DIR_OUTPUT / (filename + "_2" + ".png")
+        freestyle_output_file = DIR_OUTPUT / (filename + "_3" + ".png")
 
         # restructure "foo|bar: 3" to [foo] bar: 3, i.e. split off 'bar' into a sub-dict
         config_override_restructured = {}
@@ -137,7 +139,9 @@ def process(num_experiment: int, config_override: dict[str, Any]) -> None:
         )
 
         shutil.copy(build_dir / "image.tif", render_output_file)
-        shutil.copy(build_dir / "freestyle.png", freestyle_output_file)
+        shutil.copy(build_dir / "mapping_distance.png", mapping_output_file)
+        # shutil.copy(build_dir / "freestyle.png", freestyle_output_file)
+
         # shutil.copy(build_dir.parent / Path(str(build_dir.stem) + "_debug") / "mixture.png", image_file)
 
     except Exception as e:
