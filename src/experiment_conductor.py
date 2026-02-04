@@ -1,3 +1,4 @@
+import datetime
 import math
 import os
 import shutil
@@ -94,6 +95,8 @@ def process(num_experiment: int, config_override: dict[str, Any]) -> None:
         mapping_output_file = DIR_OUTPUT / (filename + "_2" + ".png")
         freestyle_output_file = DIR_OUTPUT / (filename + "_3" + ".png")
 
+        timer_start = datetime.datetime.now()
+
         # restructure "foo|bar: 3" to [foo] bar: 3, i.e. split off 'bar' into a sub-dict
         config_override_restructured = {}
         for key, value in config_override.items():
@@ -143,6 +146,8 @@ def process(num_experiment: int, config_override: dict[str, Any]) -> None:
         # shutil.copy(build_dir / "freestyle.png", freestyle_output_file)
 
         # shutil.copy(build_dir.parent / Path(str(build_dir.stem) + "_debug") / "mixture.png", image_file)
+
+        logger.info("processing time {}: {:5.2f}s".format(filename, (datetime.datetime.now() - timer_start).total_seconds()))
 
     except Exception as e:
         logger.error(f"process failed: {e}")
@@ -202,7 +207,7 @@ def main() -> None:
 
         for future in as_completed(futures):
             completed_experiments += 1
-            logger.info(f"processed {completed_experiments}/{total_experiments} | {(completed_experiments / total_experiments):5.2%}")
+            logger.success(f"processed {completed_experiments}/{total_experiments} | {(completed_experiments / total_experiments):5.2%}")
 
 
 if __name__ == "__main__":
