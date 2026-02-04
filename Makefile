@@ -44,13 +44,18 @@ $(DIR_DATA)/dem.tif $(DIR_DATA)/surface_color.tif $(DIR_DATA)/cds_clouds.nc: $(D
 	@echo "Downloader"
 	uv run $(DIR_SRC)/downloader.py --output-dir $(DIR_DATA) --config $(DIR_BUILD)/downloader.toml
 
-$(DIR_BUILD)/dem.tif: $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/dem.tif $(DIR_BUILD)/modify_tiff.toml
+$(DIR_BUILD)/dem.tif: $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/dem.tif $(DIR_BUILD)/modify_dem.toml
 	@echo "Modify TIFF $@"
-	uv run $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/dem.tif $@ --config $(DIR_BUILD)/modify_tiff.toml --pause-below-minimum-available-memory 4096
+	uv run $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/dem.tif $@ --config $(DIR_BUILD)/modify_dem.toml --pause-below-minimum-available-memory 4096
+	touch $@
 
-$(DIR_BUILD)/mesh.ply: $(DIR_SRC)/mesh.py $(DIR_BUILD)/dem.tif $(DIR_DATA)/surface_color.tif $(DIR_BUILD)/mesh.toml
+$(DIR_BUILD)/surface_color.tif: $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/surface_color.tif $(DIR_BUILD)/modify_surfacecolor.toml
+	@echo "Modify TIFF $@"
+	uv run $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/surface_color.tif $@ --config $(DIR_BUILD)/modify_surfacecolor.toml --pause-below-minimum-available-memory 4096
+
+$(DIR_BUILD)/mesh.ply: $(DIR_SRC)/mesh.py $(DIR_BUILD)/dem.tif $(DIR_BUILD)/surface_color.tif $(DIR_BUILD)/mesh.toml
 	@echo "Generating mesh"
-	uv run $(DIR_SRC)/mesh.py --elevation $(DIR_BUILD)/dem.tif --color $(DIR_DATA)/surface_color.tif --output $@ --config $(DIR_BUILD)/mesh.toml
+	uv run $(DIR_SRC)/mesh.py --elevation $(DIR_BUILD)/dem.tif --color $(DIR_BUILD)/surface_color.tif --output $@ --config $(DIR_BUILD)/mesh.toml
 
 $(DIR_BUILD)/blender_paths.blend: $(DIR_BLENDER)/$(BLENDER_FILE) $(DIR_BLENDER)/adjust_paths.py
 	@echo "Adjusting blender paths"

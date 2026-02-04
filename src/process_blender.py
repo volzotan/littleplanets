@@ -44,7 +44,7 @@ class ProcessBlenderConfig(BaseModel):
 
     mixture: list[float] = [0.035, 0.06]
 
-    contrast_enhancement_strength: float | None = None
+    contrast_increase: float | None = None
 
 
 def _visualize(centers: np.ndarray, vectors: list[np.ndarray], points: list[np.ndarray], light_axis: np.array) -> pv.Plotter:
@@ -538,11 +538,11 @@ def main() -> None:
         # foo /= 3000
         # visualize(centers, [foo], [], light_axis).show()
 
-    if config.contrast_enhancement_strength is not None and config.contrast_enhancement_strength > 0:
-        clahe = cv2.createCLAHE(clipLimit=config.contrast_enhancement_strength, tileGridSize=(8, 8))
-        mapping_distance = clahe.apply(mapping_distance)
-
     cv2.imwrite(str(args.output / "mapping_color.png"), mapping_color)
+
+    if config.contrast_increase is not None and config.contrast_increase > 0:
+        clahe = cv2.createCLAHE(clipLimit=config.contrast_increase, tileGridSize=(8, 8))
+        mapping_distance = clahe.apply(mapping_distance)
 
     if args.debug:
         cv2.imwrite(str(dir_debug / "mapping_distance_noclip.png"), _apply_colormap(mapping_distance))
@@ -553,12 +553,12 @@ def main() -> None:
         mapping_distance = np.clip(mapping_distance, minval, maxval)
         mapping_distance = (((mapping_distance - minval) / (maxval - minval)) * 255).astype(np.uint8)
 
+    if args.debug:
+        cv2.imwrite(str(dir_debug / "mapping_distance_clip.png"), _apply_colormap(mapping_distance))
+
     if MAPPING_DISTANCE_CUTOFF:
         # add the min regions of mapping_distance to background
         mapping_background[mapping_distance == 0] = 255
-
-    if args.debug:
-        cv2.imwrite(str(dir_debug / "mapping_distance_clip.png"), _apply_colormap(mapping_distance))
 
     cv2.imwrite(str(args.output / "mapping_distance.png"), mapping_distance)
     cv2.imwrite(str(args.output / "mapping_angle.png"), export_angles(img_field_elevation_vectors_10, adjust_y_axis=True))

@@ -20,8 +20,11 @@ from loguru import logger
 LOW_MEMORY_SLEEP_DURATION = 10.0
 
 
-class ModifyDemConfig(BaseModel):
+class ModifyTiffConfig(BaseModel):
     scaling_factor: float | None = None
+    convert_uint8: bool = False
+    contrast_increase: float | None = None
+    contrast_grid_size: int = 8
     blur: float | None = None  # kernel size as percentage of the longest side of the image
     floor: float | None = None
     ceil: float | None = None
@@ -67,7 +70,7 @@ def _write(output_path: Path, data: np.ndarray, options: dict[str, Any] = {}) ->
         "driver": "GTiff",
         "height": data.shape[-2],
         "width": data.shape[-1],
-        "count": 1,
+        "count": data.shape[0],
         "dtype": data.dtype,
     }
 
@@ -98,7 +101,7 @@ def main() -> None:
     if args.config is not None:
         with open(args.config, "r") as f:
             data = toml.load(f)
-            config = ModifyDemConfig(**data)
+            config = ModifyTiffConfig(**data)
 
     os.makedirs(args.output.parent, exist_ok=True)
 
@@ -128,6 +131,18 @@ def main() -> None:
     data, data_crs, data_transform = _read(args.input)
     options = {"crs": data_crs, "transform": data_transform}
     data = np.transpose(data, (1, 2, 0))
+
+    if config.convert_uint8:
+        data = data.astype(np.uint8)
+
+    if config.contrast_increase is not None and config.contrast_increase > 0:
+        clahe = cv2.createCLAHE(clipLimit=config.contrast_increase, tileGridSize=(config.contrast_grid_size, config.contrast_grid_size))
+
+        lab = cv2.cvtColor(data, cv2.COLOR_BGR2LAB)
+        l, a, b = cv2.split(lab)
+        lab_enhanced = cv2.merge((clahe.apply(l), a, b))
+        data = cv2.cvtColor(lab_enhanced, cv2.COLOR_LAB2BGR)
+
 
     if config.blur is not None and config.blur > 0:
         kernel_size = int(max(*data.shape) * (config.blur / 100.0))

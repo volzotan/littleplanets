@@ -15,6 +15,7 @@ from loguru import logger
 NUM_WORKERS = 2
 
 PLANET = "mars"
+PLANET = "moon"
 
 FILE_CONFIG_BASE = Path(f"config/{PLANET}.toml")
 FILE_POI = Path(f"config/{PLANET}_poi.json")
@@ -63,7 +64,7 @@ VARIABLES = {
     # "mesh|scale": [0.05, 0.07, 0.09, 0.11],
     # "mesh|blur": [1, 10, 50, 100, 150, 200],
     # "adjust_scene|camera_focal_length": [15, 20, 30, 50, 90, 150],
-    # "modify_tiff|blur": [0.0, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.0]
+    # "modify_dem|blur": [0.0, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.0]
     # "process_blender|mixture": [[0.04, 0.06], [0.04, 0.08], [0.04, 0.1], [0.04, 0.15], [0.04, 0.20], [0.04, 0.25], [0.04, 0.30], [0.04, 0.35], [0.04, 0.40]]
     # "process_blender|mixture": [[0.04, 0.2], [0.05, 0.20], [0.06, 0.20], [0.07, 0.20], [0.08, 0.20], [0.09, 0.20], [0.10, 0.20]]
     # "hatch|flowlines_line_max_length": [(3, 3), (6, 6), (12, 12), (16, 16), (20, 20), (30, 30), (40, 40), (50, 50), (60, 60), (70, 70), (80, 80)],
@@ -76,7 +77,9 @@ VARIABLES = {
     # "hatch|flowlines_max_angle_discontinuity": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.57],
     # "mesh|blur": [1, 10, 50, 100, 150, 200, 250, 300, 350, 400, 500],
     # "hatch|flowlines_line_distance": [[0.6, 4.],[0.6, 6.],[0.6, 8.],[0.6, 10.],[0.6, 12.],[0.6, 14.]],
-    "process_blender|contrast_enhancement_strength": [0., 1., 2., 3., 4., 5., 6., 7.],
+    "modify_surfacecolor|contrast_grid_size": [4, 8, 12],
+    "modify_surfacecolor|contrast_increase": [0., 0.5, 1., 2., 3., 4., 5., 6.],
+    # "process_blender|contrast_increase": [0., 0.5, 1., 2., 3., 4., 5., 6.],
 }
 
 
