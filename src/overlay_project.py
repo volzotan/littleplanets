@@ -1,12 +1,11 @@
 import argparse
-import math
 from pathlib import Path
 from datetime import datetime
 
 import numpy as np
 import shapely
 import trimesh
-import rtree
+from scipy.spatial import KDTree
 from shapely.geometry import LineString
 
 from util.misc import write_linestrings_to_npz
@@ -14,22 +13,20 @@ from util.misc import write_linestrings_to_npz
 SCALE = 1.02
 
 
-def project_vertices(tree: rtree.Index, points: np.ndarray, scale: float) -> np.ndarray:
+def project_vertices(kdtree: KDTree, vertices: np.ndarray, points: np.ndarray, scale: float) -> np.ndarray:
     proj = np.zeros_like(points)
 
     r = np.sqrt(np.sum(np.power(points, 2), axis=1))
-    lats = np.acos(points[:, 2] / r)
-    lons = np.atan2(points[:, 1], points[:, 0])
+    lats = np.arccos(np.clip(points[:, 2] / r, -1, 1))
+    lons = np.arctan2(points[:, 1], points[:, 0])
 
-    for i in range(proj.shape[0]):
-        nearest_neighbor = list(tree.nearest(points[i, :], 1, objects="raw"))[0]
-        dist = np.linalg.norm(nearest_neighbor)
+    distances, indices = kdtree.query(points)
+    nearest_vertices = vertices[indices]
+    dists = np.linalg.norm(nearest_vertices, axis=1)
 
-        x = dist * math.sin(lats[i]) * math.cos(lons[i])
-        y = dist * math.sin(lats[i]) * math.sin(lons[i])
-        z = dist * math.cos(lats[i]) * scale
-
-        proj[i, :] = [x, y, z]
+    proj[:, 0] = dists * np.sin(lats) * np.cos(lons)
+    proj[:, 1] = dists * np.sin(lats) * np.sin(lons)
+    proj[:, 2] = dists * np.cos(lats) * scale
 
     return proj
 
@@ -44,16 +41,15 @@ def main() -> None:
     timer_start = datetime.now()
 
     linestrings = [LineString(e) for e in list(np.load(args.linestrings).values())]
-
     mesh = trimesh.load(args.mesh)
-    index = rtree.index
-    p = index.Property()
-    p.dimension = 3
-    tree = index.Index(properties=p)
-    for i, v in enumerate(mesh.vertices.tolist()):
-        tree.insert(i, v, obj=v)
+    kdtree = KDTree(mesh.vertices)
 
-    projected_linestrings = [LineString(project_vertices(tree, shapely.get_coordinates(l, include_z=True), SCALE)) for l in linestrings]
+    projected_linestrings = []
+    for i, linestring in enumerate(linestrings):
+        coords = shapely.get_coordinates(linestring, include_z=True)
+        projected_coords = project_vertices(kdtree, mesh.vertices, coords, SCALE)
+        projected_linestrings.append(LineString(projected_coords))
+
     write_linestrings_to_npz(args.output, projected_linestrings)
 
     print("Completed overlay projection of {} in: {:.3f}s".format(args.mesh, (datetime.now() - timer_start).total_seconds()))
