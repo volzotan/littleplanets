@@ -297,17 +297,30 @@ def main() -> None:
     # add frame
     frame_color = [0, 0, 0] if not config.invert_background else [255, 255, 255]
     frame_length = 50
+    offset_frame = 10
     width, height = config.dimensions
+
+    # linestrings_frame = [
+    #     LineString([[0, height - frame_length], [0, height], [frame_length, height]]),
+    #     LineString([[width - frame_length, height], [width, height], [width, height - frame_length]]),
+    #     LineString([[width, frame_length], [width, 0], [width - frame_length, 0]]),
+    #     LineString([[frame_length, 0], [0, 0], [0, frame_length]]),
+    #     LineString([[width / 2 - frame_length / 2, 0], [width / 2 + frame_length / 2, 0]]),
+    #     LineString([[width / 2 - frame_length / 2, height], [width / 2 + frame_length / 2, height]]),
+    #     LineString([[0, height / 2 - frame_length / 2], [0, height / 2 + frame_length / 2]]),
+    #     LineString([[width, height / 2 - frame_length / 2], [width, height / 2 + frame_length / 2]]),
+    # ]
+
     linestrings_frame = [
-        LineString([[0, height - frame_length], [0, height], [frame_length, height]]),
-        LineString([[width - frame_length, height], [width, height], [width, height - frame_length]]),
-        LineString([[width, frame_length], [width, 0], [width - frame_length, 0]]),
-        LineString([[frame_length, 0], [0, 0], [0, frame_length]]),
+        LineString([[offset_frame, height], [frame_length, height]]),
+        LineString([[width - frame_length, height], [width-offset_frame, height]]),
+        LineString([[width - offset_frame, 0], [width - frame_length, 0]]),
+        LineString([[frame_length, 0], [offset_frame, 0]]),
+
         LineString([[width / 2 - frame_length / 2, 0], [width / 2 + frame_length / 2, 0]]),
         LineString([[width / 2 - frame_length / 2, height], [width / 2 + frame_length / 2, height]]),
-        LineString([[0, height / 2 - frame_length / 2], [0, height / 2 + frame_length / 2]]),
-        LineString([[width, height / 2 - frame_length / 2], [width, height / 2 + frame_length / 2]]),
     ]
+
     layer_styles["frame"] = {
         "fill": "none",
         "stroke": f"rgb({frame_color[0]},{frame_color[1]},{frame_color[2]})",
