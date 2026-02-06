@@ -21,7 +21,8 @@ LOW_MEMORY_SLEEP_DURATION = 10.0
 
 
 class ModifyTiffConfig(BaseModel):
-    scaling_factor: float | None = None
+    # scaling_factor: float | None = None
+    resize_width: int | None = None
     convert_uint8: bool = False
     contrast_increase: float | None = None
     contrast_grid_size: int = 8
@@ -57,12 +58,6 @@ class ModifyTiffConfig(BaseModel):
 def _read(input_path: Path) -> tuple[np.ndarray, Any, Any]:
     with rasterio.open(input_path) as src:
         return src.read(), src.crs, src.transform
-
-
-def _rescale(data: np.ndarray, scaling_factor: float) -> np.ndarray:
-    new_size = (max(int(data.shape[1] * scaling_factor), 1), max(int(data.shape[0] * scaling_factor), 1))
-
-    return cv2.resize(data, new_size, interpolation=cv2.INTER_AREA).astype(data.dtype)
 
 
 def _write(output_path: Path, data: np.ndarray, options: dict[str, Any] = {}) -> None:
@@ -135,22 +130,27 @@ def main() -> None:
     if config.convert_uint8:
         data = data.astype(np.uint8)
 
+    if config.resize_width is not None:
+        scaling_factor = config.resize_width / data.shape[1]
+        new_size = (config.resize_width, int(data.shape[0] * scaling_factor))
+
+        data = cv2.resize(data, new_size, interpolation=cv2.INTER_AREA).astype(data.dtype)
+        options["transform"] = data_transform * data_transform.scale(1 / scaling_factor, 1 / scaling_factor)
+
     if config.contrast_increase is not None and config.contrast_increase > 0:
         clahe = cv2.createCLAHE(clipLimit=config.contrast_increase, tileGridSize=(config.contrast_grid_size, config.contrast_grid_size))
-
         lab = cv2.cvtColor(data, cv2.COLOR_BGR2LAB)
         l, a, b = cv2.split(lab)
         lab_enhanced = cv2.merge((clahe.apply(l), a, b))
         data = cv2.cvtColor(lab_enhanced, cv2.COLOR_LAB2BGR)
 
-
     if config.blur is not None and config.blur > 0:
         kernel_size = int(max(*data.shape) * (config.blur / 100.0))
-        data = cv2.blur(data, (kernel_size, kernel_size))
 
-    if config.scaling_factor is not None and config.scaling_factor != 1.0:
-        data = _rescale(data, config.scaling_factor)
-        options["transform"] = data_transform * data_transform.scale(1 / config.scaling_factor, 1 / config.scaling_factor)
+        if kernel_size >= 3:
+            data = cv2.blur(data, (kernel_size, kernel_size))
+        else:
+            logger.warning(f"blur kernel size below 3 (config.blur {config.blur})")
 
     if config.floor is not None or config.ceil is not None:
         data = _clip(data, config.floor, config.ceil)
