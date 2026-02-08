@@ -18,7 +18,7 @@ colors = [[255, 255, 255]]
 layer_colors = [[245, 233, 94], [255, 255, 255]]
 invert_background = true
 
-dimensions = [650, 650]
+dimensions = [700, 700]
 
 [downloader]
 
@@ -26,10 +26,11 @@ dem_url = "https://planetarymaps.usgs.gov/mosaic/Lunar_LRO_LOLA_Global_LDEM_118m
 surface_color_url = "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_poles.tif"
 
 [modify_dem]
-blur = 0.8
-scaling_factor = 0.25
+resize_width = 15000
+blur = 0.1
 
 [modify_surfacecolor]
+resize_width = 10000
 convert_uint8 = true
 contrast_increase = 1.0
 
