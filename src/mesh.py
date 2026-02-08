@@ -7,11 +7,10 @@ import datetime
 import argparse
 
 import rasterio
-import rtree
+from scipy.spatial import cKDTree
 from stl import mesh
 import numpy as np
 import pyvista as pv
-from shapely.geometry import LineString
 import cv2
 import toml
 from pydantic import BaseModel, Field
@@ -37,91 +36,117 @@ class MeshConfig(BaseModel):
 
 @dataclass
 class Mesh:
-    points: list[np.array]
-    faces: list[np.array]
-    colors: list[np.array] | None = None
-    centers: list[np.array] | None = None
-    normals: list[np.array] | None = None
-    field_vectors: list[np.array] | None = None
-    field_elevation_vectors: list[np.array] | None = None
+    points: np.ndarray
+    faces: np.ndarray
+    colors: np.ndarray | None = None
+    centers: np.ndarray | None = None
+    normals: np.ndarray | None = None
+    field_vectors: np.ndarray | None = None
+    field_elevation_vectors: np.ndarray | None = None
 
-    def __repr__(self):
-        return f"Mesh [ points: {len(self.points)} / faces: {len(self.faces)} / colors: {len(self.colors)} ]"
+    def __repr__(self) -> str:
+        points_len = len(self.points) if self.points is not None else 0
+        faces_len = len(self.faces) if self.faces is not None else 0
+        colors_len = len(self.colors) if self.colors is not None else 0
+        return f"Mesh[points={points_len}, faces={faces_len}, colors={colors_len}]"
 
 
 def triangle() -> Mesh:
-    p1 = np.array([-1, -1, 1.5], dtype=np.float32)
-    p2 = np.array([+1, -1, 1.5], dtype=np.float32)
-    p3 = np.array([+0, +1, 1.5], dtype=np.float32)
+    points = np.array(
+        [
+            [-1.0, -1.0, 1.5],
+            [1.0, -1.0, 1.5],
+            [0.0, 1.0, 1.5],
+        ],
+        dtype=np.float32,
+    )
 
-    points = [p1, p2, p3]
+    faces = np.array([[0, 1, 2]], dtype=np.int32)
 
-    triangles = [
-        (0, 1, 2),
-    ]
-
-    return Mesh(points, [np.array(t) for t in triangles])
+    return Mesh(points, faces)
 
 
 def tetrahedron() -> Mesh:
     a = 1.0
-    h_d = (math.sqrt(3) / 2.0) * a
-    h_p = a * math.sqrt(2.0 / 3.0)
-    center = np.array([0, h_d / 3.0, h_p / 4.0])
+    height_base = math.sqrt(3) / 2.0 * a
+    height_pyramid = a * math.sqrt(2.0 / 3.0)
+    center = np.array([0.0, height_base / 3.0, height_pyramid / 4.0], dtype=np.float32)
 
-    p1 = np.array([-a / 2.0, 0, 0]) - center
-    p2 = np.array([a / 2.0, 0, 0]) - center
-    p3 = np.array([0, h_d, 0]) - center
-    p4 = np.array([0, h_d / 3.0, h_p]) - center
+    points = (
+        np.array(
+            [
+                [-a / 2.0, 0.0, 0.0],
+                [a / 2.0, 0.0, 0.0],
+                [0.0, height_base, 0.0],
+                [0.0, height_base / 3.0, height_pyramid],
+            ],
+            dtype=np.float32,
+        )
+        - center
+    )
 
-    points = [p1, p2, p3, p4]
+    faces = np.array(
+        [
+            [0, 2, 1],
+            [0, 1, 3],
+            [2, 0, 3],
+            [1, 2, 3],
+        ],
+        dtype=np.int32,
+    )
 
-    triangles = [
-        (0, 2, 1),
-        (0, 1, 3),
-        (2, 0, 3),
-        (1, 2, 3),
-    ]
-
-    return Mesh(points, [np.array(t) for t in triangles])
+    return Mesh(points, faces)
 
 
 def cube() -> Mesh:
-    p1 = np.array([-1, -1, -1])
-    p2 = np.array([1, -1, -1])
-    p3 = np.array([1, 1, -1])
-    p4 = np.array([-1, 1, -1])
-    p5 = np.array([-1, -1, 1])
-    p6 = np.array([1, -1, 1])
-    p7 = np.array([1, 1, 1])
-    p8 = np.array([-1, 1, 1])
+    points = np.array(
+        [
+            [-1.0, -1.0, -1.0],  # 0: bottom-left-back
+            [1.0, -1.0, -1.0],  # 1: bottom-right-back
+            [1.0, 1.0, -1.0],  # 2: bottom-right-front
+            [-1.0, 1.0, -1.0],  # 3: bottom-left-front
+            [-1.0, -1.0, 1.0],  # 4: top-left-back
+            [1.0, -1.0, 1.0],  # 5: top-right-back
+            [1.0, 1.0, 1.0],  # 6: top-right-front
+            [-1.0, 1.0, 1.0],  # 7: top-left-front
+        ],
+        dtype=np.float32,
+    )
 
-    points = [p1, p2, p3, p4, p5, p6, p7, p8]
+    faces = np.array(
+        [
+            # Bottom face (z = -1)
+            [0, 3, 1],
+            [1, 3, 2],
+            # Top face (z = 1)
+            [4, 5, 7],
+            [5, 6, 7],
+            # Front face (y = -1)
+            [0, 1, 4],
+            [1, 5, 4],
+            # Back face (y = 1)
+            [2, 3, 6],
+            [3, 7, 6],
+            # Right face (x = 1)
+            [1, 2, 5],
+            [2, 6, 5],
+            # Left face (x = -1)
+            [3, 0, 7],
+            [0, 4, 7],
+        ],
+        dtype=np.int32,
+    )
 
-    triangles = [
-        (0, 3, 1),  # Bottom
-        (1, 3, 2),
-        (4, 5, 7),  # Top
-        (5, 6, 7),
-        (0, 1, 4),  # Front
-        (1, 5, 4),
-        (2, 3, 6),  # Back
-        (3, 7, 6),
-        (1, 2, 5),  # Right
-        (2, 6, 5),
-        (3, 0, 7),  # Left
-        (0, 4, 7),
-    ]
-
-    return Mesh(points, [np.array(t) for t in triangles])
+    return Mesh(points, faces)
 
 
 def write_stl(m: Mesh, filename: Path) -> None:
     obj = mesh.Mesh(np.zeros(len(m.faces), dtype=mesh.Mesh.dtype))
 
-    for i, t in enumerate(m.faces):
-        obj.vectors[i] = np.array([m.points[i] for i in t])
+    for i, face in enumerate(m.faces):
+        obj.vectors[i] = m.points[face]
 
+    filename.parent.mkdir(parents=True, exist_ok=True)
     obj.save(str(filename))
 
 
@@ -221,169 +246,102 @@ def write_ply_pointcloud(m: Mesh, filename: Path) -> None:
         f.write("\n")
 
 
-def subdivide(m: Mesh, n: int) -> Mesh:
+def subdivide(mesh: Mesh, n: int) -> Mesh:
     if n <= 0:
-        return m
+        return mesh
 
-    output_points = m.points
-    output_triangles = []
+    points = mesh.points.copy()
+    faces = mesh.faces.copy()
 
-    map_points: dict[str, int] = {}
+    for level in range(n):
+        num_points = len(points)
+        num_faces = len(faces)
 
-    for i0, i1, i2 in m.faces:
-        p0 = output_points[i0]
-        p1 = output_points[i1]
-        p2 = output_points[i2]
+        all_edges = np.empty((num_faces * 3, 2), dtype=np.int32)
+        all_edges[0::3] = np.stack([faces[:, 0], faces[:, 1]], axis=1)  # edge 0-1
+        all_edges[1::3] = np.stack([faces[:, 1], faces[:, 2]], axis=1)  # edge 1-2
+        all_edges[2::3] = np.stack([faces[:, 2], faces[:, 0]], axis=1)  # edge 2-0
 
-        alpha = p0 + (p1 - p0) / 2
-        beta = p1 + (p2 - p1) / 2
-        gamma = p2 + (p0 - p2) / 2
+        all_edges.sort(axis=1)
 
-        k_alpha = "{}|{}".format(*sorted([i0, i1]))
-        k_beta = "{}|{}".format(*sorted([i1, i2]))
-        k_gamma = "{}|{}".format(*sorted([i2, i0]))
+        unique_edges, edge_inverse = np.unique(all_edges, axis=0, return_inverse=True)
+        num_unique_edges = len(unique_edges)
 
-        i_alpha = -1
-        i_beta = -1
-        i_gamma = -1
+        edge_midpoints = (points[unique_edges[:, 0]] + points[unique_edges[:, 1]]) * 0.5
+        new_points = np.vstack([points, edge_midpoints])
+        edge_to_new_point = num_points + np.arange(num_unique_edges)
+        midpoint_indices = edge_to_new_point[edge_inverse].reshape(num_faces, 3)
+        new_faces = np.empty((num_faces * 4, 3), dtype=np.int32)
 
-        if k_alpha in map_points:
-            i_alpha = map_points[k_alpha]
-        else:
-            output_points.append(alpha)
-            i_alpha = len(output_points) - 1
-            map_points[k_alpha] = i_alpha
+        v0, v1, v2 = faces[:, 0], faces[:, 1], faces[:, 2]
+        m01, m12, m20 = midpoint_indices[:, 0], midpoint_indices[:, 1], midpoint_indices[:, 2]
 
-        if k_beta in map_points:
-            i_beta = map_points[k_beta]
-        else:
-            output_points.append(beta)
-            i_beta = len(output_points) - 1
-            map_points[k_beta] = i_beta
+        new_faces[0::4] = np.stack([v0, m01, m20], axis=1)
+        new_faces[1::4] = np.stack([m01, v1, m12], axis=1)
+        new_faces[2::4] = np.stack([m12, v2, m20], axis=1)
+        new_faces[3::4] = np.stack([m20, m01, m12], axis=1)
 
-        if k_gamma in map_points:
-            i_gamma = map_points[k_gamma]
-        else:
-            output_points.append(gamma)
-            i_gamma = len(output_points) - 1
-            map_points[k_gamma] = i_gamma
+        points = new_points
+        faces = new_faces
 
-        output_triangles.append(np.array([i0, i_alpha, i_gamma]))
-        output_triangles.append(np.array([i_alpha, i1, i_beta]))
-        output_triangles.append(np.array([i_beta, i2, i_gamma]))
-        output_triangles.append(np.array([i_gamma, i_alpha, i_beta]))
-
-    return subdivide(Mesh(output_points, output_triangles), n - 1)
-
-
-def _map(raster: np.ndarray, lat: float, lon: float) -> np.ndarray:
-    height, width = raster.shape
-
-    y = int(((lat / math.pi) + 0.0) * height)
-    x = int(((lon / math.tau) + 0.0) * width)
-
-    return raster[y, x]
+    return Mesh(points, faces)
 
 
 def project(m: Mesh, raster: np.ndarray | None, scale: float = 0.1) -> Mesh:
-    for i in range(len(m.points)):
-        p = m.points[i]
+    points = m.points
 
-        r = math.sqrt(np.sum(np.power(p, 2)))
-        lat = math.acos(p[2] / r)
-        lon = math.atan2(p[1], p[0])
+    # cartesian to spherical
+    r = np.linalg.norm(points, axis=1)
+    lat = np.arccos(points[:, 2] / r)
+    lon = np.arctan2(points[:, 1], points[:, 0])
 
-        r = 1.0
-        if raster is not None:
-            r += _map(raster, lat, lon) * scale
+    r = np.ones(len(points))
 
-        x = r * math.sin(lat) * math.cos(lon)
-        y = r * math.sin(lat) * math.sin(lon)
-        z = r * math.cos(lat)
+    if raster is not None:
+        height, width = raster.shape
+        y_indices = ((lat / math.pi) * height).astype(int)
+        x_indices = ((lon / math.tau) * width).astype(int)
 
-        m.points[i] = np.array([x, y, z])
+        # Clamp latitude indices only (longitude can wrap around with negative indexing)
+        y_indices = np.clip(y_indices, 0, height - 1)
+
+        r += raster[y_indices, x_indices] * scale
+
+    # spherical to cartesian
+    m.points[:, 0] = r * np.sin(lat) * np.cos(lon)
+    m.points[:, 1] = r * np.sin(lat) * np.sin(lon)
+    m.points[:, 2] = r * np.cos(lat)
 
     return m
 
 
 def add_color(m: Mesh, raster: np.ndarray, color_vertices=False) -> Mesh:
-    m.colors = []
-
-    points = []
     if not color_vertices:
-        points = [m.points[f[0]] for f in m.faces]
+        # Get first vertex of each face for face coloring
+        points_array = m.points[m.faces[:, 0]]
     else:
-        points = m.points
+        points_array = m.points
 
-    for p in points:
-        d = math.sqrt(np.sum(np.power(p, 2)))
-        lat = math.acos(p[2] / d)
-        lon = math.atan2(p[1], p[0])
+    # cartesian to spherical
+    d = np.linalg.norm(points_array, axis=1)
+    lat = np.arccos(points_array[:, 2] / d)
+    lon = np.arctan2(points_array[:, 1], points_array[:, 0])
 
-        c = [
-            _map(raster[:, :, 0], lat, lon).astype(np.uint8),
-            _map(raster[:, :, 1], lat, lon).astype(np.uint8),
-            _map(raster[:, :, 2], lat, lon).astype(np.uint8),
-        ]
-        m.colors.append(c)
+    height, width, channels = raster.shape
+    y_indices = ((lat / math.pi) * height).astype(int)
+    x_indices = ((lon / math.tau) * width).astype(int)
+
+    # Clamp latitude indices only (longitude can wrap around with negative indexing)
+    y_indices = np.clip(y_indices, 0, height - 1)
+
+    m.colors = raster[y_indices, x_indices].astype(np.uint8)
 
     return m
 
 
 def fill_color(m: Mesh, value: list[int] = [255, 255, 255]) -> Mesh:
-    m.colors = []
-
-    for _ in range(len(m.faces)):
-        m.colors.append(np.array(value, dtype=np.uint8))
-
-    return m
-
-
-def get_seedpoints(num: int) -> list[np.array]:
-    # equal distance point placement on a sphere:
-    # https://stackoverflow.com/a/44164075
-
-    indices = np.arange(0, num, dtype=float) + 0.5
-
-    phi = np.arccos(1 - 2 * indices / num)
-    theta = np.pi * (1 + 5**0.5) * indices
-
-    x = np.cos(theta) * np.sin(phi)
-    y = np.sin(theta) * np.sin(phi)
-    z = np.cos(phi)
-
-    points = np.stack([x, y, z]).T
-    return list(points)
-
-
-def add_seedpoints(m: Mesh, num: int) -> Mesh:
-    m.colors = [np.array([255, 255, 255], dtype=np.uint8)] * len(m.faces)
-
-    seedpoints = get_seedpoints(num)
-
-    index = rtree.index
-    p = index.Property()
-    p.dimension = 3
-    tree = index.Index(properties=p)
-
-    for i, t in enumerate(m.faces):
-        center_point = np.mean(
-            np.array(
-                [
-                    m.points[t[0]],
-                    m.points[t[1]],
-                    m.points[t[2]],
-                ]
-            ),
-            axis=0,
-        )
-        tree.insert(i, center_point.tolist())
-
-    for p in seedpoints:
-        neighbour = tree.nearest(p, 1)
-        nearest_triangle_index = list(neighbour)[0]
-        m.colors[nearest_triangle_index] = np.array([255, 0, 0], dtype=np.uint8)
-
+    num_faces = len(m.faces)
+    m.colors = np.tile(np.array(value, dtype=np.uint8), (num_faces, 1))
     return m
 
 
@@ -393,31 +351,27 @@ def normalize_elevation(data: np.ndarray) -> np.ndarray:
 
 
 def load_raster(filename: Path) -> np.ndarray:
+    if not filename.exists():
+        raise FileNotFoundError(f"Raster file not found: {filename}")
+
     with rasterio.open(filename) as dataset:
-        data = dataset.read()
-        return data
+        return dataset.read()
 
 
 def _compute_normals(m: Mesh) -> tuple[np.ndarray, np.ndarray]:
-    centers = np.zeros([len(m.faces), 3], dtype=np.float32)
-    normals = np.zeros([len(m.faces), 3], dtype=np.float32)
+    points = m.points
+    faces = m.faces
 
-    for i in range(len(m.faces)):
-        t = m.faces[i]
-        a, b, c = m.points[t[0]], m.points[t[1]], m.points[t[2]]
-        normals[i, :] = np.cross(b - a, c - a)
-        centers[i, :] = np.mean(
-            np.array(
-                [
-                    m.points[t[0]],
-                    m.points[t[1]],
-                    m.points[t[2]],
-                ]
-            ),
-            axis=0,
-        )
+    v0 = points[faces[:, 0]]
+    v1 = points[faces[:, 1]]
+    v2 = points[faces[:, 2]]
 
-    return centers, _normalize_vectors(normals)
+    normals = np.cross(v1 - v0, v2 - v0)
+    normalized_normals = _normalize_vectors(normals)
+
+    centers = (v0 + v1 + v2) / 3.0
+
+    return centers, normalized_normals
 
 
 def _normalize_vector(v: np.array) -> np.array:
@@ -428,110 +382,6 @@ def _normalize_vectors(v: np.ndarray) -> np.array:
     return v / np.linalg.norm(v, axis=1).reshape(-1, 1)
 
 
-def _line_plane_intersection(
-    plane_normal: np.array,
-    plane_point: np.array,
-    line_point: np.array,
-    line_direction: np.array,
-    tol: float = 1e-6,
-) -> np.array:
-    denom = np.dot(plane_normal, line_direction)
-
-    if abs(denom) < tol:  # the line is parallel to the plane
-        if abs(np.dot(plane_normal, line_point - plane_point)) < tol:
-            return line_point  # the line lies on the plane
-        else:
-            return line_direction  # no intersection
-
-    t = -np.dot(plane_normal, line_point - plane_point) / denom
-    intersection = line_point + t * line_direction
-
-    return intersection
-
-
-def _compute_intersections(m: Mesh, centers: np.ndarray, normals: np.ndarray, axis: np.array, tol=1e-6) -> np.ndarray:
-    intersections = np.zeros_like(centers)
-
-    line_point = np.array([0, 0, 0], dtype=np.float32)
-    for i in range(len(m.faces)):
-        intersections[i, :] = _line_plane_intersection(normals[i], centers[i], line_point, axis)
-
-    return intersections
-
-
-def add_field_vectors(m: Mesh, axis: np.array) -> Mesh:
-    centers, normals = _compute_normals(m)
-    intersections = _compute_intersections(m, centers, normals, axis)
-    directions = _normalize_vectors(intersections - centers)
-
-    # flip direction if intersection point is on the opposite end of the axis
-    # necessary to avoid a flipping of direction signs when moving from one face to the next one
-    opposite_directions = np.full_like(directions, 1, dtype=np.float32)
-    opposite_directions[np.dot(intersections, axis) < 0] = -1
-    directions *= opposite_directions
-
-    m.centers = [np.array(e) for e in centers.tolist()]
-    m.normals = [np.array(e) for e in normals.tolist()]
-    m.field_vectors = [np.array(e) for e in directions.tolist()]
-
-    elevation_vectors = _normalize_vectors(centers)
-    field_elevation_vectors = []
-    for i in range(len(elevation_vectors)):
-        projected = elevation_vectors[i] - (np.dot(elevation_vectors[i], normals[i])) * normals[i]
-        magnitude = np.arccos(np.dot(elevation_vectors[i], normals[i]))
-
-        combined = _normalize_vector(
-            directions[i] * (1 - magnitude) * (1 - ELEVATION_VECTOR_WEIGHT) + projected * magnitude * ELEVATION_VECTOR_WEIGHT
-        )
-        field_elevation_vectors.append(combined)
-
-    m.field_elevation_vectors = field_elevation_vectors
-
-    return m
-
-
-def field_vectors_to_image(m: Mesh, num: int = 360) -> np.ndarray:
-    image = np.zeros([num, num, 3], dtype=float)
-
-    index = rtree.index
-    p = index.Property()
-    p.dimension = 3
-    tree = index.Index(properties=p)
-
-    for i, t in enumerate(m.faces):
-        center_point = np.mean(
-            np.array(
-                [
-                    m.points[t[0]],
-                    m.points[t[1]],
-                    m.points[t[2]],
-                ]
-            ),
-            axis=0,
-        )
-        tree.insert(i, center_point.tolist())
-
-    lats = np.linspace(-90, 90, num, endpoint=False)
-    lons = np.linspace(-180, 180, num, endpoint=False)
-
-    for i, lat in enumerate(lats):
-        for j, lon in enumerate(lons):
-            latr = math.radians(lat)
-            lonr = math.radians(lon)
-
-            x = 1 * math.cos(latr) * math.cos(lonr)
-            y = 1 * math.cos(latr) * math.sin(lonr)
-            z = 1 * math.sin(latr)
-
-            neighbour = tree.nearest(np.array([x, y, z]), 1)
-            ind = list(neighbour)[0]
-            dir = np.array(m.field_vectors[ind])
-
-            image[i, j, :] = dir
-
-    return image
-
-
 def shift_center_to_origin(raster: np.ndarray) -> np.ndarray:
     """
     shift center of raster image to 1/4. This adjusts for the X/Y axis change.
@@ -540,162 +390,6 @@ def shift_center_to_origin(raster: np.ndarray) -> np.ndarray:
 
     """
     return np.roll(raster, int(raster.shape[1] / 4), axis=1)
-
-
-def display(m: Mesh) -> None:
-    import pyvista as pv
-
-    plotter = pv.Plotter()
-
-    # X, Y, Z axes
-    plotter.add_mesh(
-        pv.Spline(np.array([[0, 0, 0], [1, 0, 0]]), 10).tube(radius=0.01),
-        color=[255, 0, 0],
-    )
-    plotter.add_mesh(
-        pv.Spline(np.array([[0, 0, 0], [0, 1, 0]]), 10).tube(radius=0.01),
-        color=[0, 255, 0],
-    )
-    plotter.add_mesh(
-        pv.Spline(np.array([[0, 0, 0], [0, 0, 1]]), 10).tube(radius=0.01),
-        color=[0, 0, 255],
-    )
-
-    # mesh
-    points_pv = np.stack(m.points)
-    faces_pv = np.hstack([[3, *face] for face in m.faces])
-    pvmesh = pv.PolyData(points_pv, faces_pv)
-    plotter.add_mesh(pvmesh, show_edges=True, opacity=0.5)
-
-    # light axis
-    light_axis = _normalize_vector(np.array([0, 1, 1]))
-    spline = pv.Spline(np.array([[0, 0, 0], light_axis], dtype=np.float32)).tube(radius=0.01)
-    plotter.add_mesh(spline, color=[255, 255, 0])
-
-    # normals
-    centers, normals = _compute_normals(m)
-    # for i in range(len(normals)):
-    #     arrow = pv.Arrow(
-    #         centers[i],
-    #         normals[i],
-    #         scale=0.5
-    #     )
-    #     plotter.add_mesh(arrow, color=[255, 0, 0])
-
-    # intersections
-    intersections = _compute_intersections(m, centers, normals, light_axis)
-    # for i in range(len(intersections)):
-    #     plotter.add_mesh(pv.Sphere(0.05, intersections[i]), color=[0, 0, 255])
-
-    # directions
-    directions = _normalize_vectors(intersections - centers)
-    for i in range(len(directions)):
-        arrow = pv.Arrow(centers[i], directions[i], scale=0.1)
-        plotter.add_mesh(arrow, color=[0, 255, 0])
-
-    plotter.show()
-
-
-def visualize(m: Mesh, lines: list[LineString]) -> pv.Plotter:
-    plotter = pv.Plotter()
-
-    # X, Y, Z axes
-    plotter.add_mesh(
-        pv.Spline(np.array([[0, 0, 0], [1, 0, 0]]), 10).tube(radius=0.02),
-        color=[255, 0, 0],
-    )
-    plotter.add_mesh(
-        pv.Spline(np.array([[0, 0, 0], [0, 1, 0]]), 10).tube(radius=0.02),
-        color=[0, 255, 0],
-    )
-    plotter.add_mesh(
-        pv.Spline(np.array([[0, 0, 0], [0, 0, 1]]), 10).tube(radius=0.02),
-        color=[0, 0, 255],
-    )
-
-    # mesh
-    points_pv = np.stack(m.points)
-    faces_pv = np.hstack([[3, *face] for face in m.faces])
-    pvmesh = pv.PolyData(points_pv, faces_pv)
-    plotter.add_mesh(pvmesh, opacity=0.5, show_edges=True)  # ), opacity=0.5)
-
-    # light axis
-    light_axis = _normalize_vector(np.array([0, 1, 1]))
-    spline = pv.Spline(np.array([[0, 0, 0], light_axis], dtype=np.float32), 10).tube(radius=0.02)
-    plotter.add_mesh(spline, color=[255, 255, 0])
-
-    for line in lines:
-        spline = pv.Spline(np.array(list(line.coords))).tube(radius=0.005)
-        plotter.add_mesh(spline, color=[125, 125, 125])
-
-    # normals
-    for i in range(len(m.normals)):
-        arrow = pv.Arrow(m.centers[i], m.normals[i], scale=0.10)
-        plotter.add_mesh(arrow, color=[255, 0, 0])
-
-    # field vectors
-    for i in range(len(m.field_vectors)):
-        arrow = pv.Arrow(m.centers[i], m.field_vectors[i], scale=0.10)
-        plotter.add_mesh(arrow, color=[255, 255, 0])
-
-    # elevation vectors
-    for i in range(len(m.centers)):
-        arrow = pv.Arrow(m.centers[i], _normalize_vector(m.centers[i]), scale=0.10)
-        plotter.add_mesh(arrow, color=[0, 255, 0])
-
-    for i in range(len(m.centers)):
-        elevation_vector = _normalize_vector(m.centers[i])
-        projected = elevation_vector - (np.dot(elevation_vector, m.normals[i])) * m.normals[i]
-        magnitude = np.arccos(np.dot(elevation_vector, m.normals[i]))
-        # spline = pv.Spline(np.array([m.centers[i], m.centers[i] + m.field_elevation_vectors[i]], dtype=np.float32), 10).tube(radius=0.005)
-        spline = pv.Spline(
-            np.array([m.centers[i], m.centers[i] + projected * magnitude], dtype=np.float32),
-            10,
-        ).tube(radius=0.005)
-        plotter.add_mesh(spline, color=[0, 0, 255])
-
-        arrow = pv.Arrow(m.centers[i], m.field_elevation_vectors[i], scale=0.10)
-        plotter.add_mesh(arrow, color=[0, 0, 255])
-
-    # centers
-    # for i in range(len(m.centers)):
-    #     plotter.add_mesh(pv.Sphere(0.01, m.centers[i]), color=[0, 0, 255])
-
-    return plotter
-
-
-def visualize_lines(m: Mesh, lines: list[LineString]) -> pv.Plotter:
-    plotter = pv.Plotter()
-
-    # X, Y, Z axes
-    plotter.add_mesh(
-        pv.Spline(np.array([[0, 0, 0], [0.5, 0, 0]]), 10).tube(radius=0.01),
-        color=[255, 0, 0],
-    )
-    plotter.add_mesh(
-        pv.Spline(np.array([[0, 0, 0], [0, 0.5, 0]]), 10).tube(radius=0.01),
-        color=[0, 255, 0],
-    )
-    plotter.add_mesh(
-        pv.Spline(np.array([[0, 0, 0], [0, 0, 0.5]]), 10).tube(radius=0.01),
-        color=[0, 0, 255],
-    )
-
-    # mesh
-    points_pv = np.stack(m.points)
-    faces_pv = np.hstack([[3, *face] for face in m.faces])
-    pvmesh = pv.PolyData(points_pv, faces_pv)
-    plotter.add_mesh(pvmesh)  # , opacity=0.2, show_edges=True)
-
-    # light axis
-    light_axis = _normalize_vector(np.array([0, 1, 1])) * 0.5
-    spline = pv.Spline(np.array([[0, 0, 0], light_axis], dtype=np.float32)).tube(radius=0.01)
-    plotter.add_mesh(spline, color=[255, 255, 0])
-
-    for line in lines:
-        plotter.add_lines(np.array(list(line.coords)), color="purple", width=3, connected=True)
-
-    return plotter
 
 
 def write_obj(plotter: pv.Plotter, filename: Path) -> None:
@@ -751,10 +445,9 @@ def main() -> None:
     color_raster = shift_center_to_origin(color_raster)
 
     # use a partial DEM (lat not from -90 to 90)
-    # color_raster2 = load_raster(Path("data", "BasicHapke_wbhs_blend_b137_IOF.55deg_nearcenter_1kmpp_20140925_134515.tif")) # [3, rows, cols]
-    # empty = np.zeros([color_raster2.shape[0], int(color_raster2.shape[1] * 25/90), color_raster2.shape[2]], dtype=np.uint8)
-    # color_raster2 = np.concatenate([empty, color_raster2, empty], axis=1)
-    # color_raster = color_raster2 # TODO
+    # color_raster = load_raster(Path("data", "BasicHapke_wbhs_blend_b137_IOF.55deg_nearcenter_1kmpp_20140925_134515.tif")) # [3, rows, cols]
+    # empty = np.zeros([color_raster.shape[0], int(color_raster.shape[1] * 25/90), color_raster.shape[2]], dtype=np.uint8)
+    # color_raster = np.concatenate([empty, color_raster, empty], axis=1)
 
     if args.debug:
         cv2.imwrite(str(DIR_DEBUG / "color_raster.png"), color_raster)
@@ -770,53 +463,6 @@ def main() -> None:
     )
 
     print("Completed in: {:.3f}s".format((datetime.datetime.now() - timer_start).total_seconds()))
-    exit()
-
-    # 3D HATCHING / TODO: remove
-
-    # poly = subdivide(tetrahedron(), n=args.subdivision)
-    #
-    # dem_raster = normalize_elevation(load_raster(args.elevation_raster))[0, :, :]
-    # size = (np.array([dem_raster.shape[1], dem_raster.shape[0]]) * 0.25).astype(int).tolist()
-    # dem_raster = cv2.resize(dem_raster, size)
-    #
-    # poly = project(poly, dem_raster, scale=args.scale)
-    # poly = add_field_vectors(poly, _normalize_vector(np.array([0, 1, 1])))
-    #
-    # color_raster = load_raster(args.color_raster)[0:3, :, :]
-    # add_color(poly, color_raster)
-    # write_ply(poly, args.output)
-    #
-    # import flowlines3
-    #
-    # config = flowlines3.FlowlineHatcherConfig()
-    # # mapping_line_distance = np.mean(color_raster[0:3, :, :], axis=0)
-    # lines = flowlines3.FlowlineHatcher(
-    #     poly,
-    #     1 + dem_raster * SCALE,
-    #     np.zeros([1, 1], dtype=np.uint8),  # mapping_line_distance,
-    #     np.zeros([1, 1], dtype=np.uint8),
-    #     np.zeros([1, 1], dtype=np.uint8),
-    #     config,
-    #     initial_seed_points=poly.centers,
-    # ).hatch()
-    #
-    # print(f"lines: {len(lines)}")
-    # print("Completed in: {:.3f}s".format((datetime.datetime.now() - timer_start).total_seconds()))
-    #
-    # # points = []
-    # # for line in lines:
-    # #     points += [np.array(p) for p in line.coords]
-    # # pointcloud = Mesh(points, [])
-    # # write_ply_pointcloud(pointcloud, Path("pointcloud.ply"))
-    #
-    # # plotter = visualize(poly, lines)
-    # # write_obj(plotter, Path("scene.obj"))
-    # # plotter.show()
-    #
-    # # visualize(poly, []).show()
-    #
-    # visualize_lines(poly, lines).show()
 
 
 if __name__ == "__main__":
