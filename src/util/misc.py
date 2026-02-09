@@ -360,9 +360,15 @@ def export_angles(arr: np.ndarray, adjust_y_axis: bool = False) -> np.ndarray:
     return angle
 
 
-def smooth_linestring(ls: LineString) -> LineString:
-    return chaikin_smooth(ls, 5)
+def smooth_linestring(ls: LineString, iterations: int = 5) -> LineString:
+    if iterations <= 0:
+        return ls
+
+    return chaikin_smooth(ls, iterations)
 
 
-def smooth_linestrings(linestrings: list[LineString]) -> list[LineString]:
-    return [chaikin_smooth(ls, 10) for ls in linestrings if not ls.is_empty]
+def smooth_linestrings(linestrings: list[LineString], iterations: int = 5) -> list[LineString]:
+    if iterations <= 0:
+        return linestrings
+
+    return [chaikin_smooth(ls, iterations) for ls in linestrings if not ls.is_empty]

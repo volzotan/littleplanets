@@ -10,12 +10,14 @@ import cv2
 import numpy as np
 import shapely
 import shapely.ops
+from shapely.strtree import STRtree
 from pydantic import BaseModel, Field
-from shapely import LineString, MultiLineString, Geometry, Point
+from shapely import LineString, MultiLineString, Geometry
+from shapelysmooth import chaikin_smooth
 
 from loguru import logger
 
-from util.misc import smooth_linestrings, split_linestring
+from util.misc import split_linestring, smooth_linestrings
 from svgwriter import SvgWriter
 
 DIR_DEBUG = Path("debug")
@@ -40,6 +42,8 @@ class CombineConfig(BaseModel):
     overlay_layering_cut_distance: float = 4.0  # --overlays
 
     ignore_contours: bool = False
+
+    smoothing_iterations: int = Field(5, ge=0)
 
 
 def _project_linestring(ls: LineString, P: np.ndarray, scaling_factor: float) -> LineString:
@@ -67,12 +71,37 @@ def _match_linestrings_to_palette(
     if len(palette) == 1:
         return [linestrings]
 
-    for ls in linestrings:
-        # if len(ls.coords) < 2:
-        #     continue
+    # Batch coordinate processing
+    all_coords = []
+    linestring_coord_counts = []
 
-        all_pixels = np.nan_to_num(np.array([mapping[int(p[1] * 1 / scaling_factor), int(p[0] * 1 / scaling_factor)] for p in ls.coords]))
-        mean = np.mean(all_pixels, axis=0)
+    for ls in linestrings:
+        coords = np.array(ls.coords)
+        all_coords.append(coords)
+        linestring_coord_counts.append(len(coords))
+
+    if not all_coords:
+        return linestrings_split_by_palette
+
+    # Concatenate all coordinates for batch processing
+    concatenated_coords = np.vstack(all_coords)
+
+    # coordinate mapping with bounds checking
+    x_indices = np.clip((concatenated_coords[:, 0] / scaling_factor).astype(int), 0, mapping.shape[1] - 1)
+    y_indices = np.clip((concatenated_coords[:, 1] / scaling_factor).astype(int), 0, mapping.shape[0] - 1)
+
+    # mapping lookup
+    all_pixels = mapping[y_indices, x_indices]
+    all_pixels = np.nan_to_num(all_pixels)
+
+    # Split back into per-linestring means
+    start_idx = 0
+    for i, ls in enumerate(linestrings):
+        coord_count = linestring_coord_counts[i]
+        ls_pixels = all_pixels[start_idx : start_idx + coord_count]
+        start_idx += coord_count
+
+        mean = np.mean(ls_pixels, axis=0)
         palette_color_index = 0
 
         if np.sum(mean) > 0.1:
@@ -116,9 +145,20 @@ def _cut(objects: list[LineString], tools: list[Geometry], buffer_radius: float)
     if len(tools) == 0:
         return objects
 
-    stencil = shapely.ops.unary_union(tools).buffer(buffer_radius)
+    if len(tools) == 1:
+        stencil = tools[0].buffer(buffer_radius)
+    else:
+        buffered_tools = [tool.buffer(buffer_radius) for tool in tools]
+        stencil = shapely.ops.unary_union(buffered_tools)
+
+    if len(objects) > 50 or len(tools) > 5:
+        return _cut_with_spatial_index(objects, stencil)
 
     for ls in objects:
+        if not ls.intersects(stencil):
+            linestrings_cut.append(ls)
+            continue
+
         cut = shapely.difference(ls, stencil)
 
         match cut:
@@ -127,6 +167,42 @@ def _cut(objects: list[LineString], tools: list[Geometry], buffer_radius: float)
             case MultiLineString():
                 for g in cut.geoms:
                     linestrings_cut.append(g)
+            case _:
+                print(f"unexpected geometry: {cut}")
+
+    return linestrings_cut
+
+
+def _cut_with_spatial_index(objects: list[LineString], stencil: Geometry) -> list[LineString]:
+    linestrings_cut = []
+
+    # Early exit if stencil is empty
+    if stencil.is_empty:
+        return objects.copy()
+
+    tree = STRtree(objects)
+    potential_intersections = tree.query(stencil)
+    intersecting_indices = set()
+
+    # Batch intersection checking
+    for idx in potential_intersections:
+        if objects[idx].intersects(stencil):
+            intersecting_indices.add(idx)
+
+    for idx, ls in enumerate(objects):
+        if idx not in intersecting_indices:
+            linestrings_cut.append(ls)
+            continue
+
+        cut = shapely.difference(ls, stencil)
+        match cut:
+            case LineString():
+                if not cut.is_empty and len(cut.coords) >= 2:
+                    linestrings_cut.append(cut)
+            case MultiLineString():
+                for g in cut.geoms:
+                    if not g.is_empty and len(g.coords) >= 2:
+                        linestrings_cut.append(g)
             case _:
                 print(f"unexpected geometry: {cut}")
 
@@ -158,7 +234,7 @@ def main() -> None:
             data = tomllib.load(f)
             config = CombineConfig.model_validate(data)
     else:
-        logger.warning(f"No config file not found")
+        logger.warning("No config file not found")
 
     random.seed(PSEUDO_RANDOM_SEED)
 
@@ -232,22 +308,26 @@ def main() -> None:
 
     # cut each overlay from all underlying ones
     timer_start = datetime.datetime.now()
-    combined_stencil = Point()
+    accumulated_geometries = []
     for i in reversed(range(len(linestrings_overlays))):
-        if not combined_stencil.is_empty:
+        if accumulated_geometries:
+            combined_stencil = shapely.unary_union(accumulated_geometries) if len(accumulated_geometries) > 1 else accumulated_geometries[0]
             linestrings_overlays[i] = _cut(linestrings_overlays[i], [combined_stencil], config.overlay_layering_cut_distance / 2)
-        combined_stencil = shapely.unary_union([combined_stencil] + linestrings_overlays[i])
+
+        if linestrings_overlays[i]:
+            layer_union = shapely.unary_union(linestrings_overlays[i]) if len(linestrings_overlays[i]) > 1 else linestrings_overlays[i][0]
+            accumulated_geometries.append(layer_union)
     logger.debug(f"Overlay cascade stencil time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
 
     # smoothing
-    linestrings_contours = smooth_linestrings(linestrings_contours)
-    linestrings = smooth_linestrings(linestrings)
+    linestrings_contours = smooth_linestrings(linestrings_contours, config.smoothing_iterations)
+    linestrings = smooth_linestrings(linestrings, config.smoothing_iterations)
 
     # merge contours with hatchlines (merge after cutting, so contours are not cut by the grid overlay)
     linestrings_contours_split = itertools.chain.from_iterable([split_linestring(ls, SEGMENTIZE_MAX_LENGTH) for ls in linestrings_contours])
     linestrings += linestrings_contours_split
 
-    # Coloring
+    # coloring
     palette = np.array(config.colors, dtype=int)
     palette = np.delete(palette, np.where(np.min(palette, axis=1) < 0), axis=0)  # remove invalid palette colors
     palette = palette.astype(np.uint8)
@@ -294,7 +374,8 @@ def main() -> None:
             for ic, colored_linestrings in enumerate(linestrings_overlay_palette):
                 svg.add(f"overlay_color_{ic}", colored_linestrings)
 
-    # add frame
+    # Add frame
+
     frame_color = [0, 0, 0] if not config.invert_background else [255, 255, 255]
     frame_length = 50
     offset_frame = 10
@@ -313,10 +394,9 @@ def main() -> None:
 
     linestrings_frame = [
         LineString([[offset_frame, height], [frame_length, height]]),
-        LineString([[width - frame_length, height], [width-offset_frame, height]]),
+        LineString([[width - frame_length, height], [width - offset_frame, height]]),
         LineString([[width - offset_frame, 0], [width - frame_length, 0]]),
         LineString([[frame_length, 0], [offset_frame, 0]]),
-
         LineString([[width / 2 - frame_length / 2, 0], [width / 2 + frame_length / 2, 0]]),
         LineString([[width / 2 - frame_length / 2, height], [width / 2 + frame_length / 2, height]]),
     ]
