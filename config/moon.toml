@@ -25,8 +25,10 @@ dimensions = [700, 700]
 dem_url = "https://planetarymaps.usgs.gov/mosaic/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"
 surface_color_url = "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_poles.tif"
 
-[modify_dem]
+[modify_dem_stage1]
 resize_width = 15000
+
+[modify_dem_stage2]
 blur = 0.1
 
 [modify_surfacecolor]

@@ -44,10 +44,13 @@ $(DIR_DATA)/dem.tif $(DIR_DATA)/surface_color.tif $(DIR_DATA)/cds_clouds.nc: $(D
 	@echo "Downloader"
 	uv run $(DIR_SRC)/downloader.py --output-dir $(DIR_DATA) --config $(DIR_BUILD)/downloader.toml
 
-$(DIR_BUILD)/dem.tif: $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/dem.tif $(DIR_BUILD)/modify_dem.toml
+$(DIR_BUILD)/dem_scaled.tif: $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/dem.tif $(DIR_BUILD)/modify_dem_stage1.toml
 	@echo "Modify TIFF $@"
-	uv run $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/dem.tif $@ --config $(DIR_BUILD)/modify_dem.toml --pause-below-minimum-available-memory 4096
-	touch $@
+	uv run $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/dem.tif $@ --config $(DIR_BUILD)/modify_dem_stage1.toml --pause-below-minimum-available-memory 4096
+
+$(DIR_BUILD)/dem.tif: $(DIR_SRC)/modify_tiff.py $(DIR_BUILD)/dem_scaled.tif $(DIR_BUILD)/modify_dem_stage2.toml
+	@echo "Modify TIFF $@"
+	uv run $(DIR_SRC)/modify_tiff.py $(DIR_BUILD)/dem_scaled.tif $@ --config $(DIR_BUILD)/modify_dem_stage2.toml
 
 $(DIR_BUILD)/surface_color.tif: $(DIR_SRC)/modify_tiff.py $(DIR_DATA)/surface_color.tif $(DIR_BUILD)/modify_surfacecolor.toml
 	@echo "Modify TIFF $@"
