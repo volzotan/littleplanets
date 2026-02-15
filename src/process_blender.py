@@ -16,8 +16,6 @@ import matplotlib.pyplot as plt
 
 from util.misc import project_vectors_to_image_space, normalize_vectors, export_angles, rotate_vectors, normalize_vector
 
-CROSS_FLOW = True
-
 CLIPPING = True
 CLIPPING_CUTOFF_PERCENTILE = 1.00
 
@@ -42,6 +40,8 @@ class ProcessBlenderConfig(BaseModel):
     light_axis_pos_y: float | None = None
     light_axis_pos_z: float | None = None
 
+    cross_flow_light: bool = True
+    cross_flow_elevation: bool = True
     mixture: list[float] = [0.035, 0.06]
 
     contrast_increase: float | None = None
@@ -298,9 +298,10 @@ def main() -> None:
     img_direction_ws = img_direction
     img_elevation_direction_ws = img_elevation_direction
 
-    if CROSS_FLOW:
-        # cross product must be applied on the vectors in world space before projecting to image space
+    # cross product must be applied on the vectors in world space before projecting to image space
+    if config.cross_flow_light:
         img_direction_ws = np.cross(img_direction_ws, img_normals)
+    if config.cross_flow_elevation:
         img_elevation_direction_ws = np.cross(img_elevation_direction_ws, img_normals)
 
     img_direction_is = project_vectors_to_image_space(img_pxpos, img_direction_ws, projection_matrix)
@@ -467,7 +468,7 @@ def main() -> None:
     mapping_background = np.zeros_like(img_pxpos, dtype=np.uint8)
     mapping_background[np.isnan(np.sum(img_pxpos, axis=2))] = [255, 255, 255]
 
-    if CROSS_FLOW:
+    if config.cross_flow_elevation:
         img_field_elevation_vectors_0 = np.cross(img_field_elevation_vectors_0, img_normals)
         img_field_elevation_vectors_1 = np.cross(img_field_elevation_vectors_1, img_normals)
         img_field_elevation_vectors_2 = np.cross(img_field_elevation_vectors_2, img_normals)

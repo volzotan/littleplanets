@@ -12,7 +12,7 @@ rotZ = -6.68 # axial tilt
 
 light_axis_pos_x = 0.6
 light_axis_pos_y = 0.4
-light_axis_pos_z = 2.2
+light_axis_pos_z = 2.4
 
 colors = [[255, 255, 255]]
 layer_colors = [[245, 233, 94], [255, 255, 255]]
@@ -39,7 +39,7 @@ contrast_increase = 1.0
 
 [adjust_scene]
 
-horizontal_width = 2.2
+horizontal_width = 2.4
 camera_focal_length = 50.0
 
 #light_pos_x = 0.4
@@ -50,7 +50,7 @@ camera_focal_length = 50.0
 
 light_pos_x = 0.6
 light_pos_y = 0.4
-light_pos_z = 2.2
+light_pos_z = 2.4
 light_size = 0.2
 light_power = 100
 
@@ -63,8 +63,8 @@ subdivision = 10
 
 [overlay_pois]
 
-circle_radius = 0.012
-font_size = 0.018
+circle_radius = 0.010
+font_size = 0.017
 
 [overlay_grid]
 
@@ -73,9 +73,10 @@ grid_lines_lon = 8
 
 [overlay_axis]
 
-axis_extent = 1.25
+axis_extent = 1.22
 
 [overlay_contours]
+double_line_distance = 0.002
 
 [process_blender]
 
@@ -98,3 +99,4 @@ flowlines_line_distance_end_factor = 0.3
 flowlines_max_angle_discontinuity = 0.78 # pi/4
 
 [combine]
+smoothing_iterations = 0

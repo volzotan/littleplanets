@@ -137,14 +137,20 @@ $(DIR_BUILD)/overlay_grid_cropped.npz: $(DIR_BUILD)/blender_mesh.blend $(DIR_BUI
 
 $(DIR_BUILD)/overlay_contours.npz: $(DIR_SRC)/overlay_contours.py $(DIR_BUILD)/raytrace.npy $(DIR_BUILD)/overlay_contours.toml
 	@echo "Create overlay Contours"
-	uv run $(DIR_SRC)/overlay_contours.py $(DIR_BUILD)/raytrace.npy  --output $@ --config $(DIR_BUILD)/overlay_grid.toml
+	uv run $(DIR_SRC)/overlay_contours.py $(DIR_BUILD)/raytrace.npy  --output $@ --config $(DIR_BUILD)/overlay_contours.toml
 
-$(DIR_BUILD)/overlay_contours_cropped.npz: $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_contours.npz $(DIR_SRC)/overlay_project.py $(DIR_BLENDER)/export_overlay_lines.py $(DIR_SRC)/overlay_crop.py
+#$(DIR_BUILD)/overlay_contours_cropped.npz: $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_contours.npz $(DIR_SRC)/overlay_project.py $(DIR_BLENDER)/export_overlay_lines.py $(DIR_SRC)/overlay_crop.py
+#	@echo "Cropping visible overlay lines: CONTOURS"
+#	rsync -au $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/blender_overlays.blend
+#	uv run $(DIR_SRC)/overlay_project.py $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_contours.npz --output $(DIR_BUILD)/overlay_contours_projected.npz
+#	$(BLENDER_BIN) $(DIR_BUILD)/blender_overlays.blend --background --python $(DIR_BLENDER)/export_overlay_lines.py -- --input $(DIR_BUILD)/overlay_contours_projected.npz --output $(DIR_BUILD)/overlay_contours_visible.npz --raycast-from-light
+#	uv run $(DIR_SRC)/overlay_crop.py $(DIR_BUILD)/overlay_contours_projected.npz $(DIR_BUILD)/overlay_contours_visible.npz --output $(DIR_BUILD)/overlay_contours_cropped.npz
+
+$(DIR_BUILD)/overlay_contours_cropped.npz: $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/overlay_contours.npz $(DIR_BLENDER)/export_overlay_lines.py $(DIR_SRC)/overlay_crop.py
 	@echo "Cropping visible overlay lines: CONTOURS"
 	rsync -au $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/blender_overlays.blend
-	uv run $(DIR_SRC)/overlay_project.py $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_contours.npz --output $(DIR_BUILD)/overlay_contours_projected.npz
-	$(BLENDER_BIN) $(DIR_BUILD)/blender_overlays.blend --background --python $(DIR_BLENDER)/export_overlay_lines.py -- --input $(DIR_BUILD)/overlay_contours_projected.npz --output $(DIR_BUILD)/overlay_contours_visible.npz --raycast-from-light
-	uv run $(DIR_SRC)/overlay_crop.py $(DIR_BUILD)/overlay_contours_projected.npz $(DIR_BUILD)/overlay_contours_visible.npz --output $(DIR_BUILD)/overlay_contours_cropped.npz
+	$(BLENDER_BIN) $(DIR_BUILD)/blender_overlays.blend --background --python $(DIR_BLENDER)/export_overlay_lines.py -- --input $(DIR_BUILD)/overlay_contours.npz --output $(DIR_BUILD)/overlay_contours_visible.npz --raycast-from-light
+	uv run $(DIR_SRC)/overlay_crop.py $(DIR_BUILD)/overlay_contours.npz $(DIR_BUILD)/overlay_contours_visible.npz --output $(DIR_BUILD)/overlay_contours_cropped.npz
 
 # Overlay Axis
 
