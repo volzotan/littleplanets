@@ -9,12 +9,14 @@ from util.misc import write_linestrings_to_npz, visualize_linestrings
 
 import cv2
 
+MAX_SEGMENT_LENGTH = 10.0
+
 VISUALIZE = False
 
-
 class OverlayContoursConfig(BaseModel):
-    shrink: float = 0.0
-    simplify: float = 0.1
+    double_line_distance: float | None = None
+    shrink: float | None = None
+    simplify: float | None = None
 
 
 def main() -> None:
@@ -44,6 +46,8 @@ def main() -> None:
         if p.area > 10.0:
             polygons_silhouette.append(p)
 
+    polygons_silhouette = [p.segmentize(MAX_SEGMENT_LENGTH) for p in polygons_silhouette]
+
     if config.shrink is not None and config.shrink > 0:
         polygons_silhouette = [p.buffer(-config.shrink) for p in polygons_silhouette]
 
@@ -58,6 +62,26 @@ def main() -> None:
     for ls in linestrings:
         new_coords = np.array([img_pxpos[int(p[1]), int(p[0])] for p in ls.coords])
         new_coords = new_coords[~np.isnan(np.sum(new_coords, axis=1))]
+
+        # new_coords[:, 2] = np.mean(new_coords[:, 2])
+
+        if config.double_line_distance is not None:
+
+            # Convert to spherical coordinates
+            x, y, z = new_coords[:, 0], new_coords[:, 1], new_coords[:, 2]
+            r = np.sqrt(x**2 + y**2 + z**2)
+            theta = np.arctan2(y, x)
+            phi = np.arccos(z / r)
+
+            r += config.double_line_distance
+
+            # Convert to Euclidean coordinates
+            x_new = r * np.sin(phi) * np.cos(theta)
+            y_new = r * np.sin(phi) * np.sin(theta)
+            z_new = r * np.cos(phi)
+            coords_double_line = np.column_stack((x_new, y_new, z_new))
+            linestrings_3d.append(LineString(coords_double_line))
+
         linestrings_3d.append(LineString(new_coords))
 
     # VISUALIZE
