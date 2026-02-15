@@ -468,7 +468,7 @@ def main() -> None:
     mapping_background = np.zeros_like(img_pxpos, dtype=np.uint8)
     mapping_background[np.isnan(np.sum(img_pxpos, axis=2))] = [255, 255, 255]
 
-    if CROSS_FLOW:
+    if config.cross_flow_elevation:
         img_field_elevation_vectors_0 = np.cross(img_field_elevation_vectors_0, img_normals)
         img_field_elevation_vectors_1 = np.cross(img_field_elevation_vectors_1, img_normals)
         img_field_elevation_vectors_2 = np.cross(img_field_elevation_vectors_2, img_normals)

@@ -137,7 +137,7 @@ $(DIR_BUILD)/overlay_grid_cropped.npz: $(DIR_BUILD)/blender_mesh.blend $(DIR_BUI
 
 $(DIR_BUILD)/overlay_contours.npz: $(DIR_SRC)/overlay_contours.py $(DIR_BUILD)/raytrace.npy $(DIR_BUILD)/overlay_contours.toml
 	@echo "Create overlay Contours"
-	uv run $(DIR_SRC)/overlay_contours.py $(DIR_BUILD)/raytrace.npy  --output $@ --config $(DIR_BUILD)/overlay_grid.toml
+	uv run $(DIR_SRC)/overlay_contours.py $(DIR_BUILD)/raytrace.npy  --output $@ --config $(DIR_BUILD)/overlay_contours.toml
 
 $(DIR_BUILD)/overlay_contours_cropped.npz: $(DIR_BUILD)/blender_mesh.blend $(DIR_BUILD)/mesh_blender.ply $(DIR_BUILD)/overlay_contours.npz $(DIR_SRC)/overlay_project.py $(DIR_BLENDER)/export_overlay_lines.py $(DIR_SRC)/overlay_crop.py
 	@echo "Cropping visible overlay lines: CONTOURS"
