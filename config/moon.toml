@@ -29,11 +29,12 @@ surface_color_url = "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_
 resize_width = 15000
 
 [modify_dem_stage2]
-blur = 0.1
+blur = 0.25
 
 [modify_surfacecolor]
 resize_width = 10000
 convert_uint8 = true
+contrast_grid_size = 4
 contrast_increase = 1.0
 
 [adjust_scene]
