@@ -36,6 +36,10 @@ class ProcessBlenderConfig(BaseModel):
     rotY: float = 0
     rotZ: float = 0
 
+    light_pos_x: float | None = 0.0
+    light_pos_y: float | None = 0.0
+    light_pos_z: float | None = 2.0
+
     light_axis_pos_x: float | None = None
     light_axis_pos_y: float | None = None
     light_axis_pos_z: float | None = None
@@ -45,6 +49,12 @@ class ProcessBlenderConfig(BaseModel):
     mixture: list[float] = [0.035, 0.06]
 
     contrast_increase: float | None = None
+
+    def model_post_init(self, __context):
+        # use light_pos values unless light_axis_pos is explicitly set in the config file
+        self.light_axis_pos_x = self.light_pos_x if self.light_axis_pos_x is None else self.light_axis_pos_x
+        self.light_axis_pos_y = self.light_pos_y if self.light_axis_pos_y is None else self.light_axis_pos_y
+        self.light_axis_pos_z = self.light_pos_z if self.light_axis_pos_z is None else self.light_axis_pos_z
 
 
 def _visualize(centers: np.ndarray, vectors: list[np.ndarray], points: list[np.ndarray], light_axis: np.array) -> pv.Plotter:
