@@ -23,9 +23,13 @@ class OverlayAxisConfig(BaseModel):
     rotZ: float = 0
     max_length_segment: float = 1e-3
 
-    axis_extent: float = 1.3
+    axis_extent: list[float] = [1.3, 1.3]
     dash_length: float = 0.02
     pause_length: float = 0.02
+
+    def model_post_init(self, __context):
+        if len(self.axis_extent) == 1:
+            self.axis_extent = [self.axis_extent[0], self.axis_extent[0]]
 
 
 if __name__ == "__main__":
@@ -51,7 +55,7 @@ if __name__ == "__main__":
     # CREATE AXIS
 
     # shapely's segmentize uses GEOS, which fails on LineStrings that are parallel to the Z axis
-    zs = _segmentize_z(-config.axis_extent, config.axis_extent, config.max_length_segment)
+    zs = _segmentize_z(-config.axis_extent[0], config.axis_extent[1], config.max_length_segment)
     line_coords = np.zeros([zs.shape[0], 3])
     line_coords[:, 2] = zs
 
