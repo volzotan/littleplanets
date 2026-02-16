@@ -10,9 +10,13 @@ rotZ = -6.68 # axial tilt
 # light_angle_xy = 83.32
 # light_angle_z = 90
 
-light_axis_pos_x = 0.6
-light_axis_pos_y = 0.4
-light_axis_pos_z = 2.4
+#light_axis_pos_x = 0.6
+#light_axis_pos_y = 0.4
+#light_axis_pos_z = 2.4
+
+light_pos_x = 0.8
+light_pos_y = 0.6
+light_pos_z = 2.4
 
 colors = [[255, 255, 255]]
 layer_colors = [[245, 233, 94], [255, 255, 255]]
@@ -26,32 +30,25 @@ dem_url = "https://planetarymaps.usgs.gov/mosaic/Lunar_LRO_LOLA_Global_LDEM_118m
 surface_color_url = "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_poles.tif"
 
 [modify_dem_stage1]
+
 resize_width = 15000
 
 [modify_dem_stage2]
+
 blur = 0.25
 
 [modify_surfacecolor]
+
 resize_width = 10000
 convert_uint8 = true
 contrast_grid_size = 4
-contrast_increase = 1.0
+contrast_increase = 0.4
 
 [adjust_scene]
 
 horizontal_width = 2.4
 camera_focal_length = 50.0
-
-#light_pos_x = 0.4
-#light_pos_y = 0.4
-#light_pos_z = 3.0
-#light_size = 0.2
-#light_power = 100
-
-light_pos_x = 0.6
-light_pos_y = 0.4
-light_pos_z = 2.4
-light_size = 0.2
+light_size = 0.01
 light_power = 100
 
 [mesh]
@@ -73,7 +70,7 @@ grid_lines_lon = 8
 
 [overlay_axis]
 
-axis_extent = 1.22
+axis_extent = [1.17, 1.22]
 
 [overlay_contours]
 double_line_distance = 0.002
@@ -99,4 +96,5 @@ flowlines_line_distance_end_factor = 0.3
 flowlines_max_angle_discontinuity = 0.78 # pi/4
 
 [combine]
+
 smoothing_iterations = 0
