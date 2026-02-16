@@ -25,7 +25,7 @@ class ModifyTiffConfig(BaseModel):
     resize_width: int | None = None
     convert_uint8: bool = False
     contrast_increase: float | None = None
-    contrast_grid_size: int = 8
+    contrast_grid_size: int = 4
     blur: float | None = None  # kernel size as percentage of the longest side of the image
     floor: float | None = None
     ceil: float | None = None

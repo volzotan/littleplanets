@@ -371,4 +371,4 @@ def smooth_linestrings(linestrings: list[LineString], iterations: int = 5) -> li
     if iterations <= 0:
         return linestrings
 
-    return [chaikin_smooth(ls, iterations) for ls in linestrings if not ls.is_empty]
+    return [chaikin_smooth(ls, iterations) for ls in linestrings]

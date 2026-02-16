@@ -12,7 +12,7 @@ import shapely
 import shapely.ops
 from shapely.strtree import STRtree
 from pydantic import BaseModel, Field
-from shapely import LineString, MultiLineString, Geometry
+from shapely import LineString, MultiLineString, Polygon, Geometry
 from shapelysmooth import chaikin_smooth
 
 from loguru import logger
@@ -36,7 +36,7 @@ class CombineConfig(BaseModel):
     invert_background: bool = False
 
     # Blurring kernel size, percentage of raster size(float)
-    blur_color_kernel_size_perc: float = Field(0, ge=0)
+    blur_color_kernel_size: float = Field(0, ge=0)
 
     overlay_cutout_cut_distance: float = 1.5  # --cutout
     overlay_layering_cut_distance: float = 4.0  # --overlays
@@ -173,7 +173,7 @@ def _cut(objects: list[LineString], tools: list[Geometry], buffer_radius: float)
     return linestrings_cut
 
 
-def _cut_with_spatial_index(objects: list[LineString], stencil: Geometry) -> list[LineString]:
+def _cut_with_spatial_index(objects: list[LineString], stencil: Polygon) -> list[LineString]:
     linestrings_cut = []
 
     # Early exit if stencil is empty
@@ -254,7 +254,7 @@ def main() -> None:
     else:
         mapping_color = np.zeros(list(config.dimensions) + [1], dtype=np.uint8)
 
-    mapping_color = _blur_raster(mapping_color, config.blur_color_kernel_size_perc)
+    mapping_color = _blur_raster(mapping_color, config.blur_color_kernel_size)
 
     scaling_factor = config.dimensions[0] / mapping_background.shape[1]
     linestrings = []
@@ -320,6 +320,10 @@ def main() -> None:
     logger.debug(f"Overlay cascade stencil time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
 
     # smoothing
+
+    linestrings = [ls.simplify(0.01) for ls in linestrings]
+    linestrings = [ls.segmentize(0.01) for ls in linestrings]
+
     linestrings_contours = smooth_linestrings(linestrings_contours, config.smoothing_iterations)
     linestrings = smooth_linestrings(linestrings, config.smoothing_iterations)
 
