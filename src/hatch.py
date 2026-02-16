@@ -1,10 +1,8 @@
 import argparse
-import datetime
 import itertools
 import tomllib
 from pathlib import Path
 import math
-import random
 
 import cv2
 
@@ -18,7 +16,6 @@ from loguru import logger
 
 from util.misc import write_linestrings_to_npz
 from util import flowlines
-from svgwriter import SvgWriter
 
 DIR_DEBUG = Path("debug")
 
@@ -155,8 +152,7 @@ if __name__ == "__main__":
     # hatcher = flowlines.FlowlineHatcher(config.dimensions, flowlines_config, *mappings)
     hatcher = flowlines.FlowlineHatcher(config.dimensions, flowlines_config, *mappings, initial_seed_points=contour_points)
     linestrings: list[LineString] = hatcher.hatch()
-    linestrings = [shapely.simplify(l, 0.01) for l in linestrings]
 
-    print(f"num linestrings: {len(linestrings)}")
+    logger.debug(f"num linestrings: {len(linestrings)}")
 
     write_linestrings_to_npz(args.output, linestrings, include_z=False)

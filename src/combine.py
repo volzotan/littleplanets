@@ -321,8 +321,8 @@ def main() -> None:
 
     # smoothing
 
-    linestrings = [ls.simplify(0.01) for ls in linestrings]
     linestrings = [ls.segmentize(0.01) for ls in linestrings]
+    linestrings = [ls.simplify(0.01) for ls in linestrings]
 
     linestrings_contours = smooth_linestrings(linestrings_contours, config.smoothing_iterations)
     linestrings = smooth_linestrings(linestrings, config.smoothing_iterations)
