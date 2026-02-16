@@ -2,6 +2,7 @@ import argparse
 import datetime
 import math
 import os
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -45,6 +46,8 @@ class ProcessBlenderConfig(BaseModel):
     mixture: list[float] = [0.035, 0.06]
 
     contrast_increase: float | None = None
+
+    mode: int = 3
 
 
 def _visualize(centers: np.ndarray, vectors: list[np.ndarray], points: list[np.ndarray], light_axis: np.array) -> pv.Plotter:
@@ -176,8 +179,7 @@ def _apply_linear_transition(m: np.ndarray, min: float, max: float) -> np.ndarra
 
 
 def _segmentize(image: np.ndarray) -> np.ndarray:
-
-    algo = cv2.ximgproc.SLIC        # Standard SLIC
+    algo = cv2.ximgproc.SLIC  # Standard SLIC
     # algo = cv2.ximgproc.SLICO      # Zero-parameter SLIC
     # algo = cv2.ximgproc.MSLIC      # Multi-scale SLIC
 
@@ -195,6 +197,12 @@ def _segmentize(image: np.ndarray) -> np.ndarray:
     labels = slic.getLabels()
 
     return labels, mask
+
+
+def _float_to_uint8(a: np.ndarray) -> np.ndarray:
+    min_a = np.min(a[~np.isnan(a)])
+    ptp_a = np.ptp(a[~np.isnan(a)])
+    return (np.iinfo(np.uint8).max * ((a - min_a) / ptp_a)).astype(np.uint8)
 
 
 def main() -> None:
@@ -400,67 +408,75 @@ def main() -> None:
 
     # Mapping Line Length
 
-    # distance from pixel location to origin
-    img_distance = np.linalg.norm(img_pxpos, axis=-1)
-    img_distance = np.nan_to_num(img_distance)
+    img_distance = np.linalg.norm(img_pxpos, axis=-1) # distance from pixel location to origin
 
-    # print(np.min(img_distance), np.max(img_distance))
-    # cv2.imwrite(str("img_distance.png"), (img_distance * 255 / np.max(img_distance)).astype(np.uint8))
+    # 0) angle | Flatness
 
-    WINDOW_SIZE = 20
+    # dot product
+    img_pxpos_normalized = img_pxpos / np.linalg.norm(img_pxpos, axis=-1, keepdims=True)
+    img_normals_normalized = img_normals / np.linalg.norm(img_normals, axis=-1, keepdims=True)
+    cos_angle = np.sum(img_pxpos_normalized * img_normals_normalized, axis=-1)
+    cos_angle = np.clip(cos_angle, -1, 1)  # handle numerical errors
+
+    img_angle = np.arccos(cos_angle)
+    mapping_line_length = _float_to_uint8(img_angle)
+
+    cv2.imwrite(str(args.output / "mapping_line_length_0_0.png"), mapping_line_length)
+    cv2.imwrite(str(args.output / "mapping_line_length_0_1.png"), ~mapping_line_length)
+
+    # 1) win var inverted | Roughness / rate of change of terrain
+
+    WINDOW_SIZE = 10
     MAX_WIN_VAR = 1e-6
-    win_mean = ndimage.uniform_filter(img_distance, (WINDOW_SIZE, WINDOW_SIZE))
-    win_sqr_mean = ndimage.uniform_filter(img_distance**2, (WINDOW_SIZE, WINDOW_SIZE))
+    img_dist = np.nan_to_num(img_distance)
+    win_mean = ndimage.uniform_filter(img_dist, (WINDOW_SIZE, WINDOW_SIZE))
+    win_sqr_mean = ndimage.uniform_filter(img_dist**2, (WINDOW_SIZE, WINDOW_SIZE))
     win_var = win_sqr_mean - win_mean**2
 
     win_var = np.clip(win_var, 0, MAX_WIN_VAR)
     win_var = win_var * -1 + MAX_WIN_VAR
 
-    mapping_line_length = (np.iinfo(np.uint8).max * ((win_var - np.min(win_var)) / np.ptp(win_var))).astype(np.uint8)
+    mapping_line_length = _float_to_uint8(win_var)
 
+    cv2.imwrite(str(args.output / "mapping_line_length_1_0.png"), mapping_line_length)
+    cv2.imwrite(str(args.output / "mapping_line_length_1_1.png"), ~mapping_line_length)
 
-
-
-
-
-
-
-    # ALTERNATIVE
-
-    # 1) win var inverted
-
-    # WINDOW_SIZE = 10
-    # MAX_WIN_VAR = 1e-6
-    # win_mean = ndimage.uniform_filter(img_distance, (WINDOW_SIZE, WINDOW_SIZE))
-    # win_sqr_mean = ndimage.uniform_filter(img_distance**2, (WINDOW_SIZE, WINDOW_SIZE))
-    # win_var = win_sqr_mean - win_mean**2
-    #
-    # win_var = np.clip(win_var, 0, MAX_WIN_VAR)
-    # win_var = win_var * -1 + MAX_WIN_VAR
-    #
-    # mapping_line_length_2 = (np.iinfo(np.uint8).max * ((win_var - np.min(win_var)) / np.ptp(win_var))).astype(np.uint8)
-    #
-    # cv2.imwrite(str(args.output / "mapping_line_length.png"), ~mapping_line_length_2)
-
-    # 2) line_distance
+    # 2) line_distance | Brightness
 
     bg_mask = ~np.isnan(np.sum(img_pxpos, axis=2))
 
     minval = np.percentile(mapping_distance[bg_mask], 10)
     maxval = np.percentile(mapping_distance[bg_mask], 100 - 3)
     mapping_distance2 = np.clip(mapping_distance, minval, maxval)
-    mapping_distance2 = (((mapping_distance2 - minval) / (maxval - minval)) * 255).astype(np.uint8)
+    mapping_distance2 = _float_to_uint8(mapping_distance2)
 
-    cv2.imwrite(str(args.output / "mapping_line_length.png"), mapping_distance2)
+    cv2.imwrite(str(args.output / "mapping_line_length_2_0.png"), mapping_distance2)
+    cv2.imwrite(str(args.output / "mapping_line_length_2_1.png"), ~mapping_distance2)
 
+    # 3) distance from origin | Altitude
 
+    mapping_line_length = _float_to_uint8(img_distance)
 
+    cv2.imwrite(str(args.output / "mapping_line_length_3_0.png"), mapping_line_length)
+    cv2.imwrite(str(args.output / "mapping_line_length_3_1.png"), ~mapping_line_length)
 
-
-
-
-
-
+    match config.mode:
+        case 0:
+            shutil.copyfile(args.output / "mapping_line_length_0_0.png", args.output / "mapping_line_length.png")
+        case 1:
+            shutil.copyfile(args.output / "mapping_line_length_0_1.png", args.output / "mapping_line_length.png")
+        case 2:
+            shutil.copyfile(args.output / "mapping_line_length_1_0.png", args.output / "mapping_line_length.png")
+        case 3:
+            shutil.copyfile(args.output / "mapping_line_length_1_1.png", args.output / "mapping_line_length.png")
+        case 4:
+            shutil.copyfile(args.output / "mapping_line_length_2_0.png", args.output / "mapping_line_length.png")
+        case 5:
+            shutil.copyfile(args.output / "mapping_line_length_2_1.png", args.output / "mapping_line_length.png")
+        case 6:
+            shutil.copyfile(args.output / "mapping_line_length_3_0.png", args.output / "mapping_line_length.png")
+        case 7:
+            shutil.copyfile(args.output / "mapping_line_length_3_1.png", args.output / "mapping_line_length.png")
 
 
     # Mapping Background
@@ -568,9 +584,6 @@ def main() -> None:
 
     print(f"total time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
 
-
-
-
     # Segmentation Experiment
 
     # labels, _ = _segmentize(img_normals)
@@ -581,8 +594,6 @@ def main() -> None:
     #     segmented_angles[mask] = avg
     #
     # cv2.imwrite(str(args.output / "mapping_angle.png"), export_angles(segmented_angles, adjust_y_axis=True))
-
-
 
 
 if __name__ == "__main__":
