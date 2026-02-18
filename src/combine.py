@@ -43,7 +43,8 @@ class CombineConfig(BaseModel):
 
     ignore_contours: bool = False
 
-    smoothing_iterations: int = Field(5, ge=0)
+    hatchlines_smoothing_iterations: int = Field(5, ge=0)
+    contours_smoothing_iterations: int = Field(5, ge=0)
 
 
 def _project_linestring(ls: LineString, P: np.ndarray, scaling_factor: float) -> LineString:
@@ -321,15 +322,12 @@ def main() -> None:
 
     # smoothing
 
+    linestrings_contours = smooth_linestrings(linestrings_contours, config.contours_smoothing_iterations)
+    linestrings_contours = list(itertools.chain.from_iterable([split_linestring(ls, SEGMENTIZE_MAX_LENGTH) for ls in linestrings_contours]))
+
     linestrings = [ls.segmentize(0.01) for ls in linestrings]
     linestrings = [ls.simplify(0.01) for ls in linestrings]
-
-    linestrings_contours = smooth_linestrings(linestrings_contours, config.smoothing_iterations)
-    linestrings = smooth_linestrings(linestrings, config.smoothing_iterations)
-
-    # merge contours with hatchlines (merge after cutting, so contours are not cut by the grid overlay)
-    linestrings_contours_split = itertools.chain.from_iterable([split_linestring(ls, SEGMENTIZE_MAX_LENGTH) for ls in linestrings_contours])
-    linestrings += linestrings_contours_split
+    linestrings = smooth_linestrings(linestrings, config.hatchlines_smoothing_iterations)
 
     # coloring
     palette = np.array(config.colors, dtype=int)
@@ -347,6 +345,14 @@ def main() -> None:
 
     for i, color in enumerate(palette):
         layer_styles[f"lines_{i}"] = {
+            "fill": "none",
+            "stroke": f"rgb({color[0]},{color[1]},{color[2]})",
+            "stroke-width": "0.30",
+            "fill-opacity": "1.0",
+        }
+
+    for i, color in enumerate(palette):
+        layer_styles[f"contours_{i}"] = {
             "fill": "none",
             "stroke": f"rgb({color[0]},{color[1]},{color[2]})",
             "stroke-width": "0.30",
@@ -385,25 +391,25 @@ def main() -> None:
     offset_frame = 10
     width, height = config.dimensions
 
-    # linestrings_frame = [
-    #     LineString([[0, height - frame_length], [0, height], [frame_length, height]]),
-    #     LineString([[width - frame_length, height], [width, height], [width, height - frame_length]]),
-    #     LineString([[width, frame_length], [width, 0], [width - frame_length, 0]]),
-    #     LineString([[frame_length, 0], [0, 0], [0, frame_length]]),
-    #     LineString([[width / 2 - frame_length / 2, 0], [width / 2 + frame_length / 2, 0]]),
-    #     LineString([[width / 2 - frame_length / 2, height], [width / 2 + frame_length / 2, height]]),
-    #     LineString([[0, height / 2 - frame_length / 2], [0, height / 2 + frame_length / 2]]),
-    #     LineString([[width, height / 2 - frame_length / 2], [width, height / 2 + frame_length / 2]]),
-    # ]
-
     linestrings_frame = [
-        LineString([[offset_frame, height], [frame_length, height]]),
-        LineString([[width - frame_length, height], [width - offset_frame, height]]),
-        LineString([[width - offset_frame, 0], [width - frame_length, 0]]),
-        LineString([[frame_length, 0], [offset_frame, 0]]),
+        LineString([[0, height - frame_length], [0, height], [frame_length, height]]),
+        LineString([[width - frame_length, height], [width, height], [width, height - frame_length]]),
+        LineString([[width, frame_length], [width, 0], [width - frame_length, 0]]),
+        LineString([[frame_length, 0], [0, 0], [0, frame_length]]),
         LineString([[width / 2 - frame_length / 2, 0], [width / 2 + frame_length / 2, 0]]),
         LineString([[width / 2 - frame_length / 2, height], [width / 2 + frame_length / 2, height]]),
+        LineString([[0, height / 2 - frame_length / 2], [0, height / 2 + frame_length / 2]]),
+        LineString([[width, height / 2 - frame_length / 2], [width, height / 2 + frame_length / 2]]),
     ]
+
+    # linestrings_frame = [
+    #     LineString([[offset_frame, height], [frame_length, height]]),
+    #     LineString([[width - frame_length, height], [width - offset_frame, height]]),
+    #     LineString([[width - offset_frame, 0], [width - frame_length, 0]]),
+    #     LineString([[frame_length, 0], [offset_frame, 0]]),
+    #     LineString([[width / 2 - frame_length / 2, 0], [width / 2 + frame_length / 2, 0]]),
+    #     LineString([[width / 2 - frame_length / 2, height], [width / 2 + frame_length / 2, height]]),
+    # ]
 
     layer_styles["frame"] = {
         "fill": "none",
@@ -421,6 +427,10 @@ def main() -> None:
     linestrings_palette = _match_linestrings_to_palette(linestrings, mapping_color, palette, scaling_factor)
     for i, colored_linestrings in enumerate(linestrings_palette):
         svg.add(f"lines_{i}", colored_linestrings)
+
+    linestrings_contours_palette = _match_linestrings_to_palette(linestrings_contours, mapping_color, palette, scaling_factor)
+    for i, colored_linestrings in enumerate(linestrings_contours_palette):
+        svg.add(f"contours_{i}", colored_linestrings)
 
     svg.write()
 
