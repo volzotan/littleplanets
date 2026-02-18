@@ -418,7 +418,7 @@ def main() -> None:
 
     # Mapping Line Length
 
-    img_distance = np.linalg.norm(img_pxpos, axis=-1) # distance from pixel location to origin
+    img_distance = np.linalg.norm(img_pxpos, axis=-1)  # distance from pixel location to origin
 
     # 0) angle | Flatness
 
@@ -487,7 +487,6 @@ def main() -> None:
             shutil.copyfile(args.output / "mapping_line_length_3_0.png", args.output / "mapping_line_length.png")
         case 7:
             shutil.copyfile(args.output / "mapping_line_length_3_1.png", args.output / "mapping_line_length.png")
-
 
     # Mapping Background
 
@@ -594,9 +593,6 @@ def main() -> None:
 
     print(f"total time: {(datetime.datetime.now() - timer_start).total_seconds():5.2f}s")
 
-
-
-
     # Segmentation Experiment
 
     # labels, _ = _segmentize(img_normals)
@@ -607,8 +603,6 @@ def main() -> None:
     #     segmented_angles[mask] = avg
     #
     # cv2.imwrite(str(args.output / "mapping_angle.png"), export_angles(segmented_angles, adjust_y_axis=True))
-
-
 
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@ MAX_SEGMENT_LENGTH = 10.0
 
 VISUALIZE = False
 
+
 class OverlayContoursConfig(BaseModel):
     double_line_distance: float | None = None
     shrink: float | None = None
@@ -66,7 +67,6 @@ def main() -> None:
         # new_coords[:, 2] = np.mean(new_coords[:, 2])
 
         if config.double_line_distance is not None:
-
             # Convert to spherical coordinates
             x, y, z = new_coords[:, 0], new_coords[:, 1], new_coords[:, 2]
             r = np.sqrt(x**2 + y**2 + z**2)

@@ -94,7 +94,6 @@ def calculate(image_color: np.ndarray, colors: list[list[int]], bg_mask: np.ndar
     error_s = np.abs(mapping_color_hsv[:, :, 1].astype(float) - mapping_palette_avg_hsv[:, :, 1].astype(float)) / 255
     error_v = np.abs(mapping_color_hsv[:, :, 2].astype(float) - mapping_palette_avg_hsv[:, :, 2].astype(float)) / 255
 
-
     return error_h, error_s, error_v, mapping_palette_preview_hsv
 
 
@@ -143,7 +142,7 @@ def main() -> None:
 
         # ignore S and V for now
 
-        combined_error = np.mean(error_h[fg_mask]) # + np.mean(error_s[fg_mask])
+        combined_error = np.mean(error_h[fg_mask])  # + np.mean(error_s[fg_mask])
 
         prefix = f"{i_c}_{'_'.join(color_names)}_"
         suffix = f"_{total_error:.4f}"
@@ -152,7 +151,6 @@ def main() -> None:
             debug_mapping = cv2.cvtColor(mapping_palette_preview_hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
             cv2.imwrite(str(DIR_DEBUG / (prefix + "palette_mapping_hsv_preview" + suffix + ".png")), debug_mapping)
             print("EXPORT")
-
 
         msg = "{:3d} | colors: {:<60s} ".format(i_c, " | ".join(color_names))
         msg += f""
