@@ -17,8 +17,6 @@ import matplotlib.pyplot as plt
 
 from util.misc import project_vectors_to_image_space, normalize_vectors, export_angles, rotate_vectors, normalize_vector
 
-CLIPPING = True
-CLIPPING_CUTOFF_PERCENTILE = 1.00
 
 MAGNITUDE_THRESHOLD = 0.06
 
@@ -50,6 +48,7 @@ class ProcessBlenderConfig(BaseModel):
     mixture: list[float] = [0.035, 0.06]
 
     contrast_increase: float | None = None
+    clipping_cutoff_percentile: float | None = 1.0
 
     mode: int = 3
 
@@ -573,9 +572,9 @@ def main() -> None:
     if args.debug:
         cv2.imwrite(str(dir_debug / "mapping_distance_noclip.png"), _apply_colormap(mapping_distance))
 
-    if CLIPPING:
-        minval = np.percentile(mapping_distance, CLIPPING_CUTOFF_PERCENTILE)
-        maxval = np.percentile(mapping_distance, 100 - CLIPPING_CUTOFF_PERCENTILE)
+    if config.clipping_cutoff_percentile is not None and config.clipping_cutoff_percentile > 0:
+        minval = np.percentile(mapping_distance, config.clipping_cutoff_percentile)
+        maxval = np.percentile(mapping_distance, 100 - config.clipping_cutoff_percentile)
         mapping_distance = np.clip(mapping_distance, minval, maxval)
         mapping_distance = (((mapping_distance - minval) / (maxval - minval)) * 255).astype(np.uint8)
 
