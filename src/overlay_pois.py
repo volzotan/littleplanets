@@ -24,6 +24,7 @@ class OverlayPoiConfig(BaseModel):
     rotY: float = 0
     rotZ: float = 0
     circle_radius: float = 0.02
+    double_circle_radius: float | None = 0.019
     font_size: float = 0.03
     ignore_paths: bool = False
 
@@ -143,9 +144,13 @@ def main() -> None:
             pass
         else:  # no path, draw simple circle
             radius = poi.get("circle_radius", config.circle_radius)
-            circle = Point([0, 0]).buffer(radius).boundary.segmentize(0.05)
-            linestrings += rotate_linestrings(_linestrings_add_z([circle]), *_latlon_to_rotation_angles(poi["lat"], poi["lon"]))
-            marker_geometry = circle
+            geoms = [Point([0, 0]).buffer(radius).boundary.segmentize(0.05)]
+
+            if config.double_circle_radius is not None:
+                geoms.append(Point([0, 0]).buffer(config.double_circle_radius).boundary.segmentize(0.05))
+
+            linestrings += rotate_linestrings(_linestrings_add_z(geoms), *_latlon_to_rotation_angles(poi["lat"], poi["lon"]))
+            # marker_geometry = geoms[0]
 
         if "name" in poi:
             # circular text
