@@ -83,9 +83,10 @@ VARIABLES = {
     # "process_blender|mode": [0, 3, 4, 6]
     # "hatch|flowlines_max_angle_discontinuity": [math.pi / 16, math.pi / 8, math.pi / 4, math.pi / 2, math.pi]
     # "hatch|flowlines_line_max_length": [[3, 25], [4, 25], [5, 25]],
-    "hatch|flowlines_line_distance_end_factor": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-    "hatch|flowlines_line_distance": [[0.6, 4.],[0.6, 6.],[0.6, 8.],[0.6, 10.],[0.6, 12.],[0.6, 14.]],
-    "process_blender|clipping_cutoff_percentile": [0.0, 0.1, 0.2, 0.3, 1.0, 2.0, 3.0, 4.0]
+    "hatch|flowlines_line_distance_end_factor": [0.1, 0.25, 0.5, 1.0],
+    "hatch|flowlines_line_distance": [[0.6, 4.], [0.6, 8.], [0.6, 12.], [0.6, 16.]],
+    "process_blender|clip_lower_percentile": [0.0, 0.1, 0.5, 1.0, 2.5, 5.0],
+    "process_blender|clip_upper_percentile": [95.0, 97.5, 99.0, 99.5, 99.9, 100.0]
 }
 
 

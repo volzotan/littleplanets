@@ -48,7 +48,8 @@ class ProcessBlenderConfig(BaseModel):
     mixture: list[float] = [0.035, 0.06]
 
     contrast_increase: float | None = None
-    clipping_cutoff_percentile: float | None = 1.0
+    clip_lower_percentile : float = Field(default=0, ge=0, lt=100)
+    clip_upper_percentile : float = Field(default=100, gt=0, le=100)
 
     mode: int = 3
 
@@ -572,11 +573,8 @@ def main() -> None:
     if args.debug:
         cv2.imwrite(str(dir_debug / "mapping_distance_noclip.png"), _apply_colormap(mapping_distance))
 
-    if config.clipping_cutoff_percentile is not None and config.clipping_cutoff_percentile > 0:
-        minval = np.percentile(mapping_distance, config.clipping_cutoff_percentile)
-        maxval = np.percentile(mapping_distance, 100 - config.clipping_cutoff_percentile)
-        mapping_distance = np.clip(mapping_distance, minval, maxval)
-        mapping_distance = (((mapping_distance - minval) / (maxval - minval)) * 255).astype(np.uint8)
+    mapping_distance = np.clip(mapping_distance, config.clip_lower_percentile, config.clip_upper_percentile)
+    mapping_distance = (((mapping_distance - minval) / (maxval - minval)) * 255).astype(np.uint8)
 
     if args.debug:
         cv2.imwrite(str(dir_debug / "mapping_distance_clip.png"), _apply_colormap(mapping_distance))
