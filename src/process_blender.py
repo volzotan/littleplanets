@@ -581,7 +581,7 @@ def main() -> None:
     maxval = np.max(mapping_distance[bg_mask])
 
     minval = minval + np.ptp(mapping_distance[bg_mask]) * (config.clip_lower_percent_range / 100.0) if config.clip_lower_percent_range > 0 else 0
-    maxval = maxval - np.ptp(mapping_distance[bg_mask]) * (config.clip_lower_percent_range / 100.0) if config.clip_lower_percent_range < 100 else 255
+    maxval = maxval - np.ptp(mapping_distance[bg_mask]) * (config.clip_upper_percent_range / 100.0) if config.clip_upper_percent_range < 100 else 255
 
     mapping_distance = np.clip(mapping_distance, minval, maxval)
     mapping_distance = ((mapping_distance - minval) / (maxval-minval) * 255).astype(np.uint8)
