@@ -573,7 +573,9 @@ def main() -> None:
     if args.debug:
         cv2.imwrite(str(dir_debug / "mapping_distance_noclip.png"), _apply_colormap(mapping_distance))
 
-    mapping_distance = np.clip(mapping_distance, config.clip_lower_percentile, config.clip_upper_percentile)
+    minval = np.percentile(mapping_distance, config.clip_lower_percentile)
+    maxval = np.percentile(mapping_distance, config.clip_upper_percentile)
+    mapping_distance = np.clip(mapping_distance, minval, maxval)
     mapping_distance = (((mapping_distance - minval) / (maxval - minval)) * 255).astype(np.uint8)
 
     if args.debug:
