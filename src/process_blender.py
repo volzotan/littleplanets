@@ -48,8 +48,10 @@ class ProcessBlenderConfig(BaseModel):
     mixture: list[float] = [0.035, 0.06]
 
     contrast_increase: float | None = None
-    clip_lower_percentile : float = Field(default=0, ge=0, lt=100)
-    clip_upper_percentile : float = Field(default=100, gt=0, le=100)
+
+    # given the full range of the image, how much percent of this range should be clipped (i.e. [10, 210], 10%, 90% => clipping at [30, 190])
+    clip_lower_percent_range : float = Field(default=0, ge=0, lt=100)
+    clip_upper_percent_range : float = Field(default=0, gt=0, le=100)
 
     mode: int = 3
 
@@ -573,10 +575,16 @@ def main() -> None:
     if args.debug:
         cv2.imwrite(str(dir_debug / "mapping_distance_noclip.png"), _apply_colormap(mapping_distance))
 
-    minval = np.percentile(mapping_distance, config.clip_lower_percentile)
-    maxval = np.percentile(mapping_distance, config.clip_upper_percentile)
+    bg_mask = ~np.isnan(np.sum(img_pxpos, axis=2))
+
+    minval = np.min(mapping_distance[bg_mask])
+    maxval = np.max(mapping_distance[bg_mask])
+
+    minval = minval + np.ptp(mapping_distance[bg_mask]) * (config.clip_lower_percent_range / 100.0) if config.clip_lower_percent_range > 0 else 0
+    maxval = maxval - np.ptp(mapping_distance[bg_mask]) * (config.clip_lower_percent_range / 100.0) if config.clip_lower_percent_range < 100 else 255
+
     mapping_distance = np.clip(mapping_distance, minval, maxval)
-    mapping_distance = (((mapping_distance - minval) / (maxval - minval)) * 255).astype(np.uint8)
+    mapping_distance = ((mapping_distance - minval) / (maxval-minval) * 255).astype(np.uint8)
 
     if args.debug:
         cv2.imwrite(str(dir_debug / "mapping_distance_clip.png"), _apply_colormap(mapping_distance))
