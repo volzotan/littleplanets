@@ -8,6 +8,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
 from pathlib import Path
 from typing import Any
+from itertools import product
 
 import tomllib
 import toml
@@ -181,6 +182,19 @@ def rec_looping(variables: dict[str, list[Any]], config_override: dict[str, Any]
         return [config_override]
 
 
+def expand_tuple_combinations(values: list[Any]) -> list[Any]:
+    """expand tuple variables from [[1, 10], [2, 20]] to [[1, 10], [1, 20], [2, 10], [2, 20]]"""
+
+    if values and isinstance(values[0], (list, tuple)) and len(values[0]) > 1:
+        tuple_values = [tuple(v) for v in values]
+        positions = list(zip(*tuple_values))  # [[1, 2, 3], [10, 20, 30]]
+        unique_positions = [list(set(pos)) for pos in positions]
+        expanded_values = list(product(*unique_positions))  # cartesian product
+        return [list(combo) for combo in expanded_values]
+    else:
+        return values
+
+
 def worker_init() -> None:
     build_dir = worker_get_build_dir()
     logger.info(f"worker init {build_dir}")
@@ -209,7 +223,14 @@ def main() -> None:
     with open(FILE_CONFIG_BASE, "rb") as f:
         base_config = tomllib.load(f)
 
-    overrides = [{**base_config, **override} for override in rec_looping(VARIABLES)]
+    expanded_variables = {}
+    for key, value in VARIABLES.items():
+        if key.endswith("*"):
+            expanded_variables[key[:-1]] = expand_tuple_combinations(value)
+        else:
+            expanded_variables[key] = value
+
+    overrides = [{**base_config, **override} for override in rec_looping(expanded_variables)]
 
     completed_experiments = 0
     with ProcessPoolExecutor(max_workers=NUM_WORKERS, initializer=worker_init) as executor:
