@@ -80,6 +80,7 @@ double_line_distance = 0.0015
 
 mixture = [0.04, 0.20]
 contrast_increase = 0.5
+clip_lower_percent_range = 1.0
 
 [palette]
 
