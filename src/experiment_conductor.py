@@ -188,7 +188,7 @@ def worker_init() -> None:
 
     if DIR_BUILD_BASE is not None and DIR_BUILD_BASE.exists():
         subprocess.run(
-            ["rsync", "-av", "--verbose", str(DIR_BUILD_BASE) + "/", str(build_dir) + "/"],
+            ["rsync", "-av", "--verbose", "--exclude", "*.blend", str(DIR_BUILD_BASE) + "/", str(build_dir) + "/"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=True,
