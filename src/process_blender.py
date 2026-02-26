@@ -584,7 +584,7 @@ def main() -> None:
     maxval = min_dist + range_dist * (config.clip_upper_percent_range / 100.0) if config.clip_upper_percent_range < 100 else 255
 
     mapping_distance = np.clip(mapping_distance, minval, maxval)
-    mapping_distance = ((mapping_distance - minval) / (maxval-minval) * 255).astype(np.uint8)
+    mapping_distance = ((mapping_distance - minval) / (maxval - minval) * 255).astype(np.uint8)
 
     if args.debug:
         cv2.imwrite(str(dir_debug / "mapping_distance_clip.png"), _apply_colormap(mapping_distance))

@@ -323,6 +323,7 @@ def main() -> None:
     # smoothing
 
     linestrings_contours = smooth_linestrings(linestrings_contours, config.contours_smoothing_iterations)
+    linestrings_contours = [ls for ls in linestrings_contours if not ls.is_empty]
     linestrings_contours = list(itertools.chain.from_iterable([split_linestring(ls, SEGMENTIZE_MAX_LENGTH) for ls in linestrings_contours]))
 
     linestrings = [ls.segmentize(0.01) for ls in linestrings]

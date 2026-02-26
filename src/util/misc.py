@@ -8,6 +8,7 @@ from shapely.ops import transform
 import pyvista as pv
 from shapelysmooth import chaikin_smooth
 
+from loguru import logger
 
 def linestring_to_coordinate_pairs(linestring: LineString) -> list[list[tuple[float]]]:
     pairs = []
@@ -87,7 +88,12 @@ def dash_linestring(linestring: LineString, dash_length: float, pause_length: fl
 
 
 def split_linestring(ls: LineString, max_length: float) -> list[LineString]:
-    ls = shapely.segmentize(ls, max_length)
+
+    try:
+        ls = shapely.segmentize(ls, max_length)
+    except shapely.errors.GEOSException as e:
+        logger.warning(f"error during segmentize(): {e}")
+
     coords = list(ls.coords)
 
     split_ls = []
