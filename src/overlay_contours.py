@@ -16,7 +16,7 @@ MAX_SEGMENT_LENGTH = 10.0
 
 class OverlayContoursConfig(BaseModel):
     double_line_distance: float | None = None
-    shrink: float | None = None
+    offset: float | None = None
     simplify: float | None = None
 
 
@@ -76,9 +76,6 @@ def main() -> None:
 
     polygons_silhouette = [p.segmentize(MAX_SEGMENT_LENGTH) for p in polygons_silhouette]
 
-    if config_contours.shrink is not None and config_contours.shrink > 0:
-        polygons_silhouette = [p.buffer(-config_contours.shrink) for p in polygons_silhouette]
-
     if config_contours.simplify is not None and config_contours.simplify > 0:
         polygons_silhouette = [p.simplify(config_contours.simplify) for p in polygons_silhouette]
 
@@ -103,6 +100,12 @@ def main() -> None:
         dist = (mean_z - camera_pos[2]) / (new_coords[:, 2] - camera_pos[2])
         dist = dist.reshape(-1, 1)  # Reshape for broadcasting
         new_coords = camera_pos + dist * vectors
+
+        if config_contours.offset is not None and config_contours.offset != 0:
+            center = np.array([0, 0, mean_z])
+            vectors = new_coords - center
+            vectors_norm = vectors / np.linalg.norm(vectors, axis=1)[:, np.newaxis]
+            new_coords = center + vectors + (vectors_norm * config_contours.offset)
 
         if config_contours.double_line_distance is not None:
             # Convert to spherical coordinates
