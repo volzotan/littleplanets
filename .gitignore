@@ -25,5 +25,5 @@ debug/
 *.png
 *.blend1
 
-experiment_output/
+experiment_*/
 REFERENCE_ART/
