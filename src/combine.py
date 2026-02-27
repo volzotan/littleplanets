@@ -46,6 +46,8 @@ class CombineConfig(BaseModel):
     hatchlines_smoothing_iterations: int = Field(5, ge=0)
     contours_smoothing_iterations: int = Field(5, ge=0)
 
+    visualization_stroke_width: float = 0.3
+
 
 def _project_linestring(ls: LineString, P: np.ndarray, scaling_factor: float) -> LineString:
     xyz = shapely.get_coordinates(ls, include_z=True)
@@ -348,7 +350,7 @@ def main() -> None:
         layer_styles[f"lines_{i}"] = {
             "fill": "none",
             "stroke": f"rgb({color[0]},{color[1]},{color[2]})",
-            "stroke-width": "0.30",
+            "stroke-width": str(config.visualization_stroke_width),
             "fill-opacity": "1.0",
         }
 
@@ -356,7 +358,7 @@ def main() -> None:
         layer_styles[f"contours_{i}"] = {
             "fill": "none",
             "stroke": f"rgb({color[0]},{color[1]},{color[2]})",
-            "stroke-width": "0.30",
+            "stroke-width": str(config.visualization_stroke_width),
             "fill-opacity": "1.0",
         }
 
@@ -367,7 +369,7 @@ def main() -> None:
             layer_styles[f"overlay_{io}"] = {
                 "fill": "none",
                 "stroke": f"rgb({overlay_color[0]},{overlay_color[1]},{overlay_color[2]})",
-                "stroke-width": "0.30",
+                "stroke-width": str(config.visualization_stroke_width),
                 "fill-opacity": "1.0",
             }
 
@@ -377,7 +379,7 @@ def main() -> None:
                 layer_styles[f"overlay_color_{ic}"] = {
                     "fill": "none",
                     "stroke": f"rgb({color[0]},{color[1]},{color[2]})",
-                    "stroke-width": "0.30",
+                    "stroke-width": str(config.visualization_stroke_width),
                     "fill-opacity": "1.0",
                 }
 
