@@ -20,11 +20,6 @@ class OverlayContoursConfig(BaseModel):
     simplify: float | None = None
 
 
-class AdjustSceneConfig(BaseModel):
-    horizontal_width: float = 2.2
-    camera_focal_length: float = 50
-
-
 def _calculate_z_distance_circle(focal_length: float, radius: float, sensor_size: float = 36.0) -> float:
     """duplicated code from blender/adjust_scene.py"""
     fov = 2 * math.atan(sensor_size / (2 * focal_length))
@@ -39,27 +34,28 @@ def _calculate_z_distance_circle(focal_length: float, radius: float, sensor_size
     return (tangent_point_x - tangent_point_y / tangent_slope) * -1
 
 
+def _extract_camera_world_position_from_projection_matrix(P: np.ndarray) -> tuple[float, float, float]:
+    _, _, Vt = np.linalg.svd(P)
+    C_homogeneous = Vt[-1]
+    C = C_homogeneous[:3] / C_homogeneous[3]
+    return C.tolist()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("raytrace", type=Path, help="Raytracing distance raster (NPY)")
     parser.add_argument("--output", type=Path, default="overlay.npz", help="Output filename (NPZ)")
-    parser.add_argument("--config-contours", type=Path, help="Configuration file (TOML)")
-    parser.add_argument("--config-scene", type=Path, help="Configuration file (TOML)")
+    parser.add_argument("--projection-matrix", type=Path, default=None, help="3x4 projection matrix (NPY)")
+    parser.add_argument("--config", type=Path, help="Configuration file (TOML)")
     parser.add_argument("--visualize", action="store_true", help="Display interactive visualization")
 
     args = parser.parse_args()
 
-    config_contours = OverlayContoursConfig()
-    if args.config_contours is not None:
-        with open(args.config_contours, "r") as f:
+    config = OverlayContoursConfig()
+    if args.config is not None:
+        with open(args.config, "r") as f:
             data = toml.load(f)
-            config_contours = OverlayContoursConfig.model_validate(data)
-
-    config_scene = OverlayContoursConfig()
-    if args.config_scene is not None:
-        with open(args.config_scene, "r") as f:
-            data = toml.load(f)
-            config_scene = AdjustSceneConfig.model_validate(data)
+            config = OverlayContoursConfig.model_validate(data)
 
     img_pxpos = np.load(args.raytrace)
 
@@ -76,15 +72,18 @@ def main() -> None:
 
     polygons_silhouette = [p.segmentize(MAX_SEGMENT_LENGTH) for p in polygons_silhouette]
 
-    if config_contours.simplify is not None and config_contours.simplify > 0:
-        polygons_silhouette = [p.simplify(config_contours.simplify) for p in polygons_silhouette]
+    if config.simplify is not None and config.simplify > 0:
+        polygons_silhouette = [p.simplify(config.simplify) for p in polygons_silhouette]
 
     linestrings = [LineString(p.exterior.coords) for p in polygons_silhouette]
 
     # 2D TO 3D
 
-    camera_z = _calculate_z_distance_circle(config_scene.camera_focal_length, config_scene.horizontal_width / 2)
-    camera_pos = np.array([0.0, 0.0, camera_z])
+    # camera_z = _calculate_z_distance_circle(config_scene.camera_focal_length, config_scene.horizontal_width / 2)
+    # camera_pos = np.array([0.0, 0.0, camera_z])
+
+    P = np.load(args.projection_matrix)
+    camera_pos = _extract_camera_world_position_from_projection_matrix(P)
 
     linestrings_3d = []
     for ls in linestrings:
@@ -101,20 +100,20 @@ def main() -> None:
         dist = dist.reshape(-1, 1)  # Reshape for broadcasting
         new_coords = camera_pos + dist * vectors
 
-        if config_contours.offset is not None and config_contours.offset != 0:
+        if config.offset is not None and config.offset != 0:
             center = np.array([0, 0, mean_z])
             vectors = new_coords - center
             vectors_norm = vectors / np.linalg.norm(vectors, axis=1)[:, np.newaxis]
-            new_coords = center + vectors + (vectors_norm * config_contours.offset)
+            new_coords = center + vectors + (vectors_norm * config.offset)
 
-        if config_contours.double_line_distance is not None:
+        if config.double_line_distance is not None:
             # Convert to spherical coordinates
             x, y, z = new_coords[:, 0], new_coords[:, 1], new_coords[:, 2]
             r = np.sqrt(x**2 + y**2 + z**2)
             theta = np.arctan2(y, x)
             phi = np.arccos(z / r)
 
-            r += config_contours.double_line_distance
+            r += config.double_line_distance
 
             # Convert to Euclidean coordinates
             x_new = r * np.sin(phi) * np.cos(theta)
