@@ -24,11 +24,16 @@ class ModifyTiffConfig(BaseModel):
     # scaling_factor: float | None = None
     resize_width: int | None = None
     convert_uint8: bool = False
+
+    contrast_stretching: list[float] | None = None  # [lower_value, upper_value]
+
     contrast_increase: float | None = None
     contrast_grid_size: int = 4
+
     blur: float | None = None  # kernel size as percentage of the longest side of the image
     floor: float | None = None
     ceil: float | None = None
+
     threshold: float | None = None
 
 
@@ -77,6 +82,13 @@ def _write(output_path: Path, data: np.ndarray, options: dict[str, Any] = {}) ->
 
 def _clip(data: np.ndarray, floor: float | None, ceil: float | None) -> np.ndarray:
     return np.clip(data, floor, ceil).astype(data.dtype)
+
+
+def _contrast_stretch(data: np.ndarray, src_range: list[float], target_range: list[float] = [0.0, 255.0]) -> np.ndarray:
+    clipped = np.clip(data, src_range[0], src_range[1])
+    normalized = (clipped - src_range[0]) / (src_range[1] - src_range[0])
+    stretched = normalized * (target_range[1] - target_range[0]) + target_range[0]
+    return stretched.astype(data.dtype)
 
 
 def main() -> None:
@@ -136,6 +148,9 @@ def main() -> None:
 
         data = cv2.resize(data, new_size, interpolation=cv2.INTER_AREA).astype(data.dtype)
         options["transform"] = data_transform * data_transform.scale(1 / scaling_factor, 1 / scaling_factor)
+
+    if config.contrast_stretching is not None:
+        data = _contrast_stretch(data, config.contrast_stretching)
 
     if config.contrast_increase is not None and config.contrast_increase > 0:
         clahe = cv2.createCLAHE(clipLimit=config.contrast_increase, tileGridSize=(config.contrast_grid_size, config.contrast_grid_size))
