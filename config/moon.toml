@@ -49,7 +49,7 @@ contrast_increase = 0.4
 horizontal_width = 2.4
 camera_focal_length = 50.0
 light_size = 0.01
-light_power = 100
+light_power = 200
 
 [mesh]
 
