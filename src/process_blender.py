@@ -50,8 +50,8 @@ class ProcessBlenderConfig(BaseModel):
     contrast_increase: float | None = None
 
     # given the full range of the image, how much percent of this range should be clipped (i.e. [10, 210], 10%, 90% => clipping at [30, 190])
-    clip_lower_percent_range : float = Field(default=0, ge=0, lt=100)
-    clip_upper_percent_range : float = Field(default=100, gt=0, le=100)
+    clip_lower_percent_range: float = Field(default=0, ge=0, lt=100)
+    clip_upper_percent_range: float = Field(default=100, gt=0, le=100)
 
     mode: int = 3
 
