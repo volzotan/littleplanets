@@ -46,7 +46,7 @@ class CombineConfig(BaseModel):
     hatchlines_smoothing_iterations: int = Field(5, ge=0)
     contours_smoothing_iterations: int = Field(5, ge=0)
 
-    visualization_stroke_width: float = 0.3
+    visualization_stroke_width: float = 0.5
 
 
 def _project_linestring(ls: LineString, P: np.ndarray, scaling_factor: float) -> LineString:

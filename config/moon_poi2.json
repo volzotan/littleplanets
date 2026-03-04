@@ -1,0 +1,10 @@
+[
+  {"name":"Mare Tranquillitatis","label_lat":8.35,"label_lon":30.83,"label_angle":-1},
+  {"name":"Mare Imbrium","label_lat":34.72,"label_lon":-14.91,"label_angle":-1},
+  {"name":"Mare Insularum","label_lat":7.79,"label_lon":-30.64,"label_angle":-1},
+  {"name":"Mare Cognitum","label_lat":-10.53,"label_lon":-22.31,"label_angle":-1},
+  {"name":"Mare Serenitatis","label_lat":27.29,"label_lon":18.36,"label_angle":-1},
+  {"name":"Mare Nubium","label_lat":-20.59,"label_lon":-17.29,"label_angle":-1},
+  {"name":"Mare Fecunditatis","label_lat":-7.83,"label_lon":49.0,"label_angle":-1},
+  {"name":"Mare Nectaris","label_lat":-15.19,"label_lon":34.6,"label_angle":-1}
+]
