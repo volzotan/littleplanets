@@ -145,7 +145,9 @@ for lines in overlay_npz.values():
 
 # Save & Quit
 
-np.savez(args.output, *visibility_list)
+# pass on a file-like object, not a path, to prevent numpy from appending ".npz" to the filename
+with open(args.output, "wb") as f:
+    np.savez(f, *visibility_list)
 
 layer_collection = find_layer_collection(bpy.context.view_layer.layer_collection, collection_name)
 if layer_collection:

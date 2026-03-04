@@ -142,7 +142,8 @@ def main() -> None:
 
         elif "path" in poi and config.ignore_paths:
             pass
-        else:  # no path, draw simple circle
+
+        elif "lat" in poi and "lon" in poi:  # no path, draw simple circle
             radius = poi.get("circle_radius", config.circle_radius)
             geoms = [Point([0, 0]).buffer(radius).boundary.segmentize(0.05)]
 
@@ -151,6 +152,9 @@ def main() -> None:
 
             linestrings += rotate_linestrings(_linestrings_add_z(geoms), *_latlon_to_rotation_angles(poi["lat"], poi["lon"]))
             # marker_geometry = geoms[0]
+
+        else:
+            pass
 
         if "name" in poi:
             # circular text
@@ -172,9 +176,13 @@ def main() -> None:
 
             x = 0
             y = 0
-            if math.isclose(angle, 0):
+
+            if angle < 0:  # center
+                x = -center_x
+                y = offset_y
+            elif math.isclose(angle, 0):
                 x = offset_x
-            if math.isclose(angle, 90):
+            elif math.isclose(angle, 90):
                 x = -center_x
                 y = offset_y
             elif math.isclose(angle, 270):

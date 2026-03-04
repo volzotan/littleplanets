@@ -22,7 +22,10 @@ def linestring_to_coordinate_pairs(linestring: LineString) -> list[list[tuple[fl
 
 def write_linestrings_to_npz(filename: Path, linestrings: list[LineString], include_z=True) -> None:
     arrays = [shapely.get_coordinates(l, include_z=include_z) for l in linestrings]
-    np.savez(filename, *arrays)
+
+    # pass on a file-like object, not a path, to prevent numpy from appending ".npz" to the filename
+    with open(filename, "wb") as f:
+        np.savez(f, *arrays)
 
 
 def _linestring_z_length(line: LineString) -> float:

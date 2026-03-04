@@ -19,7 +19,7 @@ light_pos_y = 0.6
 light_pos_z = 3.0
 
 colors = [[255, 255, 255]]
-layer_colors = [[245, 233, 94], [255, 255, 255]]
+layer_colors = [[245, 233, 94], [255, 255, 255], [255, 255, 255]]
 invert_background = true
 
 dimensions = [698, 698]
