@@ -14,12 +14,12 @@ from shapely import MultiLineString, LineString, Point
 
 from src.util.misc import linestring_to_coordinate_pairs
 
-DEFAULT_MAX_LENGTH_SEGMENT = 20  # in m
+DEFAULT_MAX_LENGTH_SEGMENT = 4 # 20  # in m
 
 OFFSET = [0, 0]
 
 TRAVEL_SPEED = 6000
-WRITE_SPEED = 3000
+WRITE_SPEED = 1000
 PEN_LIFT_SPEED = 5000
 PEN_DIP_SPEED = 500
 
@@ -31,7 +31,7 @@ WAIT_INIT = 5000
 
 DIP_LOCATION = [0, -20]  # Dip mode 1: reservoir placed at dip location
 DIP_LOCATION = [-20, None]  # Dip mode 2: reservoir mounted on X gantry
-DIP_DISTANCE = 200
+DIP_DISTANCE = 180
 
 CMD_MOVE = "G1 X{0:.3f} Y{1:.3f}\n"
 CMD_MOVE_X = "G1 X{0:.3f}\n"
@@ -183,6 +183,29 @@ def filter_linestrings(g: shapely.Geometry) -> list[LineString]:
         case _:
             print(f"cropping: unexpected shapely geometry: {type(g)}")
             return []
+
+
+def _dip_pen(out: Any) -> None:
+
+    out.write(CMD_PEN_DIP_UP)
+    out.write(f"G1 F{TRAVEL_SPEED}\n")
+
+    match DIP_LOCATION:
+        case None, None:
+            raise Exception(f"invalid DIP_LOCATION {DIP_LOCATION}")
+        case None, dip_y:
+            out.write(CMD_MOVE_Y.format(dip_y))
+        case dip_x, None:
+            out.write(CMD_MOVE_X.format(dip_x))
+        case dip_x, dip_y:
+            out.write(CMD_MOVE.format(dip_x, dip_y))
+
+    out.write(CMD_PEN_DIP_DOWN)
+    out.write(CMD_PEN_DIP_UP)
+    out.write(CMD_PEN_DIP_DOWN)
+    out.write(CMD_PEN_DIP_UP)
+
+    out.write(f"G1 F{TRAVEL_SPEED}\n")
 
 
 def main() -> None:
@@ -540,6 +563,12 @@ def main() -> None:
             count_pen_up += 1
             number_lines = len(segment)
 
+            if args.dip_mode: # initial dip
+                _dip_pen(out)
+                state_pen_up = True
+                count_pen_up += 1
+                count_dip_moves += 1
+
             for i in range(0, number_lines):
                 line = segment[i]
                 line_next = None
@@ -591,28 +620,10 @@ def main() -> None:
                 if args.dip_mode and distance_travelled > DIP_DISTANCE:
                     distance_travelled = 0
 
-                    out.write(CMD_PEN_DIP_UP)
+                    _dip_pen(out)
                     state_pen_up = True
                     count_pen_up += 1
-
-                    out.write(f"G1 F{TRAVEL_SPEED}\n")
-
-                    match DIP_LOCATION:
-                        case None, None:
-                            raise Exception(f"invalid DIP_LOCATION {DIP_LOCATION}")
-                        case None, dip_y:
-                            out.write(CMD_MOVE_Y.format(dip_y))
-                        case dip_x, None:
-                            out.write(CMD_MOVE_X.format(dip_x))
-                        case dip_x, dip_y:
-                            out.write(CMD_MOVE.format(dip_x, dip_y))
-
-                    out.write(CMD_PEN_DIP_DOWN)
-                    out.write(CMD_PEN_DIP_UP)
-
                     count_dip_moves += 1
-
-                    out.write(f"G1 F{TRAVEL_SPEED}\n")
 
             out.write(CMD_PEN_UP)
             out.write(f"G1 F{TRAVEL_SPEED}\n")
