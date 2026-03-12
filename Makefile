@@ -318,6 +318,24 @@ run_no_overlays: $(DIR_SRC)/combine.py
 	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=$(OUTPUT_PNG) --export-width=2000 --export-background=#000000
 
 
+run_no_axis: $(DIR_BUILD)/mapping_color.npy $(DIR_BUILD)/mapping_background.png $(DIR_BUILD)/hatchlines.npz
+run_no_axis: $(POI_OUTPUTS) $(DIR_BUILD)/overlay_grid_cropped.npz $(DIR_BUILD)/overlay_axis_cropped.npz $(DIR_BUILD)/overlay_contours_cropped.npz $(DIR_BUILD)/projection_matrix.npy $(DIR_BUILD)/combine.toml
+run_no_axis: $(DIR_SRC)/combine.py
+	@echo "Combine"
+	uv run $(DIR_SRC)/combine.py									\
+		--mapping-color $(DIR_BUILD)/mapping_color.npy 				\
+		--mapping-background $(DIR_BUILD)/mapping_background.png 	\
+		--hatchlines $(DIR_BUILD)/hatchlines.npz					\
+		--cutouts $(DIR_BUILD)/overlay_grid_cropped.npz 			\
+		--overlays 													\
+			$(POI_OUTPUTS) 					                        \
+		--contours $(DIR_BUILD)/overlay_contours_cropped.npz		\
+		--projection-matrix $(DIR_BUILD)/projection_matrix.npy  	\
+		--config $(DIR_BUILD)/combine.toml 							\
+		--output $(DIR_BUILD)/littleplanets.svg
+	$(INKSCAPE_BIN) $(DIR_BUILD)/littleplanets.svg --export-filename=$(OUTPUT_PNG) --export-width=2000 --export-background=#000000
+
+
 # Postprocessing
 
 gcode: $(DIR_BUILD)/littleplanets.svg
