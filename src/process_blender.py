@@ -3,6 +3,7 @@ import datetime
 import math
 import os
 import shutil
+from enum import Enum
 from pathlib import Path
 
 import numpy as np
@@ -15,8 +16,7 @@ from scipy import ndimage
 
 import matplotlib.pyplot as plt
 
-from util.misc import project_vectors_to_image_space, normalize_vectors, export_angles, rotate_vectors, normalize_vector
-
+from util.misc import project_vectors_to_image_space, normalize_vectors, export_angles, rotate_vectors, normalize_vector, rotate_points
 
 MAGNITUDE_THRESHOLD = 0.06
 
@@ -27,6 +27,12 @@ MAPPING_DISTANCE_CUTOFF = True
 # EXPORT = False
 
 
+class LightMode(Enum):
+    IMPLICIT = "implicit"
+    EXPLICIT = "explicit"
+    AXIS = "axis"
+
+
 class ProcessBlenderConfig(BaseModel):
     # light_angle_xy: float = Field(default=45, description="Azimuthal angle φ (around Z-axis) of the lighting vector in degrees")
     # light_angle_z: float = Field(default=45, description="Polar angle θ (to Z-axis) of the lighting vector in degrees")
@@ -35,13 +41,15 @@ class ProcessBlenderConfig(BaseModel):
     rotY: float = 0
     rotZ: float = 0
 
-    light_pos_x: float | None = 0.0
-    light_pos_y: float | None = 0.0
-    light_pos_z: float | None = 2.0
+    light_pos_x: float = 0.0
+    light_pos_y: float = 0.0
+    light_pos_z: float = 2.0
 
-    light_axis_pos_x: float | None = None
-    light_axis_pos_y: float | None = None
-    light_axis_pos_z: float | None = None
+    light_axis_pos_x: float = 0.0
+    light_axis_pos_y: float = 0.0
+    light_axis_pos_z: float = 2.0
+
+    light_mode: LightMode = LightMode.EXPLICIT
 
     cross_flow_light: bool = True
     cross_flow_elevation: bool = True
@@ -56,10 +64,23 @@ class ProcessBlenderConfig(BaseModel):
     mode: int = 3
 
     def model_post_init(self, __context):
-        # use light_pos values unless light_axis_pos is explicitly set in the config file
-        self.light_axis_pos_x = self.light_pos_x if self.light_axis_pos_x is None else self.light_axis_pos_x
-        self.light_axis_pos_y = self.light_pos_y if self.light_axis_pos_y is None else self.light_axis_pos_y
-        self.light_axis_pos_z = self.light_pos_z if self.light_axis_pos_z is None else self.light_axis_pos_z
+        match self.light_mode:
+            case LightMode.IMPLICIT:
+                self.light_axis_pos_x = self.light_pos_x
+                self.light_axis_pos_y = self.light_pos_y
+                self.light_axis_pos_z = self.light_pos_z
+
+            case LightMode.EXPLICIT:
+                pass
+
+            case LightMode.AXIS:
+                p_rot = rotate_points([np.array([0, 0, 1.0])], np.radians(self.rotX), np.radians(self.rotY), np.radians(self.rotZ))
+                self.light_axis_pos_x, self.light_axis_pos_y, self.light_axis_pos_z = p_rot[0]
+
+                print(p_rot)
+
+            case _:
+                raise NotImplementedError(f"Enum type {self.light_mode} of LightMode not implemented")
 
 
 def _visualize(centers: np.ndarray, vectors: list[np.ndarray], points: list[np.ndarray], light_axis: np.array) -> pv.Plotter:
