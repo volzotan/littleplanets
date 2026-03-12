@@ -17,10 +17,7 @@ DIR_CONFIG := config
 DIR_DEBUG := debug
 
 CONFIG_FILE := $(DIR_CONFIG)/mars.toml
-
 POI_FILES := $(DIR_CONFIG)/pois*.json
-POI_OUTPUTS := $(POI_FILES:.toml=.npz)
-
 OUTPUT_PNG := littleplanets.png
 
 # ----------
