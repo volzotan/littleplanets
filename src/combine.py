@@ -25,7 +25,7 @@ DIR_DEBUG = Path("debug")
 PSEUDO_RANDOM_SEED = "littleplanets"
 
 SEGMENTIZE_MAX_LENGTH = 5.0  # mm
-
+FRAME_LENGTH = 5.0
 
 class CombineConfig(BaseModel):
     dimensions: tuple[int, int] = (1000, 1000)
@@ -390,19 +390,28 @@ def main() -> None:
     # Add frame
 
     frame_color = [0, 0, 0] if not config.invert_background else [255, 255, 255]
-    frame_length = 50
+    frame_length = FRAME_LENGTH
     offset_frame = 10
     width, height = config.dimensions
 
+    # linestrings_frame = [
+    #     LineString([[0, height - frame_length], [0, height], [frame_length, height]]),
+    #     LineString([[width - frame_length, height], [width, height], [width, height - frame_length]]),
+    #     LineString([[width, frame_length], [width, 0], [width - frame_length, 0]]),
+    #     LineString([[frame_length, 0], [0, 0], [0, frame_length]]),
+    #     LineString([[width / 2 - frame_length / 2, 0], [width / 2 + frame_length / 2, 0]]),
+    #     LineString([[width / 2 - frame_length / 2, height], [width / 2 + frame_length / 2, height]]),
+    #     LineString([[0, height / 2 - frame_length / 2], [0, height / 2 + frame_length / 2]]),
+    #     LineString([[width, height / 2 - frame_length / 2], [width, height / 2 + frame_length / 2]]),
+    # ]
+
     linestrings_frame = [
-        LineString([[0, height - frame_length], [0, height], [frame_length, height]]),
-        LineString([[width - frame_length, height], [width, height], [width, height - frame_length]]),
-        LineString([[width, frame_length], [width, 0], [width - frame_length, 0]]),
-        LineString([[frame_length, 0], [0, 0], [0, frame_length]]),
+        LineString([[offset_frame + 0, height], [offset_frame + frame_length, height]]),
+        LineString([[width - frame_length - offset_frame, height], [width - offset_frame, height]]),
+        LineString([[width - offset_frame, 0], [width - frame_length - offset_frame, 0]]),
+        LineString([[frame_length + offset_frame, 0], [0 + offset_frame, 0]]),
         LineString([[width / 2 - frame_length / 2, 0], [width / 2 + frame_length / 2, 0]]),
         LineString([[width / 2 - frame_length / 2, height], [width / 2 + frame_length / 2, height]]),
-        LineString([[0, height / 2 - frame_length / 2], [0, height / 2 + frame_length / 2]]),
-        LineString([[width, height / 2 - frame_length / 2], [width, height / 2 + frame_length / 2]]),
     ]
 
     # linestrings_frame = [
