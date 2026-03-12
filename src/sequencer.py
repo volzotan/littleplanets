@@ -142,6 +142,7 @@ def main() -> None:
             "light_pos_x": x,
             "light_pos_y": 0.0,
             "light_pos_z": z,
+            "combine|add_frame": False
         })
 
 

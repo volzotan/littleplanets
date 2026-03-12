@@ -47,6 +47,7 @@ class CombineConfig(BaseModel):
     contours_smoothing_iterations: int = Field(5, ge=0)
 
     visualization_stroke_width: float = 0.5
+    add_frame: bool = True
 
 
 def _project_linestring(ls: LineString, P: np.ndarray, scaling_factor: float) -> LineString:
@@ -423,13 +424,14 @@ def main() -> None:
     #     LineString([[width / 2 - frame_length / 2, height], [width / 2 + frame_length / 2, height]]),
     # ]
 
-    layer_styles["frame"] = {
-        "fill": "none",
-        "stroke": f"rgb({frame_color[0]},{frame_color[1]},{frame_color[2]})",
-        "stroke-width": "0.50",
-        "fill-opacity": "1.0",
-    }
-    svg.add("frame", linestrings_frame)
+    if config.add_frame:
+        layer_styles["frame"] = {
+            "fill": "none",
+            "stroke": f"rgb({frame_color[0]},{frame_color[1]},{frame_color[2]})",
+            "stroke-width": "0.50",
+            "fill-opacity": "1.0",
+        }
+        svg.add("frame", linestrings_frame)
 
     # Build SVG
 
