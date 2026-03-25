@@ -363,6 +363,14 @@ def main() -> None:
             "fill-opacity": "1.0",
         }
 
+    layer_styles[f"cutouts"] = {
+        "fill": "none",
+        "stroke": f"rgb({palette[0][0]},{palette[0][1]},{palette[0][2]})",
+        "stroke-width": str(config.visualization_stroke_width),
+        "fill-opacity": "1.0",
+        "display": "none",
+    }
+
     for io, overlay_ls in enumerate(linestrings_overlays):
         if io < len(config.layer_colors) and len(config.layer_colors[io]) == 3:
             overlay_color = config.layer_colors[io]
@@ -445,6 +453,8 @@ def main() -> None:
     linestrings_contours_palette = _match_linestrings_to_palette(linestrings_contours, mapping_color, palette, scaling_factor)
     for i, colored_linestrings in enumerate(linestrings_contours_palette):
         svg.add(f"contours_{i}", colored_linestrings)
+
+    svg.add("cutouts", linestrings_cutouts)
 
     svg.write()
 

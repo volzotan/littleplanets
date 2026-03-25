@@ -45,7 +45,13 @@ class SvgWriter:
 
     def write_layer(self, out: TextIOWrapper, layer_name: str):
         layer = self.layers[layer_name]
-        out.write(f'<g inkscape:groupmode="layer" id="{layer_name}" inkscape:label="{layer_name}">')
+        out.write(f'<g inkscape:groupmode="layer" id="{layer_name}" inkscape:label="{layer_name}"')
+        if "display" in self.styles[layer_name]:
+            # inkscape marks invisble layers by applying the display:none style directly to the g element,
+            # if it is a regular CSS attribute in a global <style> tag, the layer will still be invisble,
+            # but can not be set to visible in the UI
+            out.write(f' style="display:{self.styles[layer_name]["display"]}"')
+        out.write(">")
         for geom, options in layer:
             match geom:
                 # case Point():
@@ -98,6 +104,9 @@ class SvgWriter:
                 out.write(f"svg {{ background-color: {self.background_color}; }}\n")
 
             for style_selector, style_attributes in self.styles.items():
+                if style_selector == "display":  # ignore display:none, this is applied to the g element of the layer
+                    continue
+
                 out.write(f"#{style_selector} {{\n")
                 for k, v in style_attributes.items():
                     out.write(f"\t{k}: {v};\n")
