@@ -7,13 +7,6 @@ rotX = -95.14
 rotY = -5.625 # 360 / 32 (lines) * 0.5
 rotZ = -6.68 # axial tilt
 
-# light_angle_xy = 83.32
-# light_angle_z = 90
-
-#light_axis_pos_x = 1.2
-#light_axis_pos_y = 0.6
-#light_axis_pos_z = 3.0
-
 light_mode = "implicit"
 
 light_pos_x = 1.2
@@ -78,6 +71,7 @@ grid_lines_lon = 8
 axis_extent = [1.17, 1.22]
 
 [overlay_contours]
+
 offset = 0.005
 double_line_distance = 0.0015
 

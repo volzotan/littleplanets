@@ -1,9 +1,10 @@
+# Earth
+
 rotX = -66.56
 rotY = -5.625 # 360 / 32 (lines) * 0.5
 rotZ = 10
 
-light_angle_xy = 67.5
-light_angle_z = 90 #50
+light_mode = "axis"
 
 # dark blue 65, 102, 174 | naphtol orange 240, 126, 50 | phthalo green 3, 168, 115 | chromium oxide green 174, 212, 164
 colors = [[65, 102, 174], [240, 126, 50], [3, 168, 115]]
@@ -11,7 +12,7 @@ colors = [[65, 102, 174], [240, 126, 50], [3, 168, 115]]
 layer_colors = [[], [255, 255, 255], [], [255, 255, 255], [255, 255, 255]]
 invert_background = true
 
-dimensions = [750, 750]
+dimensions = [699, 699]
 
 [downloader]
 
@@ -24,17 +25,26 @@ surface_color_url = "https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57
 clouds_download = true
 clouds_datetime = "2025-07-01 00:00"
 
-[modify_tiff]
+[modify_dem_stage1]
 
-scaling_factor = 0.25
-floor = 0
+resize_width = 15000
+
+[modify_dem_stage2]
+
+blur = 0.25
+
+[modify_surfacecolor]
+
+resize_width = 10000
+convert_uint8 = true
 
 [adjust_scene]
 
-horizontal_width = 2.2
+horizontal_width = 2.4
 camera_focal_length = 30.0
-resolution_x = 1000
-resolution_y = 1000
+
+light_size = 0.01
+light_power = 200
 
 [mesh]
 
@@ -45,8 +55,9 @@ subdivision = 10
 
 [overlay_pois]
 
-circle_radius = 0.015
-font_size = 0.020
+circle_radius = 0.010
+double_circle_radius = 0.0085
+font_size = 0.017
 
 [overlay_grid]
 
@@ -55,9 +66,10 @@ grid_lines_lon = 8
 
 [overlay_axis]
 
-axis_extent = 1.8
-
 [overlay_contours]
+
+offset = 0.005
+double_line_distance = 0.0015
 
 [process_blender]
 
