@@ -14,7 +14,7 @@ from shapely import MultiLineString, LineString, Point
 
 from src.util.misc import linestring_to_coordinate_pairs
 
-DEFAULT_MAX_LENGTH_SEGMENT = 4 # 20  # in m
+DEFAULT_MAX_LENGTH_SEGMENT = 5  # 20  # in m
 
 OFFSET = [0, 0]
 
@@ -23,7 +23,7 @@ WRITE_SPEED = 1000
 PEN_LIFT_SPEED = 5000
 PEN_DIP_SPEED = 500
 
-PEN_UP_DISTANCE = 3.0
+PEN_UP_DISTANCE = 4.0
 PEN_DIP_UP_DISTANCE = 7.0
 PEN_DIP_DOWN_DISTANCE = 2.0
 
@@ -186,7 +186,6 @@ def filter_linestrings(g: shapely.Geometry) -> list[LineString]:
 
 
 def _dip_pen(out: Any) -> None:
-
     out.write(CMD_PEN_DIP_UP)
     out.write(f"G1 F{TRAVEL_SPEED}\n")
 
@@ -563,7 +562,7 @@ def main() -> None:
             count_pen_up += 1
             number_lines = len(segment)
 
-            if args.dip_mode: # initial dip
+            if args.dip_mode:  # initial dip
                 _dip_pen(out)
                 state_pen_up = True
                 count_pen_up += 1

@@ -105,8 +105,9 @@ def _visualize(centers: np.ndarray, vectors: list[np.ndarray], points: list[np.n
     )
 
     # light axis
-    spline = pv.Spline(np.array([[0, 0, 0], light_axis], dtype=np.float32)).tube(radius=0.005)
-    plotter.add_mesh(spline, color=[255, 255, 0])
+    if light_axis is not None:
+        spline = pv.Spline(np.array([[0, 0, 0], light_axis], dtype=np.float32)).tube(radius=0.005)
+        plotter.add_mesh(spline, color=[255, 255, 0])
 
     colors = ["red", "green", "blue"]
 
@@ -533,8 +534,11 @@ def main() -> None:
         normals = img_normals.reshape([-1, 3])
         direction = img_direction.reshape([-1, 3])  # relative to (0, 0)
         elevation_direction = normalize_vectors(img_elevation_direction).reshape([-1, 3])
+        elevation_direction = img_field_elevation_vectors_1.reshape([-1, 3])
 
-        _visualize(centers, [normals, direction, img_field_elevation_vectors_1.reshape([-1, 3])], [], light_axis).show()
+        # _visualize(centers, [normals, direction, elevation_direction], [], light_axis).show()
+        _visualize(centers, [normals, direction], [], None).show()
+
         # visualize(centers, [direction], [], light_axis).show()
         # visualize(centers, [normals, elevation_direction], [], light_axis).show()
 
