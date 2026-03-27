@@ -1,1 +1,0 @@
-/Applications/Blender.app/Contents/MacOS/Blender ../blender/moon_Z.blend
