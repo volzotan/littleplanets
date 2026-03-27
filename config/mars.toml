@@ -86,9 +86,8 @@ clip_lower_percent_range = 1.0
 
 [hatch]
 
-blur_color_kernel_size_perc = 0.0
-blur_angle_kernel_size_perc = 0.0
-blur_distance_kernel_size_perc = 0.40
+blur_angle_kernel_size = 0.0
+blur_distance_kernel_size = 0.40
 
 flowlines_line_distance = [0.5, 7.0]
 flowlines_line_min_length = 10

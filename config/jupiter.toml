@@ -68,9 +68,8 @@ mixture = [0.03, 0.07]
 
 [hatch]
 
-blur_color_kernel_size_perc = 0.00
-blur_angle_kernel_size_perc = 0.40
-blur_distance_kernel_size_perc = 0.40
+blur_angle_kernel_size = 0.40
+blur_distance_kernel_size = 0.40
 
 flowlines_line_distance = [0.6, 12.0]
 flowlines_line_max_length = [30, 30]

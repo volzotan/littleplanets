@@ -10,6 +10,7 @@ import numpy as np
 import shapely.affinity
 import svgpathtools
 from loguru import logger
+import shapely
 from shapely import LineString, Point
 from svgpathtools import parse_path
 
@@ -214,7 +215,7 @@ class HersheyFont:
         glyphs = self.glyphs_for_text(text, font_size)
         for i, g in enumerate(glyphs):
             anchor_x = g["anchor"][0]  # + g["width"]/2
-            match = self._find_matching_line_point(path, anchor_x, anchor_x + g["width"], reverse=True)
+            match = self._find_matching_line_point(path, anchor_x, anchor_x + g["width"], reverse_path=True)
 
             if match is None:
                 logger.warning(f"path length insufficient, failed to draw glyph {g['char']}")
@@ -234,9 +235,9 @@ class HersheyFont:
             # bounding box
             bbox = shapely.box(
                 0,
-                -self.font_info.descent * FONT_SIZE,
+                -self.font_info.descent * font_size,
                 g["width"],
-                -self.font_info.ascent * FONT_SIZE,
+                -self.font_info.ascent * font_size,
             )
             bbox = shapely.affinity.rotate(bbox, angle, origin=(0, 0, 0), use_radians=True)
             bbox = shapely.affinity.translate(bbox, xoff=matching_point[0], yoff=matching_point[1])

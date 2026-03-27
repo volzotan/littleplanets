@@ -238,7 +238,7 @@ def main() -> None:
             data = tomllib.load(f)
             config = CombineConfig.model_validate(data)
     else:
-        logger.warning("No config file not found")
+        logger.warning("No config file found")
 
     random.seed(PSEUDO_RANDOM_SEED)
 
