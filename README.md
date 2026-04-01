@@ -1,8 +1,6 @@
-README christopher
-
-Draw little planets: a pipeline to generate paths for pen plotters with elevation and color data of celestial bodies.
-
 ![Header](media/header.jpg)
+
+Littleplanets: a pipeline to generate paths for pen plotters with elevation and color data of celestial bodies.
 
 # Dependencies:
 
@@ -29,7 +27,7 @@ sh make_all.sh
 
 # Config
 
-Find the config files for each planet in [config][], example [moon/config.toml][].
+Find the config files for each planet in [config](/config), example [moon/config.toml](moon/config.toml).
 
 Note: for Earth cloud overlays, a [Copernicus Climate Data Store](https://cds.climate.copernicus.eu/) API key is required (`~/.cdsapirc`).
 
@@ -46,5 +44,5 @@ Plotter notes:
 
 ---
 
-Refer to a more extensive, but auto-generated ReadMe: [README_AUTOGEN.md][]. 
+Refer to a more extensive, but LLM-generated ReadMe: [README_GENERATED.md](README_GENERATED.md). 
 
