@@ -8,7 +8,6 @@ Littleplanets: a pipeline to generate paths for pen plotters from elevation and 
 * [Inkscape](https://inkscape.org/), for SVG-to-PNG conversion
 * Blender
 * wget
-* Hershey fonts
 
 On Linux you will need to modify BLENDER_BIN path in `makefile` or export it as an environment variable.
 
@@ -36,3 +35,8 @@ Note: for Earth cloud overlays, a [Copernicus Climate Data Store](https://cds.cl
 
 Refer to a more extensive, but LLM-generated ReadMe: [README_GENERATED.md](README_GENERATED.md). 
 
+---
+
+# License Notes:
+
+The stroke-based Hershey Fonts used in this project have been curated by [Windell Oskay](http://windell.oskay.net/) and made available in his [SVG Fonts](https://gitlab.com/oskay/svg-fonts) repository. They are available under the [SIL Open Font License](https://openfontlicense.org/) and are included without alterations in this repository for convenience. The licensing of the code in this project does not extend to the fonts.
