@@ -139,7 +139,7 @@ def process(num_experiment: int, config_override: dict[str, Any]) -> None:
             f"CONFIG_FILE={config_file}",
             f"DIR_DATA={DIR_DATA}",
             f"DIR_BUILD={build_dir}",
-            f"POI_FILE={FILE_POI}",
+            f"POI_FILES={FILES_POI}",
             f"OUTPUT_PNG={image_file}",
         ]
 
