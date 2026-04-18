@@ -4,11 +4,11 @@ rotX = -90
 rotY = 84.375 # 360 / 32 * 7.5  (32 lines in total, 7.5 to be in between)
 rotZ = -22.5
 
-light_mode = "axis"
+light_mode = "implicit"
 
-light_pos_x = 0.5
-light_pos_y = 0.1
-light_pos_z = 3.0
+light_pos_x = 0.6
+light_pos_y = -0.8
+light_pos_z = 4.0
 
 colors = [[240, 126, 50], [65, 102, 174]]
 invert_background = true
@@ -48,7 +48,7 @@ horizontal_width = 2.4
 camera_focal_length = 25.0
 
 light_size = 0.2
-light_power = 200
+light_power = 100
 
 [mesh]
 
@@ -81,6 +81,7 @@ double_line_distance = 0.0015
 mixture = [0.03, 0.07]
 contrast_increase = 2.0
 clip_lower_percent_range = 1.0
+clip_upper_percent_range = 99.0
 
 [palette]
 
@@ -89,9 +90,9 @@ clip_lower_percent_range = 1.0
 blur_angle_kernel_size = 0.0
 blur_distance_kernel_size = 0.40
 
-flowlines_line_distance = [0.5, 7.0]
-flowlines_line_min_length = 10
-flowlines_line_max_length = [10, 20]
+flowlines_line_distance = [0.5, 6.0]
+flowlines_line_min_length = 3.0
+flowlines_line_max_length = [4, 30]
 flowlines_line_distance_end_factor = 0.3
 flowlines_max_angle_discontinuity = 0.78 # pi/4
 
