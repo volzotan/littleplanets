@@ -104,7 +104,7 @@ def process(num_experiment: int, config_override: dict[str, Any]) -> None:
         image_file = DIR_OUTPUT / (filename + "_0" + ".png")
         render_output_file = DIR_OUTPUT / (filename + "_1" + ".tif")
         mapping_output_file = DIR_OUTPUT / (filename + "_2" + ".png")
-        freestyle_output_file = DIR_OUTPUT / (filename + "_3" + ".png")
+        misc_output_file = DIR_OUTPUT / (filename + "_3" + ".png")
 
         timer_start = datetime.datetime.now()
 
@@ -154,7 +154,9 @@ def process(num_experiment: int, config_override: dict[str, Any]) -> None:
 
         shutil.copy(build_dir / "image.tif", render_output_file)
         shutil.copy(build_dir / "mapping_distance.png", mapping_output_file)
-        # shutil.copy(build_dir / "freestyle.png", freestyle_output_file)
+
+        # shutil.copy(build_dir / "freestyle.png", misc_output_file)
+        # shutil.copy(build_dir / "freestyle.png", misc_output_file)
 
         # shutil.copy(build_dir.parent / Path(str(build_dir.stem) + "_debug") / "mixture.png", image_file)
 
