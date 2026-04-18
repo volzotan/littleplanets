@@ -4,11 +4,10 @@ rotX = -66.56
 rotY = -5.625 # 360 / 32 (lines) * 0.5
 rotZ = 10
 
-light_mode = "axis"
+light_mode = "implicit"
 
 # dark blue 65, 102, 174 | naphtol orange 240, 126, 50 | phthalo green 3, 168, 115 | chromium oxide green 174, 212, 164
 colors = [[65, 102, 174], [240, 126, 50], [3, 168, 115]]
-# layer_colors = [[], [], [255, 255, 255]]
 layer_colors = [[], [255, 255, 255], [], [255, 255, 255], [255, 255, 255]]
 invert_background = true
 
@@ -66,6 +65,8 @@ grid_lines_lon = 8
 
 [overlay_axis]
 
+axis_extent = [1.8, 1.18]
+
 [overlay_contours]
 
 offset = 0.005
@@ -75,6 +76,9 @@ double_line_distance = 0.0015
 
 mixture = [0.03, 0.07]
 
+clip_lower_percent_range = 1.0
+clip_upper_percent_range = 99.0
+
 [palette]
 
 [hatch]
@@ -82,9 +86,10 @@ mixture = [0.03, 0.07]
 blur_angle_kernel_size = 0 # 0.40
 blur_distance_kernel_size = 0 # 0.40
 
-flowlines_line_distance = [0.6, 9.0]
-flowlines_line_max_length = [30, 30]
-flowlines_line_distance_end_factor = 0.5
+flowlines_line_distance = [0.6, 8.0]
+flowlines_line_min_length = 1
+flowlines_line_max_length = [5, 30]
+flowlines_line_distance_end_factor = 0.3
 flowlines_max_angle_discontinuity = 1.57 # pi/2
 
 [combine]
