@@ -106,8 +106,8 @@ if __name__ == "__main__":
 
     # TODO: this is an issue with mapping_angle. Since there are regions where the angle "wraps around" and changes from 255 to 0 (from 359 to 0 deg).
     # Those regions will be blurred to grey (value 127 or 180 deg). This creates artifacts similar to gutter lines on hillsides.
-    mapping_angle = _blur_raster(mapping_angle, config.blur_angle_kernel_size_perc)
-    mapping_distance = _blur_raster(mapping_distance, config.blur_distance_kernel_size_perc)
+    mapping_angle = _blur_raster(mapping_angle, config.blur_angle_kernel_size)
+    mapping_distance = _blur_raster(mapping_distance, config.blur_distance_kernel_size)
 
     scaling_factor = config.dimensions[0] / mapping_angle.shape[1]
 
