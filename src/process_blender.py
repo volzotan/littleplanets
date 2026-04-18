@@ -208,8 +208,8 @@ def _apply_linear_slope(m: np.ndarray, slope_start: float, slope_end: float, cli
     return m_norm
 
 
-def _apply_linear_transition(m: np.ndarray, min: float, max: float) -> np.ndarray:
-    return (np.clip(m, min, max) - min) / (max - min)
+def _apply_linear_transition(m: np.ndarray, minv: float, maxv: float) -> np.ndarray:
+    return (np.clip(m, minv, maxv) - minv) / (maxv - minv)
 
 
 def _segmentize(image: np.ndarray) -> np.ndarray:

@@ -32,8 +32,8 @@ class HatchConfig(BaseModel):
     colors: list[list[int]] = [[255, 255, 255]]
 
     # Blurring kernel size, percentage of raster size(float)
-    blur_angle_kernel_size_perc: float = Field(0, ge=0)
-    blur_distance_kernel_size_perc: float = Field(0, ge=0)
+    blur_angle_kernel_size: float = Field(0, ge=0)
+    blur_distance_kernel_size: float = Field(0, ge=0)
 
     flowlines_line_distance: tuple[float, float] = (0.8, 10)
     flowlines_line_min_length: float = Field(1.0, gt=0)
