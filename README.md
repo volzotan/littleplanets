@@ -16,7 +16,12 @@ On Linux you will need to modify BLENDER_BIN path in `makefile` or export it as 
 Adjust Blender path and inkscape path in Makefile, then:
 
 ```sh
-make setup run CONFIG_FILE=config/moon.toml DIR_BUILD=build_moon DIR_DATA=data_moon POI_FILES="config/moon_poi*.json" OUTPUT_PNG=moon.png
+make setup run \
+CONFIG_FILE=config/moon.toml \
+DIR_BUILD=build_moon \
+DIR_DATA=data_moon \
+POI_FILES="config/moon_poi*.json" \
+OUTPUT_PNG=moon.png
 ```
 
 or
@@ -29,7 +34,7 @@ sh make_all.sh
 
 Find the config files for each planet in [config](/config), example [config/moon.toml](config/moon.toml).
 
-Note: for Earth cloud overlays, a [Copernicus Climate Data Store](https://cds.climate.copernicus.eu/) API key is required (`~/.cdsapirc`).
+Note: for Earth cloud overlays, a [Copernicus Climate Data Store](https://cds.climate.copernicus.eu/) API key is required in `~/.cdsapirc`
 
 ---
 
