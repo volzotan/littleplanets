@@ -6,6 +6,10 @@ rotZ = 10
 
 light_mode = "implicit"
 
+light_pos_x = 0.6
+light_pos_y = 0.8
+light_pos_z = 5.0
+
 # dark blue 65, 102, 174 | naphtol orange 240, 126, 50 | phthalo green 3, 168, 115 | chromium oxide green 174, 212, 164
 colors = [[65, 102, 174], [240, 126, 50], [3, 168, 115]]
 layer_colors = [[], [255, 255, 255], [], [255, 255, 255], [255, 255, 255]]
@@ -19,7 +23,10 @@ dimensions = [699, 699]
 dem_url = ""
 
 # source: https://visibleearth.nasa.gov/images/57730/the-blue-marble-land-surface-ocean-color-and-sea-ice
-surface_color_url = "https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57730/land_ocean_ice_8192.png"
+# surface_color_url = "https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57730/land_ocean_ice_8192.png"
+
+# source: https://www.shadedrelief.com/natural3/pages/textures.html
+surface_color_url = "http://shadedrelief.com/natural3/ne3_data/16200/textures/2_no_clouds_16k.jpg"
 
 clouds_download = true
 clouds_datetime = "2025-07-01 00:00"
@@ -30,7 +37,8 @@ resize_width = 15000
 
 [modify_dem_stage2]
 
-blur = 0.25
+blur = 0.10
+floor = 1.0
 
 [modify_surfacecolor]
 
@@ -43,11 +51,11 @@ horizontal_width = 2.4
 camera_focal_length = 30.0
 
 light_size = 0.01
-light_power = 200
+light_power = 250
 
 [mesh]
 
-scale = 0.10
+scale = 0.09
 subdivision = 10
 
 [import_ply]
@@ -86,9 +94,9 @@ clip_upper_percent_range = 99.0
 blur_angle_kernel_size = 0 # 0.40
 blur_distance_kernel_size = 0 # 0.40
 
-flowlines_line_distance = [0.6, 8.0]
-flowlines_line_min_length = 1
-flowlines_line_max_length = [5, 30]
+flowlines_line_distance = [0.7, 10.0]
+flowlines_line_min_length = 3
+flowlines_line_max_length = [3, 20]
 flowlines_line_distance_end_factor = 0.3
 flowlines_max_angle_discontinuity = 1.57 # pi/2
 
