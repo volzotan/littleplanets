@@ -19,9 +19,9 @@ dimensions = [699, 699]
 
 [downloader]
 
-# source: GEBCO
-dem_url = ""
-
+# source: GEBCO https://www.gebco.net/data-products/gridded-bathymetry-data
+dem_url = "https://dap.ceda.ac.uk/bodc/gebco/global/gebco_2025/ice_surface_elevation/geotiff/gebco_2025_geotiff.zip?download=1"
+ 
 # source: https://visibleearth.nasa.gov/images/57730/the-blue-marble-land-surface-ocean-color-and-sea-ice
 # surface_color_url = "https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57730/land_ocean_ice_8192.png"
 

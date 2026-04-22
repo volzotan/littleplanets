@@ -4,6 +4,7 @@ from typing import Any
 
 import rasterio
 from rasterio.warp import calculate_default_transform, Resampling
+from rasterio.merge import merge
 
 import argparse
 from pathlib import Path
@@ -14,6 +15,7 @@ from pydantic import BaseModel, Field
 import psutil
 import time
 import random
+from contextlib import ExitStack
 
 from loguru import logger
 
@@ -60,12 +62,22 @@ class ModifyTiffConfig(BaseModel):
 #                 )
 
 
-def _read(input_path: Path) -> tuple[np.ndarray, Any, Any]:
+def read_tiff(input_path: Path) -> tuple[np.ndarray, dict[str, Any]]:
     with rasterio.open(input_path) as src:
-        return src.read(), src.crs, src.transform
+        options = {"crs": src.crs, "transform": src.transform}
+        data = src.read()
+        data = np.transpose(data, (1, 2, 0))
+        return data, options
 
 
-def _write(output_path: Path, data: np.ndarray, options: dict[str, Any] = {}) -> None:
+def write_tiff(output_path: Path, data: np.ndarray, options: dict[str, Any] = {}) -> None:
+    """Discards georeference metadata"""
+
+    if len(data.shape) == 2:
+        data = data[:, :, np.newaxis]
+
+    data = np.transpose(data, (2, 0, 1))
+
     config = {
         "driver": "GTiff",
         "height": data.shape[-2],
@@ -78,6 +90,65 @@ def _write(output_path: Path, data: np.ndarray, options: dict[str, Any] = {}) ->
 
     with rasterio.open(output_path, "w", **config) as dst:
         dst.write(data)
+
+
+def resize_tiff(data: np.ndarray, options: dict[str, Any], resize_width: int) -> tuple[np.ndarray, dict[str, Any]]:
+    scaling_factor = resize_width / data.shape[1]
+    new_size = (resize_width, int(data.shape[0] * scaling_factor))
+
+    data = cv2.resize(data, new_size, interpolation=cv2.INTER_AREA).astype(data.dtype)
+    options["transform"] = options["transform"] * options["transform"].scale(1 / scaling_factor, 1 / scaling_factor)
+
+    return data, options
+
+
+def downscale_and_write(input_path: Path, output_path: Path, scaling_factor: float) -> None:
+    """Downscale GEBCO GeoTiff images while preserving georeference metadata"""
+
+    with rasterio.open(input_path) as src:
+        data = src.read(
+            out_shape=(
+                src.count,
+                int(src.height * scaling_factor),
+                int(src.width * scaling_factor),
+            ),
+            resampling=Resampling.bilinear,
+        )
+
+        transform = src.transform * src.transform.scale((src.width / data.shape[-1]), (src.height / data.shape[-2]))
+
+        config = {
+            "driver": "GTiff",
+            "height": data.shape[-2],
+            "width": data.shape[-1],
+            "count": 1,
+            "dtype": data.dtype,
+            "crs": src.crs,
+            "transform": transform,
+        }
+
+        with rasterio.open(output_path, "w", **config) as dst:
+            dst.write(data)
+
+
+def merge_and_write(geotiff_paths: list[Path], output_path: Path) -> None:
+    with ExitStack() as stack:
+        tiles = [stack.enter_context(rasterio.open(geotiff_path)) for geotiff_path in geotiff_paths]
+
+        mosaic, mosaic_transform = merge(tiles, resampling=Resampling.bilinear)
+
+        config = {
+            "driver": "GTiff",
+            "height": mosaic.shape[-2],
+            "width": mosaic.shape[-1],
+            "count": 1,
+            "dtype": mosaic.dtype,
+            "crs": tiles[0].crs,
+            "transform": mosaic_transform,
+        }
+
+        with rasterio.open(output_path, "w", **config) as dst:
+            dst.write(mosaic)
 
 
 def _clip(data: np.ndarray, floor: float | None, ceil: float | None) -> np.ndarray:
@@ -135,19 +206,13 @@ def main() -> None:
         else:
             logger.info(f"Available memory {available:5.2f} is sufficient, starting execution")
 
-    data, data_crs, data_transform = _read(args.input)
-    options = {"crs": data_crs, "transform": data_transform}
-    data = np.transpose(data, (1, 2, 0))
+    data, options = read_tiff(args.input)
 
     if config.convert_uint8:
         data = data.astype(np.uint8)
 
     if config.resize_width is not None:
-        scaling_factor = config.resize_width / data.shape[1]
-        new_size = (config.resize_width, int(data.shape[0] * scaling_factor))
-
-        data = cv2.resize(data, new_size, interpolation=cv2.INTER_AREA).astype(data.dtype)
-        options["transform"] = data_transform * data_transform.scale(1 / scaling_factor, 1 / scaling_factor)
+        data, options = resize_tiff(data, options, config.resize_width)
 
     if config.contrast_stretching is not None:
         data = _contrast_stretch(data, config.contrast_stretching)
@@ -175,11 +240,7 @@ def main() -> None:
         data[mask] = 255.0
         data[~mask] = 0.0
 
-    if len(data.shape) == 2:
-        data = data[:, :, np.newaxis]
-
-    data = np.transpose(data, (2, 0, 1))
-    _write(args.output, data, options=options)
+    write_tiff(args.output, data, options=options)
 
 
 if __name__ == "__main__":
